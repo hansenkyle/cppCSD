@@ -1,0 +1,4 @@
+#ifndef CROSS_SECTION_H
+#define CROSS_SECTION_H
+
+#endif // CROSS_SECTION_H

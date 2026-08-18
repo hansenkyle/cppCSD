@@ -38,3 +38,74 @@ jobs:
 
       - name: Run unit tests
         run: ./build/unit_test
+
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit the badge SVG back to the repo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "^4.0.0"
+
+      - name: Install gcovr
+        run: pip install --user gcovr
+
+      - name: Configure (coverage build)
+        run: >
+          cmake -B build-coverage
+          -DCMAKE_BUILD_TYPE=Debug
+          -DLDCSD_BUILD_TESTS=ON
+          -DLDCSD_ENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build-coverage -j --target unit_test
+
+      - name: Run tests to generate coverage data
+        run: ./build-coverage/unit_test
+
+      - name: Generate coverage report and summary
+        run: |
+          mkdir -p build-coverage/coverage-report
+          gcovr \
+            --root . \
+            --object-directory build-coverage \
+            --exclude '.*/_deps/.*' \
+            --exclude '.*/test/.*' \
+            --html --html-details -o build-coverage/coverage-report/index.html \
+            --json-summary-pretty --json-summary build-coverage/coverage-summary.json \
+            --print-summary
+
+      - name: Upload HTML coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build-coverage/coverage-report
+
+      - name: Extract coverage percentage
+        id: coverage
+        run: |
+          PCT=$(python3 -c "import json; d = json.load(open('build-coverage/coverage-summary.json')); print(round(d['line_percent'], 1))")
+          echo "percent=$PCT" >> "$GITHUB_OUTPUT"
+          if   (( $(echo "$PCT >= 90" | bc -l) )); then COLOR=brightgreen
+          elif (( $(echo "$PCT >= 75" | bc -l) )); then COLOR=green
+          elif (( $(echo "$PCT >= 50" | bc -l) )); then COLOR=yellow
+          else COLOR=red
+          fi
+          echo "color=$COLOR" >> "$GITHUB_OUTPUT"
+
+      - name: Generate badge SVG
+        run: |
+          mkdir -p badges
+          curl -s "https://img.shields.io/badge/coverage-${{ steps.coverage.outputs.percent }}%25-${{ steps.coverage.outputs.color }}" \
+            -o badges/coverage.svg
+
+      - name: Commit badge
+        if: github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update coverage badge [skip ci]"
+          file_pattern: badges/coverage.svg

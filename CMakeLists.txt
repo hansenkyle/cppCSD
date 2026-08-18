@@ -30,12 +30,24 @@ FetchContent_MakeAvailable(eigen)
 add_library(Eigen3::Eigen INTERFACE IMPORTED)
 target_include_directories(Eigen3::Eigen INTERFACE ${eigen_SOURCE_DIR})
 
+# --- Core library (everything except main.cpp) ---
+# Both the ldcsd executable and unit_test link against this, so:
+#   1. src/ headers can be included by bare name ("solver.h") from
+#      anywhere that links ldcsd_core, tests included -- no relative
+#      paths like "../../src/solver.h" needed.
+#   2. Test files actually get solver.cpp's implementation linked in,
+#      instead of only compiling the test files themselves.
+add_library(ldcsd_core STATIC
+    src/solver.cpp
+)
+target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen)
+
 # --- Executable ---
 add_executable(ldcsd
     src/main.cpp
-    src/solver.cpp
 )
-target_link_libraries(ldcsd PRIVATE Eigen3::Eigen)
+target_link_libraries(ldcsd PRIVATE ldcsd_core)
 
 target_compile_options(ldcsd PRIVATE
     $<$<CONFIG:Release>:-O3 -march=native>
@@ -60,5 +72,14 @@ if(LDCSD_BUILD_TESTS)
     add_executable(unit_test
         test/unit/main.test.cpp
         test/unit/solver.test.cpp)
-    target_link_libraries(unit_test PRIVATE Eigen3::Eigen doctest::doctest)
+    target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
+
+    # --- Coverage instrumentation (opt-in, GCC/Clang gcov-compatible) ---
+    # Off by default: instrumentation disables optimization and adds
+    # profiling overhead, so this should never be on for a normal build.
+    option(LDCSD_ENABLE_COVERAGE "Build unit_test with coverage instrumentation" OFF)
+    if(LDCSD_ENABLE_COVERAGE)
+        target_compile_options(unit_test PRIVATE --coverage -O0 -g)
+        target_link_options(unit_test PRIVATE --coverage)
+    endif()
 endif()
