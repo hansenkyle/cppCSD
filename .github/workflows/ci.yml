@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check formatting
+        run: bash scripts/check-format.sh
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ldcsd's CMakeLists.txt requires CMake 4.0; ubuntu-latest's apt
+      # repo lags behind, so fetch a current CMake binary directly rather
+      # than relying on the distro package.
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "^4.0.0"
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DLDCSD_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Run unit tests
+        run: ./build/unit_test
