@@ -40,8 +40,13 @@ group_type = "log"                 # "log" or "linear"
 legendre_order = 7                 # Legendre truncation order used internally by
                                     # Radiant's elastic-scattering decomposition;
                                     # only the l=0 moment is written out.
-outfile = "materials_xs.yaml"
+
+output_name = "materials_xs.yaml"  # output filename, written under scripts/xs_data/
 # ----------------------------------------------------------------------
+
+output_dir = joinpath(@__DIR__, "xs_data")
+mkpath(output_dir)
+outfile = joinpath(output_dir, output_name)
 
 particle = Radiant.Electron()
 

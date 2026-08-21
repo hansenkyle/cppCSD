@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(LDCSD_BUILD_TESTS "Build ldcsd unit tests" ON)
+option(LDCSD_ENABLE_DEBUG_LOGGING "Compile in Logger trace/debug messages" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -44,9 +45,13 @@ add_library(ldcsd_core STATIC
     src/module.cpp
     src/parser.cpp
     src/output_manager.cpp
+    src/logger.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp)
+if(LDCSD_ENABLE_DEBUG_LOGGING)
+    target_compile_definitions(ldcsd_core PUBLIC LDCSD_ENABLE_DEBUG_LOGGING)
+endif()
 
 # --- Executable ---
 add_executable(ldcsd
@@ -75,7 +80,8 @@ if(LDCSD_BUILD_TESTS)
         test/unit/main.test.cpp
         test/unit/module.test.cpp
         test/unit/parser.test.cpp
-        test/unit/output_manager.test.cpp)
+        test/unit/output_manager.test.cpp
+        test/unit/logger.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
