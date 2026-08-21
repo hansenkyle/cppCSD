@@ -24,12 +24,28 @@ FetchContent_MakeAvailable(eigen)
 add_library(Eigen3::Eigen INTERFACE IMPORTED)
 target_include_directories(Eigen3::Eigen INTERFACE ${eigen_SOURCE_DIR})
 
+# yaml-cpp, used by Parser to load input decks
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG        0.8.0
+)
+# yaml-cpp 0.8.0's CMakeLists predates CMake's policy-version enforcement.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+FetchContent_MakeAvailable(yaml-cpp)
+unset(CMAKE_POLICY_VERSION_MINIMUM)
+
 # --- Core library, included by main and tests
 add_library(ldcsd_core STATIC
     src/module.cpp
+    src/parser.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen)
+target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp)
 
 # --- Executable ---
 add_executable(ldcsd
@@ -56,8 +72,11 @@ if(LDCSD_BUILD_TESTS)
 
     add_executable(unit_test
         test/unit/main.test.cpp
-        test/unit/module.test.cpp)
+        test/unit/module.test.cpp
+        test/unit/parser.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
+    target_compile_definitions(unit_test PRIVATE
+        TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
 
     # Coverage instrumentation
     option(LDCSD_ENABLE_COVERAGE "Build unit_test with coverage instrumentation" OFF)
