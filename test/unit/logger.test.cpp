@@ -31,10 +31,8 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("log() writes a timestamped, leveled line to the log file") {
     const auto path = tempLogPath("basic");
-    {
-      Logger logger(path);
-      logger.log(LogLevel::Info, "hello");
-    }
+    Logger::configure(path);
+    Logger::instance().log(LogLevel::Info, "hello");
 
     const std::string contents = readFile(path);
     CHECK(contents.find("[INFO] hello") != std::string::npos);
@@ -45,30 +43,30 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("each call to log() appends and flushes immediately") {
     const auto path = tempLogPath("appends");
-    Logger logger(path);
+    Logger::configure(path);
 
-    logger.log(LogLevel::Warn, "first");
+    Logger::instance().log(LogLevel::Warn, "first");
     CHECK(readFile(path).find("[WARN] first") != std::string::npos);
 
-    logger.log(LogLevel::Error, "second");
+    Logger::instance().log(LogLevel::Error, "second");
     const std::string contents = readFile(path);
     CHECK(contents.find("[WARN] first") != std::string::npos);
     CHECK(contents.find("[ERROR] second") != std::string::npos);
   }
 
-  TEST_CASE("constructor throws if the log file can't be opened") {
+  TEST_CASE("configure() throws if the log file can't be opened") {
     const std::filesystem::path bad_path =
         tempLogPath("missing-dir-does-not-exist") / "sub" / "log";
-    CHECK_THROWS_AS(Logger logger(bad_path), std::runtime_error);
+    CHECK_THROWS_AS(Logger::configure(bad_path), std::runtime_error);
   }
 
   TEST_CASE("LDCSD_LOG_INFO/WARN/ERROR always write") {
     const auto path = tempLogPath("macros-always-on");
-    Logger logger(path);
+    Logger::configure(path);
 
-    LDCSD_LOG_INFO(logger, "info message");
-    LDCSD_LOG_WARN(logger, "warn message");
-    LDCSD_LOG_ERROR(logger, "error message");
+    LDCSD_LOG_INFO("info message");
+    LDCSD_LOG_WARN("warn message");
+    LDCSD_LOG_ERROR("error message");
 
     const std::string contents = readFile(path);
     CHECK(contents.find("[INFO] info message") != std::string::npos);
@@ -78,10 +76,10 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("LDCSD_LOG_TRACE/DEBUG are compiled out unless LDCSD_ENABLE_DEBUG_LOGGING is set") {
     const auto path = tempLogPath("macros-trace-debug");
-    Logger logger(path);
+    Logger::configure(path);
 
-    LDCSD_LOG_TRACE(logger, "trace message");
-    LDCSD_LOG_DEBUG(logger, "debug message");
+    LDCSD_LOG_TRACE("trace message");
+    LDCSD_LOG_DEBUG("debug message");
 
     const std::string contents = readFile(path);
 #ifdef LDCSD_ENABLE_DEBUG_LOGGING

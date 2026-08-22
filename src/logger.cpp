@@ -33,8 +33,10 @@ std::string timestamp() {
 
 } // namespace
 
-Logger::Logger(const std::filesystem::path& log_path) : stream_(log_path) {
-  if (!stream_.is_open()) {
+void Logger::configure(const std::filesystem::path& log_path) {
+  Logger& logger = instance();
+  logger.stream_.open(log_path);
+  if (!logger.stream_.is_open()) {
     throw std::runtime_error("failed to open log file: " + log_path.string());
   }
 }
