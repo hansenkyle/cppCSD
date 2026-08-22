@@ -63,7 +63,7 @@ scripts/check-format.sh    # check only, nonzero exit if reformatting needed
 ```
 
 Note: these scripts currently only glob `*.cpp`/`*.hpp` files — header files
-using the `.h` extension (e.g. `src/module.h`, `src/parser.h`) are not
+using the `.h` extension (e.g. `src/module.h`, `src/input_deck.h`) are not
 covered.
 
 ## Architecture

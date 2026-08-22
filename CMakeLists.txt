@@ -25,7 +25,7 @@ FetchContent_MakeAvailable(eigen)
 add_library(Eigen3::Eigen INTERFACE IMPORTED)
 target_include_directories(Eigen3::Eigen INTERFACE ${eigen_SOURCE_DIR})
 
-# yaml-cpp, used by Parser to load input decks
+# yaml-cpp, used by InputDeck to load input decks
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
@@ -43,7 +43,7 @@ unset(CMAKE_POLICY_VERSION_MINIMUM)
 # --- Core library, included by main and tests
 add_library(ldcsd_core STATIC
     src/module.cpp
-    src/parser.cpp
+    src/input_deck.cpp
     src/output_manager.cpp
     src/logger.cpp
 )
@@ -79,7 +79,7 @@ if(LDCSD_BUILD_TESTS)
     add_executable(unit_test
         test/unit/main.test.cpp
         test/unit/module.test.cpp
-        test/unit/parser.test.cpp
+        test/unit/input_deck.test.cpp
         test/unit/output_manager.test.cpp
         test/unit/logger.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)

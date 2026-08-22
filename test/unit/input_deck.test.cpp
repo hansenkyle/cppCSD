@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "input_deck.h"
 
 #include <fstream>
 
@@ -14,7 +14,7 @@ std::filesystem::path sampleInputPath() {
 // need to deviate from the checked-in sample input.
 std::filesystem::path writeTempYaml(const std::string& contents) {
   const std::filesystem::path path =
-      std::filesystem::temp_directory_path() / "ldcsd_parser_test_input.yaml";
+      std::filesystem::temp_directory_path() / "ldcsd_input_deck_test_input.yaml";
   std::ofstream out(path);
   out << contents;
   return path;
@@ -22,9 +22,10 @@ std::filesystem::path writeTempYaml(const std::string& contents) {
 
 } // namespace
 
-TEST_SUITE("Parser") {
+TEST_SUITE("InputDeck") {
   TEST_CASE("reads a well-formed input deck") {
-    const InputDeck deck = Parser::read(sampleInputPath());
+    InputDeck deck;
+    CHECK(deck.read(sampleInputPath()) == 0);
 
     CHECK(deck.spatial_mesh == std::vector<double>{0.0, 1.0, 2.0, 3.0});
     CHECK(deck.region_materials == std::vector<std::string>{"water", "water", "lead"});
@@ -60,7 +61,8 @@ convergence:
   max_iters: 1
   epsilon: 1.0
 )");
-    CHECK_THROWS_AS(Parser::read(path), std::runtime_error);
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
   }
 
   TEST_CASE("rejects a region count that does not match the spatial mesh") {
@@ -80,7 +82,8 @@ convergence:
   max_iters: 1
   epsilon: 1.0
 )");
-    CHECK_THROWS_AS(Parser::read(path), std::runtime_error);
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
   }
 
   TEST_CASE("rejects a region referencing an undefined material") {
@@ -100,7 +103,8 @@ convergence:
   max_iters: 1
   epsilon: 1.0
 )");
-    CHECK_THROWS_AS(Parser::read(path), std::runtime_error);
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
   }
 
   TEST_CASE("rejects cross sections with the wrong number of groups") {
@@ -120,7 +124,8 @@ convergence:
   max_iters: 1
   epsilon: 1.0
 )");
-    CHECK_THROWS_AS(Parser::read(path), std::runtime_error);
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
   }
 
   TEST_CASE("rejects an input file missing a required key") {
@@ -139,6 +144,7 @@ convergence:
   max_iters: 1
   epsilon: 1.0
 )");
-    CHECK_THROWS_AS(Parser::read(path), std::runtime_error);
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
   }
 }

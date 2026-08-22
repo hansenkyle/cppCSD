@@ -1,8 +1,10 @@
-#include "parser.h"
+#include "input_deck.h"
 
 #include <stdexcept>
 
 #include <yaml-cpp/yaml.h>
+
+#include "logger.h"
 
 namespace {
 
@@ -56,42 +58,46 @@ MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
 
 } // namespace
 
-InputDeck Parser::read(const std::filesystem::path& path_to_yaml) {
-  const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
+int InputDeck::read(const std::filesystem::path& path_to_yaml) {
+  try {
+    const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
 
-  InputDeck deck;
+    spatial_mesh = requireNode(root, "spatial_mesh").as<std::vector<double>>();
+    requireStrictlyAscending(spatial_mesh, "spatial_mesh");
+    const std::size_t num_cells = spatial_mesh.size() - 1;
 
-  deck.spatial_mesh = requireNode(root, "spatial_mesh").as<std::vector<double>>();
-  requireStrictlyAscending(deck.spatial_mesh, "spatial_mesh");
-  const std::size_t num_cells = deck.spatial_mesh.size() - 1;
-
-  const YAML::Node regions = requireNode(root, "regions");
-  deck.region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
-  if (deck.region_materials.size() != num_cells) {
-    throw std::runtime_error("regions.materials has size " +
-                             std::to_string(deck.region_materials.size()) + ", expected " +
-                             std::to_string(num_cells) + " (one per spatial cell)");
-  }
-
-  deck.energy_mesh = requireNode(root, "energy_mesh").as<std::vector<double>>();
-  requireStrictlyAscending(deck.energy_mesh, "energy_mesh");
-  const std::size_t num_groups = deck.energy_mesh.size() - 1;
-
-  const YAML::Node materials = requireNode(root, "materials");
-  for (const auto& entry : materials) {
-    const std::string name = entry.first.as<std::string>();
-    deck.materials[name] = parseMaterial(entry.second, name, num_groups);
-  }
-
-  for (const std::string& name : deck.region_materials) {
-    if (!deck.materials.contains(name)) {
-      throw std::runtime_error("region references undefined material '" + name + "'");
+    const YAML::Node regions = requireNode(root, "regions");
+    region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
+    if (region_materials.size() != num_cells) {
+      throw std::runtime_error("regions.materials has size " +
+                               std::to_string(region_materials.size()) + ", expected " +
+                               std::to_string(num_cells) + " (one per spatial cell)");
     }
+
+    energy_mesh = requireNode(root, "energy_mesh").as<std::vector<double>>();
+    requireStrictlyAscending(energy_mesh, "energy_mesh");
+    const std::size_t num_groups = energy_mesh.size() - 1;
+
+    const YAML::Node materials_node = requireNode(root, "materials");
+    for (const auto& entry : materials_node) {
+      const std::string name = entry.first.as<std::string>();
+      materials[name] = parseMaterial(entry.second, name, num_groups);
+    }
+
+    for (const std::string& name : region_materials) {
+      if (!materials.contains(name)) {
+        throw std::runtime_error("region references undefined material '" + name + "'");
+      }
+    }
+
+    const YAML::Node convergence_node = requireNode(root, "convergence");
+    convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
+    convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
+  } catch (const std::exception& e) {
+    LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
+                     "': " + e.what());
+    return 1;
   }
 
-  const YAML::Node convergence = requireNode(root, "convergence");
-  deck.convergence.max_iters = requireNode(convergence, "max_iters").as<int>();
-  deck.convergence.epsilon = requireNode(convergence, "epsilon").as<double>();
-
-  return deck;
+  return 0;
 }
