@@ -35,6 +35,9 @@ std::string timestamp() {
 
 void Logger::configure(const std::filesystem::path& log_path) {
   Logger& logger = instance();
+  if (logger.stream_.is_open()) {
+    logger.stream_.close();
+  }
   logger.stream_.open(log_path);
   if (!logger.stream_.is_open()) {
     throw std::runtime_error("failed to open log file: " + log_path.string());
