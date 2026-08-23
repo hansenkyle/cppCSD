@@ -24,6 +24,13 @@ jobs:
           sudo apt-get install -y clang-format-21
           sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-21 100
 
+      - name: Debug clang-format resolution
+        run: |
+          which clang-format
+          readlink -f "$(which clang-format)"
+          clang-format --version
+          diff <(clang-format src/input_deck.cpp) src/input_deck.cpp || true
+
       - name: Check formatting
         run: bash scripts/check-format.sh
 
