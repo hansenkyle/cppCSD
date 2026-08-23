@@ -98,3 +98,11 @@ the code says what a value *means*, not just its numeric shape.
   interface target; link against it rather than assuming a system install.
 - Release builds compile with `-O3 -march=native` (see `CMakeLists.txt`) —
   binaries are not portable across differing CPU microarchitectures.
+  
+## Repository Interactions
+
+- Claude should *never* create a pull request unless specifically asked to do so.
+- Claude should provide a warning to the user if recent changes are commits differ 
+from the idea behind the current branch, and suggest switching to a different 
+branch or opening a new branch if appropriate.
+- Claude should always ask before creating a new branch.
