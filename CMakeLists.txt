@@ -42,7 +42,6 @@ unset(CMAKE_POLICY_VERSION_MINIMUM)
 
 # --- Core library, included by main and tests
 add_library(ldcsd_core STATIC
-    src/module.cpp
     src/input_deck.cpp
     src/output_manager.cpp
     src/logger.cpp
@@ -78,7 +77,6 @@ if(LDCSD_BUILD_TESTS)
 
     add_executable(unit_test
         test/unit/main.test.cpp
-        test/unit/module.test.cpp
         test/unit/input_deck.test.cpp
         test/unit/output_manager.test.cpp
         test/unit/logger.test.cpp)
