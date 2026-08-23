@@ -11,28 +11,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pinned to clang-format-21 (matching the version used to write
-      # .clang-format) rather than the distro's unversioned "clang-format"
-      # package, since formatting output isn't stable across clang-format
-      # major versions. ubuntu-latest is currently 24.04 (noble); update
-      # the repo line below if the runner image's codename changes.
-      - name: Install clang-format 21
-        run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
-          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update
-          sudo apt-get install -y clang-format-21
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-21 100
+      # jidicula/clang-format-action runs clang-format from a Docker image
+      # built from each Ubuntu release's *native* clang-format-<N> package
+      # (see https://github.com/jidicula/clang-format-action), rather than
+      # apt.llvm.org's rolling snapshot builds -- those can drift from the
+      # actual tagged release under the same version string, which is what
+      # caused local/CI formatting results to disagree here previously.
+      # include-regex mirrors scripts/format.sh and check-format.sh, which
+      # only cover *.cpp/*.hpp (see the Formatting section of CLAUDE.md for
+      # the known *.h gap).
+      - name: Check src/ formatting
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: "21"
+          check-path: "src"
+          include-regex: ".*\\.(cpp|hpp)$"
 
-      - name: Debug clang-format resolution
-        run: |
-          which clang-format
-          readlink -f "$(which clang-format)"
-          clang-format --version
-          diff <(clang-format src/input_deck.cpp) src/input_deck.cpp || true
-
-      - name: Check formatting
-        run: bash scripts/check-format.sh
+      - name: Check test/ formatting
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: "21"
+          check-path: "test"
+          include-regex: ".*\\.(cpp|hpp)$"
 
   build-and-test:
     runs-on: ubuntu-latest
