@@ -2,8 +2,9 @@
 
 An input deck fully describes one problem: spatial mesh, region
 materials, energy mesh, per-material cross sections, and convergence
-criteria. Read by `Parser::read()` ([../src/parser.h](../src/parser.h),
-[../src/parser.cpp](../src/parser.cpp)) into an `InputDeck`.
+criteria. Read by `InputDeck::read()`
+([../src/input_deck.h](../src/input_deck.h),
+[../src/input_deck.cpp](../src/input_deck.cpp)).
 
 ## Format
 
@@ -60,5 +61,7 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
 
-`Parser::read()` throws `std::runtime_error` naming the offending field
-and the size or order it expected.
+`InputDeck::read()` throws `std::runtime_error` naming the offending
+field and the size or order it expected, catches it internally, and
+returns `1`; a `Mesh` construction failure (see
+[../src/mesh.h](../src/mesh.h)) is caught the same way.
