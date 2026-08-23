@@ -23,6 +23,22 @@ void requireSize(const std::vector<double>& values, std::size_t expected, const 
   }
 }
 
+// Expands a per-material, per-group field (selected via `field`) into a
+// per-group, per-cell table by looking up each cell's material.
+std::vector<std::vector<double>>
+expandByRegion(const std::vector<std::string>& region_materials,
+               const std::map<std::string, MaterialData>& materials, std::size_t num_groups,
+               std::vector<double> MaterialData::* field) {
+  std::vector<std::vector<double>> table(num_groups, std::vector<double>(region_materials.size()));
+  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
+    const std::vector<double>& values = materials.at(region_materials[cell]).*field;
+    for (std::size_t g = 0; g < num_groups; ++g) {
+      table[g][cell] = values[g];
+    }
+  }
+  return table;
+}
+
 MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
                            std::size_t num_groups) {
   MaterialData material;
@@ -76,6 +92,16 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
         throw std::runtime_error("region references undefined material '" + name + "'");
       }
     }
+
+    const auto num_groups = static_cast<std::size_t>(mesh->G);
+    xs.emplace(*mesh,
+               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_t),
+               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_s),
+               expandByRegion(region_materials, materials, num_groups,
+                              &MaterialData::stopping_power_average),
+               expandByRegion(region_materials, materials, num_groups + 1,
+                              &MaterialData::stopping_power_boundary),
+               region_materials);
 
     const YAML::Node convergence_node = requireNode(root, "convergence");
     convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();

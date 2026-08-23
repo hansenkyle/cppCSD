@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "cross_section.h"
 #include "mesh.h"
 
 // Cross sections and stopping power for a single material, indexed by
@@ -36,6 +37,7 @@ public:
   std::optional<Mesh> mesh;                       // set once read() succeeds
   std::vector<std::string> region_materials;    // material name per cell, size == mesh->n_x
   std::map<std::string, MaterialData> materials;  // keyed by material name
+  std::optional<CrossSection> xs;                 // per-cell expansion of materials; set once read() succeeds
   ConvergenceCriteria convergence;
 };
 
