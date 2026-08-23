@@ -61,6 +61,7 @@ MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   try {
     const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
+    LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
 
     spatial_mesh = requireNode(root, "spatial_mesh").as<std::vector<double>>();
     requireStrictlyAscending(spatial_mesh, "spatial_mesh");
@@ -82,6 +83,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     for (const auto& entry : materials_node) {
       const std::string name = entry.first.as<std::string>();
       materials[name] = parseMaterial(entry.second, name, num_groups);
+      LDCSD_LOG_DEBUG("parsed material '" + name + "'");
     }
 
     for (const std::string& name : region_materials) {
@@ -95,9 +97,13 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
   } catch (const std::exception& e) {
     LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
-                     "': " + e.what());
+                    "': " + e.what());
     return 1;
   }
 
+  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() +
+                 "': " + std::to_string(spatial_mesh.size() - 1) + " cells, " +
+                 std::to_string(energy_mesh.size() - 1) + " groups, " +
+                 std::to_string(materials.size()) + " materials");
   return 0;
 }

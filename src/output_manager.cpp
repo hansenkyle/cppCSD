@@ -7,6 +7,8 @@
 #include <sstream>
 #include <string>
 
+#include "logger.h"
+
 namespace fs = std::filesystem;
 
 namespace {
@@ -54,7 +56,10 @@ int nextRunId(const fs::path& runs_dir) {
         max_id = std::max(max_id, *id);
       }
     }
+  } else {
+    LDCSD_LOG_DEBUG("runs directory '" + runs_dir.string() + "' does not exist yet");
   }
+  LDCSD_LOG_DEBUG("next run id will be " + std::to_string(max_id + 1));
   return max_id + 1;
 }
 
@@ -62,6 +67,7 @@ int nextRunId(const fs::path& runs_dir) {
 void updateLatestSymlink(const fs::path& runs_dir, const fs::path& run_dir) {
   const fs::path latest = runs_dir / "latest";
   if (fs::is_symlink(latest) || fs::exists(latest)) {
+    LDCSD_LOG_DEBUG("replacing existing 'latest' symlink at '" + latest.string() + "'");
     fs::remove(latest);
   }
   fs::create_directory_symlink(run_dir.filename(), latest);
@@ -70,13 +76,21 @@ void updateLatestSymlink(const fs::path& runs_dir, const fs::path& run_dir) {
 } // namespace
 
 OutputManager::OutputManager(const fs::path& deck_dir) {
-  const fs::path runs_dir = deck_dir / "runs";
-  fs::create_directories(runs_dir);
+  try {
+    const fs::path runs_dir = deck_dir / "runs";
+    fs::create_directories(runs_dir);
 
-  run_dir = runs_dir / formatRunId(nextRunId(runs_dir));
-  fs::create_directory(run_dir);
+    run_dir = runs_dir / formatRunId(nextRunId(runs_dir));
+    fs::create_directory(run_dir);
 
-  updateLatestSymlink(runs_dir, run_dir);
+    updateLatestSymlink(runs_dir, run_dir);
+  } catch (const fs::filesystem_error& e) {
+    LDCSD_LOG_ERROR(std::string("failed to set up output directory under '") + deck_dir.string() +
+                    "': " + e.what());
+    throw;
+  }
+
+  LDCSD_LOG_INFO("created run directory '" + run_dir.string() + "'");
 
   info_path = run_dir / "info";
   log_path = run_dir / "log";
