@@ -45,6 +45,7 @@ add_library(ldcsd_core STATIC
     src/input_deck.cpp
     src/output_manager.cpp
     src/logger.cpp
+    src/fe_space.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp)
@@ -79,7 +80,8 @@ if(LDCSD_BUILD_TESTS)
         test/unit/main.test.cpp
         test/unit/input_deck.test.cpp
         test/unit/output_manager.test.cpp
-        test/unit/logger.test.cpp)
+        test/unit/logger.test.cpp
+        test/unit/fe_space.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
