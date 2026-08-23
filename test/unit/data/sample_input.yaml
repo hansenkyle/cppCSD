@@ -5,7 +5,7 @@ spatial_mesh: [0.0, 1.0, 2.0, 3.0]
 regions:
   materials: [water, water, lead]
 
-energy_mesh: [0.1, 0.5, 1.0, 5.0] # MeV, ascending group boundaries
+energy_mesh: [5.0, 1.0, 0.5, 0.0] # MeV, descending group boundaries, ending at 0
 
 materials:
   water:

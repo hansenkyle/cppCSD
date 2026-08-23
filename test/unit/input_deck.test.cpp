@@ -27,9 +27,10 @@ TEST_SUITE("InputDeck") {
     InputDeck deck;
     CHECK(deck.read(sampleInputPath()) == 0);
 
-    CHECK(deck.spatial_mesh == std::vector<double>{0.0, 1.0, 2.0, 3.0});
+    REQUIRE(deck.mesh.has_value());
+    CHECK(deck.mesh->x_boundary == std::vector<double>{0.0, 1.0, 2.0, 3.0});
     CHECK(deck.region_materials == std::vector<std::string>{"water", "water", "lead"});
-    CHECK(deck.energy_mesh == std::vector<double>{0.1, 0.5, 1.0, 5.0});
+    CHECK(deck.mesh->E_boundary == std::vector<double>{5.0, 1.0, 0.5, 0.0});
 
     REQUIRE(deck.materials.contains("water"));
     const MaterialData& water = deck.materials.at("water");
@@ -49,7 +50,7 @@ TEST_SUITE("InputDeck") {
 spatial_mesh: [0.0, 2.0, 1.0]
 regions:
   materials: [water, water]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -70,7 +71,7 @@ convergence:
 spatial_mesh: [0.0, 1.0, 2.0]
 regions:
   materials: [water]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -91,7 +92,7 @@ convergence:
 spatial_mesh: [0.0, 1.0]
 regions:
   materials: [copper]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -112,7 +113,49 @@ convergence:
 spatial_mesh: [0.0, 1.0]
 regions:
   materials: [water]
-energy_mesh: [0.1, 0.5, 1.0]
+energy_mesh: [1.0, 0.5, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects an energy mesh that isn't strictly descending") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [0.5, 1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0, 1.0]
+    sigma_s: [1.0, 1.0]
+    stopping_power:
+      group_average: [1.0, 1.0]
+      group_boundary: [1.0, 1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects an energy mesh that doesn't end at 0") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.5]
 materials:
   water:
     sigma_t: [1.0]
