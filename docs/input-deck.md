@@ -2,8 +2,9 @@
 
 An input deck fully describes one problem: spatial mesh, region
 materials, energy mesh, per-material cross sections, and convergence
-criteria. Read by `Parser::read()` ([../src/parser.h](../src/parser.h),
-[../src/parser.cpp](../src/parser.cpp)) into an `InputDeck`.
+criteria. Read by `InputDeck::read()`
+([../src/input_deck.h](../src/input_deck.h),
+[../src/input_deck.cpp](../src/input_deck.cpp)).
 
 ## Format
 
@@ -20,7 +21,7 @@ spatial_mesh: [0.0, 1.0, 2.0, 3.0]     # ascending cell boundaries [num_cells + 
 regions:
   materials: [water, water, lead]      # material name per cell [num_cells strings]
 
-energy_mesh: [0.1, 0.5, 1.0, 5.0]      # MeV, ascending group boundaries [num_groups + 1 floats]
+energy_mesh: [5.0, 1.0, 0.5, 0.0]      # MeV, descending group boundaries, ending at 0 [num_groups + 1 floats]
 
 materials:                             # one entry per name used in regions.materials
   water:
@@ -47,13 +48,20 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 
 ## Notes
 
-- `spatial_mesh` and `energy_mesh` must be strictly ascending -- no
-  repeats, no descending values.
+- `spatial_mesh` must be strictly ascending -- no repeats, no descending
+  values. `energy_mesh` must be strictly descending, entirely
+  non-negative, and end at exactly `0` -- particles slow down from the
+  top group to zero energy.
+- `spatial_mesh` and `energy_mesh` are read into a single `Mesh`
+  (`deck.mesh`, see [../src/mesh.h](../src/mesh.h)), which also derives
+  cell/group widths (`dx`, `dE`) and midpoints (`x_center`, `E_center`).
 - `regions.materials` has one entry per cell, not per boundary, and
   every name it uses must appear under `materials:`.
-- Group index 0 is the lowest energy group. `stopping_power.group_boundary`
+- Group index 0 is the highest energy group. `stopping_power.group_boundary`
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
 
-`Parser::read()` throws `std::runtime_error` naming the offending field
-and the size or order it expected.
+`InputDeck::read()` throws `std::runtime_error` naming the offending
+field and the size or order it expected, catches it internally, and
+returns `1`; a `Mesh` construction failure (see
+[../src/mesh.h](../src/mesh.h)) is caught the same way.

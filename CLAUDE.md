@@ -66,6 +66,25 @@ Note: these scripts currently only glob `*.cpp`/`*.hpp` files — header files
 using the `.h` extension (e.g. `src/module.h`, `src/input_deck.h`) are not
 covered.
 
+## Numerical data conventions
+
+Eigen handles all actual linear algebra, but bare Eigen objects should not be the
+public-facing representation of domain quantities — wrap them in named types so
+the code says what a value *means*, not just its numeric shape.
+
+- Use Eigen types directly wherever code is actually doing linear algebra: local
+  element matrix/vector assembly, the global system matrix/RHS, and the linear
+  solve itself.
+- Domain quantities that are numerically vector-shaped but not being
+  algebraically manipulated where they're used (e.g. a cell's corner values of
+  scalar flux, current, etc.) should be their own small named type, not a bare
+  `Eigen::VectorXd`/`Vector4d` passed around by convention.
+- Compose, don't inherit — hold an Eigen fixed-size type (e.g. `Vector4d`) as a
+  private member. This is free: fixed-size Eigen vectors are stack-allocated
+  with no overhead versus a `std::array`, so wrapping costs nothing.
+- Convert into Eigen at the point code actually becomes linear algebra (e.g.
+  inside assembly), not earlier, and not as the domain type's only interface.
+
 ## Architecture
 
 - `ldcsd_core` — static library built from `src/module.cpp`; all
@@ -79,3 +98,11 @@ covered.
   interface target; link against it rather than assuming a system install.
 - Release builds compile with `-O3 -march=native` (see `CMakeLists.txt`) —
   binaries are not portable across differing CPU microarchitectures.
+  
+## Repository Interactions
+
+- Claude should *never* create a pull request unless specifically asked to do so.
+- Claude should provide a warning to the user if recent changes are commits differ 
+from the idea behind the current branch, and suggest switching to a different 
+branch or opening a new branch if appropriate.
+- Claude should always ask before creating a new branch.

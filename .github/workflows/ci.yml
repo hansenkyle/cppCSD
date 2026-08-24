@@ -11,11 +11,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      # jidicula/clang-format-action runs clang-format from a Docker image
+      # built from each Ubuntu release's *native* clang-format-<N> package
+      # (see https://github.com/jidicula/clang-format-action), rather than
+      # apt.llvm.org's rolling snapshot builds -- those can drift from the
+      # actual tagged release under the same version string, which is what
+      # caused local/CI formatting results to disagree here previously.
+      # include-regex mirrors scripts/format.sh and check-format.sh, which
+      # only cover *.cpp/*.hpp (see the Formatting section of CLAUDE.md for
+      # the known *.h gap).
+      - name: Check src/ formatting
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: "21"
+          check-path: "src"
+          include-regex: ".*\\.(cpp|hpp)$"
 
-      - name: Check formatting
-        run: bash scripts/check-format.sh
+      - name: Check test/ formatting
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: "21"
+          check-path: "test"
+          include-regex: ".*\\.(cpp|hpp)$"
 
   build-and-test:
     runs-on: ubuntu-latest

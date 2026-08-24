@@ -27,9 +27,10 @@ TEST_SUITE("InputDeck") {
     InputDeck deck;
     CHECK(deck.read(sampleInputPath()) == 0);
 
-    CHECK(deck.spatial_mesh == std::vector<double>{0.0, 1.0, 2.0, 3.0});
+    REQUIRE(deck.mesh.has_value());
+    CHECK(deck.mesh->x_boundary == std::vector<double>{0.0, 1.0, 2.0, 3.0});
     CHECK(deck.region_materials == std::vector<std::string>{"water", "water", "lead"});
-    CHECK(deck.energy_mesh == std::vector<double>{0.1, 0.5, 1.0, 5.0});
+    CHECK(deck.mesh->E_boundary == std::vector<double>{5.0, 1.0, 0.5, 0.0});
 
     REQUIRE(deck.materials.contains("water"));
     const MaterialData& water = deck.materials.at("water");
@@ -40,6 +41,14 @@ TEST_SUITE("InputDeck") {
 
     REQUIRE(deck.materials.contains("lead"));
 
+    REQUIRE(deck.xs.has_value());
+    CHECK(deck.xs->material == std::vector<std::string>{"water", "water", "lead"});
+    CHECK(deck.xs->total[0] == std::vector<double>{1.2, 1.2, 3.2});
+    CHECK(deck.xs->total[2] == std::vector<double>{0.8, 0.8, 2.8});
+    CHECK(deck.xs->scattering[0] == std::vector<double>{1.1, 1.1, 2.1});
+    CHECK(deck.xs->stop_power[1] == std::vector<double>{1.8, 1.8, 4.8});
+    CHECK(deck.xs->stop_power_boundary[3] == std::vector<double>{1.3, 1.3, 4.3});
+
     CHECK(deck.convergence.max_iters == 200);
     CHECK(deck.convergence.epsilon == doctest::Approx(1.0e-8));
   }
@@ -49,7 +58,7 @@ TEST_SUITE("InputDeck") {
 spatial_mesh: [0.0, 2.0, 1.0]
 regions:
   materials: [water, water]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -70,7 +79,7 @@ convergence:
 spatial_mesh: [0.0, 1.0, 2.0]
 regions:
   materials: [water]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -91,7 +100,7 @@ convergence:
 spatial_mesh: [0.0, 1.0]
 regions:
   materials: [copper]
-energy_mesh: [0.1, 1.0]
+energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
@@ -112,10 +121,73 @@ convergence:
 spatial_mesh: [0.0, 1.0]
 regions:
   materials: [water]
-energy_mesh: [0.1, 0.5, 1.0]
+energy_mesh: [1.0, 0.5, 0.0]
 materials:
   water:
     sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects an energy mesh that isn't strictly descending") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [0.5, 1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0, 1.0]
+    sigma_s: [1.0, 1.0]
+    stopping_power:
+      group_average: [1.0, 1.0]
+      group_boundary: [1.0, 1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects an energy mesh that doesn't end at 0") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.5]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects a negative cross section") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [-1.0]
     sigma_s: [1.0]
     stopping_power:
       group_average: [1.0]

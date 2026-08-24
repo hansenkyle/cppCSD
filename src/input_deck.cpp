@@ -8,17 +8,6 @@
 
 namespace {
 
-void requireStrictlyAscending(const std::vector<double>& values, const std::string& name) {
-  if (values.size() < 2) {
-    throw std::runtime_error(name + " must have at least two entries");
-  }
-  for (std::size_t i = 1; i < values.size(); ++i) {
-    if (values[i] <= values[i - 1]) {
-      throw std::runtime_error(name + " must be strictly ascending");
-    }
-  }
-}
-
 YAML::Node requireNode(const YAML::Node& parent, const std::string& key) {
   const YAML::Node node = parent[key];
   if (!node) {
@@ -32,6 +21,22 @@ void requireSize(const std::vector<double>& values, std::size_t expected, const 
     throw std::runtime_error(name + " has size " + std::to_string(values.size()) + ", expected " +
                              std::to_string(expected));
   }
+}
+
+// Expands a per-material, per-group field (selected via `field`) into a
+// per-group, per-cell table by looking up each cell's material.
+std::vector<std::vector<double>>
+expandByRegion(const std::vector<std::string>& region_materials,
+               const std::map<std::string, MaterialData>& materials, std::size_t num_groups,
+               std::vector<double> MaterialData::* field) {
+  std::vector<std::vector<double>> table(num_groups, std::vector<double>(region_materials.size()));
+  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
+    const std::vector<double>& values = materials.at(region_materials[cell]).*field;
+    for (std::size_t g = 0; g < num_groups; ++g) {
+      table[g][cell] = values[g];
+    }
+  }
+  return table;
 }
 
 MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
@@ -63,26 +68,22 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
     LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
 
-    spatial_mesh = requireNode(root, "spatial_mesh").as<std::vector<double>>();
-    requireStrictlyAscending(spatial_mesh, "spatial_mesh");
-    const std::size_t num_cells = spatial_mesh.size() - 1;
+    std::vector<double> x_boundary = requireNode(root, "spatial_mesh").as<std::vector<double>>();
+    std::vector<double> E_boundary = requireNode(root, "energy_mesh").as<std::vector<double>>();
+    mesh.emplace(std::move(x_boundary), std::move(E_boundary));
 
     const YAML::Node regions = requireNode(root, "regions");
     region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
-    if (region_materials.size() != num_cells) {
+    if (static_cast<int>(region_materials.size()) != mesh->n_x) {
       throw std::runtime_error("regions.materials has size " +
                                std::to_string(region_materials.size()) + ", expected " +
-                               std::to_string(num_cells) + " (one per spatial cell)");
+                               std::to_string(mesh->n_x) + " (one per spatial cell)");
     }
-
-    energy_mesh = requireNode(root, "energy_mesh").as<std::vector<double>>();
-    requireStrictlyAscending(energy_mesh, "energy_mesh");
-    const std::size_t num_groups = energy_mesh.size() - 1;
 
     const YAML::Node materials_node = requireNode(root, "materials");
     for (const auto& entry : materials_node) {
       const std::string name = entry.first.as<std::string>();
-      materials[name] = parseMaterial(entry.second, name, num_groups);
+      materials[name] = parseMaterial(entry.second, name, static_cast<std::size_t>(mesh->G));
       LDCSD_LOG_DEBUG("parsed material '" + name + "'");
     }
 
@@ -91,6 +92,16 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
         throw std::runtime_error("region references undefined material '" + name + "'");
       }
     }
+
+    const auto num_groups = static_cast<std::size_t>(mesh->G);
+    xs.emplace(*mesh,
+               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_t),
+               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_s),
+               expandByRegion(region_materials, materials, num_groups,
+                              &MaterialData::stopping_power_average),
+               expandByRegion(region_materials, materials, num_groups + 1,
+                              &MaterialData::stopping_power_boundary),
+               region_materials);
 
     const YAML::Node convergence_node = requireNode(root, "convergence");
     convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
@@ -101,9 +112,8 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     return 1;
   }
 
-  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() +
-                 "': " + std::to_string(spatial_mesh.size() - 1) + " cells, " +
-                 std::to_string(energy_mesh.size() - 1) + " groups, " +
+  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh->n_x) +
+                 " cells, " + std::to_string(mesh->G) + " groups, " +
                  std::to_string(materials.size()) + " materials");
   return 0;
 }

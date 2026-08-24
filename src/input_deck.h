@@ -3,11 +3,15 @@
 
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "cross_section.h"
+#include "mesh.h"
+
 // Cross sections and stopping power for a single material, indexed by
-// energy group. Group g spans energy_mesh[g] to energy_mesh[g + 1].
+// energy group. Group g spans mesh->E_boundary[g] to mesh->E_boundary[g + 1].
 struct MaterialData {
   std::vector<double> sigma_t;                 // group total xs, size == num_groups
   std::vector<double> sigma_s;                  // group isotropic scattering xs, size == num_groups
@@ -30,10 +34,10 @@ public:
   // references, mismatched sizes, etc.).
   int read(const std::filesystem::path &path_to_yaml);
 
-  std::vector<double> spatial_mesh;             // strictly ascending cell-boundary locations
-  std::vector<std::string> region_materials;    // material name per cell, size == spatial_mesh.size() - 1
-  std::vector<double> energy_mesh;              // strictly ascending group boundaries, MeV
+  std::optional<Mesh> mesh;                       // set once read() succeeds
+  std::vector<std::string> region_materials;    // material name per cell, size == mesh->n_x
   std::map<std::string, MaterialData> materials;  // keyed by material name
+  std::optional<CrossSection> xs;                 // per-cell expansion of materials; set once read() succeeds
   ConvergenceCriteria convergence;
 };
 
