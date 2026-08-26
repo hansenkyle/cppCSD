@@ -33,13 +33,14 @@ public:
   // Renders the block as human-readable, whitespace-aligned text: a title
   // line, then each sub-table's optional subtitle, header row, and data
   // rows, blank-line separated. Column widths are computed from content, not
-  // hard-coded.
-  std::string txt() const;
+  // hard-coded. The default implementation renders subtables_; overridden by
+  // block types (e.g. OutputBlockMetadata) whose data doesn't fit that shape.
+  virtual std::string txt() const;
 
   // Renders the block as CSV: the title and each sub-table's subtitle as
   // plain (uncommented) rows, comma-separated header and data rows, with a
-  // blank line between sub-tables.
-  std::string csv() const;
+  // blank line between sub-tables. See txt() re: overriding.
+  virtual std::string csv() const;
 
   struct Column {
     std::string name;
@@ -90,6 +91,34 @@ public:
 private:
   int n_x_;
   int G_;
+};
+
+// A titled list of key: value pairs (run metadata -- date, time, dimensions,
+// etc.), in insertion order. Unlike OutputBlock1d/2d, values are caller-
+// supplied strings rather than formatted doubles -- this block's job is
+// alignment, not number formatting -- so it overrides txt()/csv() rather
+// than populating subtables_.
+class OutputBlockMetadata : public OutputBlock {
+public:
+  explicit OutputBlockMetadata(std::string title);
+
+  // Appends one key: value pair.
+  void addEntry(std::string key, std::string value);
+
+  // Renders as "key : value" lines, with keys left-justified and values
+  // right-justified to widths computed from content.
+  std::string txt() const override;
+
+  // Renders as plain "key,value" rows, unaligned.
+  std::string csv() const override;
+
+private:
+  struct Entry {
+    std::string key;
+    std::string value;
+  };
+
+  std::vector<Entry> entries_;
 };
 
 #endif

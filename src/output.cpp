@@ -173,3 +173,35 @@ void OutputBlock2d::addColumn(std::string name, Format format,
     subtables_[g].columns.push_back(Column{name, format, values[g]});
   }
 }
+
+OutputBlockMetadata::OutputBlockMetadata(std::string title) : OutputBlock(std::move(title)) {}
+
+void OutputBlockMetadata::addEntry(std::string key, std::string value) {
+  entries_.push_back(Entry{std::move(key), std::move(value)});
+}
+
+std::string OutputBlockMetadata::txt() const {
+  std::size_t key_width = 0;
+  std::size_t value_width = 0;
+  for (const Entry& entry : entries_) {
+    key_width = std::max(key_width, entry.key.size());
+    value_width = std::max(value_width, entry.value.size());
+  }
+
+  std::ostringstream out;
+  out << "--- " << title_ << " ---\n";
+  for (const Entry& entry : entries_) {
+    out << std::left << std::setw(static_cast<int>(key_width)) << entry.key << " : " << std::right
+        << std::setw(static_cast<int>(value_width)) << entry.value << "\n";
+  }
+  return out.str();
+}
+
+std::string OutputBlockMetadata::csv() const {
+  std::ostringstream out;
+  out << title_ << "\n";
+  for (const Entry& entry : entries_) {
+    out << entry.key << "," << entry.value << "\n";
+  }
+  return out.str();
+}

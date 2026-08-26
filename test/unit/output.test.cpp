@@ -136,3 +136,53 @@ TEST_SUITE("OutputBlock2d") {
     CHECK(result.find("3.0") != std::string::npos);
   }
 }
+
+TEST_SUITE("OutputBlockMetadata") {
+  TEST_CASE("txt() left-justifies keys and right-justifies values, colon-separated") {
+    OutputBlockMetadata block("META");
+    block.addEntry("A", "1");
+    block.addEntry("BB", "22");
+
+    const std::string expected = "--- META ---\n"
+                                 "A  :  1\n"
+                                 "BB : 22\n";
+    CHECK(block.txt() == expected);
+  }
+
+  TEST_CASE("csv() renders plain, unaligned key,value rows") {
+    OutputBlockMetadata block("META");
+    block.addEntry("A", "1");
+    block.addEntry("BB", "22");
+
+    const std::string expected = "META\n"
+                                 "A,1\n"
+                                 "BB,22\n";
+    CHECK(block.csv() == expected);
+  }
+
+  TEST_CASE("entries render in insertion order") {
+    OutputBlockMetadata block("META");
+    block.addEntry("Date", "8-24-2026");
+    block.addEntry("Time", "13:01:32");
+    block.addEntry("Energy groups", "13");
+
+    const std::string result = block.txt();
+    CHECK(result.find("Date") < result.find("Time"));
+    CHECK(result.find("Time") < result.find("Energy groups"));
+  }
+
+  TEST_CASE("a block with no entries still renders its title") {
+    OutputBlockMetadata block("EMPTY");
+
+    CHECK(block.txt() == "--- EMPTY ---\n");
+    CHECK(block.csv() == "EMPTY\n");
+  }
+
+  TEST_CASE("polymorphic access through OutputBlock dispatches to the override") {
+    OutputBlockMetadata block("META");
+    block.addEntry("A", "1");
+
+    const OutputBlock& base = block;
+    CHECK(base.txt() == block.txt());
+  }
+}
