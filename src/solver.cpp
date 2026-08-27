@@ -2,13 +2,20 @@
 
 #include <array>
 #include <cstdlib>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
+#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/SparseLU>
+#include <unsupported/Eigen/IterativeSolvers>
+
 #include "logger.h"
 
-Solver::Solver(InputDeck input_deck, const FESpace& fe_space, AxisOrder corner_order)
-    : input_deck(std::move(input_deck)), fe_space(fe_space), corner_order(corner_order) {
+Solver::Solver(InputDeck input_deck, const FESpace& fe_space, AxisOrder corner_order,
+               LinearSolverKind linear_solver_kind)
+    : input_deck(std::move(input_deck)), fe_space(fe_space), corner_order(corner_order),
+      linear_solver_kind(linear_solver_kind) {
   if (!this->input_deck.mesh.has_value()) {
     throw std::invalid_argument("Solver: input_deck.mesh must be set");
   }
@@ -31,7 +38,52 @@ const BoundaryConditions& Solver::requireBoundaryConditions() const {
   return *input_deck.boundary_conditions;
 }
 
-void Solver::sweep() {}
+const AngularQuadrature& Solver::requireAngularQuadrature() const {
+  if (!input_deck.angular_quadrature.has_value()) {
+    LDCSD_LOG_ERROR("Solver: input_deck.angular_quadrature is not set -- cannot solve");
+    std::exit(1);
+  }
+  return *input_deck.angular_quadrature;
+}
+
+Eigen::VectorXd Solver::solveLinearSystem(const Eigen::SparseMatrix<double>& A,
+                                          const Eigen::VectorXd& b) const {
+  switch (linear_solver_kind) {
+  case LinearSolverKind::SparseLU: {
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+    solver.compute(A);
+    if (solver.info() != Eigen::Success) {
+      throw std::runtime_error("Solver::solveLinearSystem: SparseLU factorization failed");
+    }
+    const Eigen::VectorXd x = solver.solve(b);
+    if (solver.info() != Eigen::Success) {
+      throw std::runtime_error("Solver::solveLinearSystem: SparseLU solve failed");
+    }
+    return x;
+  }
+  case LinearSolverKind::BiCGSTAB: {
+    Eigen::BiCGSTAB<Eigen::SparseMatrix<double>> solver;
+    solver.compute(A);
+    const Eigen::VectorXd x = solver.solve(b);
+    if (solver.info() != Eigen::Success) {
+      throw std::runtime_error("Solver::solveLinearSystem: BiCGSTAB failed to converge");
+    }
+    return x;
+  }
+  case LinearSolverKind::GMRES: {
+    Eigen::GMRES<Eigen::SparseMatrix<double>> solver;
+    solver.compute(A);
+    const Eigen::VectorXd x = solver.solve(b);
+    if (solver.info() != Eigen::Success) {
+      throw std::runtime_error("Solver::solveLinearSystem: GMRES failed to converge");
+    }
+    return x;
+  }
+  case LinearSolverKind::SweepDirect:
+    throw std::runtime_error("Solver::solveLinearSystem: SweepDirect is not yet implemented");
+  }
+  throw std::runtime_error("Solver::solveLinearSystem: unknown linear_solver_kind");
+}
 
 namespace {
 
@@ -55,6 +107,42 @@ void appendSelfBlock(std::vector<Eigen::Triplet<double>>& triplets, int cell,
       const int col = localIndex(cell, kLocalCorners[c], corner_order);
       triplets.emplace_back(row, col, block(r, c));
     }
+  }
+}
+
+void zeroRow(Field::Row row, int n_x) {
+  for (int i = 0; i < n_x; ++i) {
+    CornerValues cv = row[i];
+    cv.leftDown() = 0.0;
+    cv.leftUp() = 0.0;
+    cv.rightDown() = 0.0;
+    cv.rightUp() = 0.0;
+  }
+}
+
+// Overwrites row with local's values (local is a 4*n_x solve result in the
+// same (cell, corner) layout Field::index()/localIndex() use).
+void assignLocalVectorToRow(Field::Row row, int n_x, AxisOrder corner_order,
+                            const Eigen::VectorXd& local) {
+  for (int i = 0; i < n_x; ++i) {
+    CornerValues cv = row[i];
+    cv.leftDown() = local(localIndex(i, Corner::LeftDown, corner_order));
+    cv.leftUp() = local(localIndex(i, Corner::LeftUp, corner_order));
+    cv.rightDown() = local(localIndex(i, Corner::RightDown, corner_order));
+    cv.rightUp() = local(localIndex(i, Corner::RightUp, corner_order));
+  }
+}
+
+// Adds scale * local into row, e.g. accumulating a quadrature-weighted sum
+// of several ordinates' solves into a scalar flux.
+void accumulateLocalVectorIntoRow(Field::Row row, int n_x, AxisOrder corner_order,
+                                  const Eigen::VectorXd& local, double scale) {
+  for (int i = 0; i < n_x; ++i) {
+    CornerValues cv = row[i];
+    cv.leftDown() += scale * local(localIndex(i, Corner::LeftDown, corner_order));
+    cv.leftUp() += scale * local(localIndex(i, Corner::LeftUp, corner_order));
+    cv.rightDown() += scale * local(localIndex(i, Corner::RightDown, corner_order));
+    cv.rightUp() += scale * local(localIndex(i, Corner::RightUp, corner_order));
   }
 }
 
@@ -285,5 +373,56 @@ void Solver::constructTransportLinear(Eigen::VectorXd& b, double mu, int group, 
     const int idx_right_down = localIndex(n_x - 1, Corner::RightDown, corner_order);
     b(idx_right_up) += -(mu / 6.0) * (incoming.down + 2.0 * incoming.up);
     b(idx_right_down) += (-mu / 6.0) * (2.0 * incoming.down + incoming.up);
+  }
+}
+
+void Solver::sweep(int group, Field& scalar_flux, std::vector<Field>& angular_flux,
+                   Field::ConstRow latest_scalar_flux,
+                   const std::vector<Eigen::VectorXd>& external_source) const {
+  const Mesh& mesh = *input_deck.mesh;
+  const AngularQuadrature& quadrature = requireAngularQuadrature();
+
+  if (group < 0 || group >= mesh.G) {
+    throw std::out_of_range("Solver::sweep: group index out of range");
+  }
+
+  const int num_ordinates = static_cast<int>(quadrature.mu.size());
+  if (static_cast<int>(angular_flux.size()) != num_ordinates) {
+    throw std::invalid_argument("Solver::sweep: angular_flux has the wrong number of ordinates");
+  }
+  if (static_cast<int>(external_source.size()) != num_ordinates) {
+    throw std::invalid_argument("Solver::sweep: external_source has the wrong number of ordinates");
+  }
+
+  const int n_x = mesh.n_x;
+
+  zeroRow(scalar_flux[group], n_x);
+
+  // group == 0 has no previous group; substitute an all-zero view rather
+  // than requiring the caller to supply one.
+  std::optional<Field> zero_upwind;
+  if (group == 0) {
+    zero_upwind.emplace(n_x, 1);
+  }
+
+  Eigen::SparseMatrix<double> A;
+  Eigen::VectorXd b;
+
+  for (int m = 0; m < num_ordinates; ++m) {
+    const double mu = quadrature.mu[m];
+    const double w = quadrature.w[m];
+
+    const Field& angular_flux_m = angular_flux[m];
+    const Field::ConstRow upwind =
+        (group == 0) ? static_cast<const Field&>(*zero_upwind)[0] : angular_flux_m[group - 1];
+
+    constructTransportBilinear(A, mu, group);
+    constructTransportLinear(b, mu, group, m, upwind, scalar_flux, latest_scalar_flux,
+                             external_source[m]);
+
+    const Eigen::VectorXd x = solveLinearSystem(A, b);
+
+    assignLocalVectorToRow(angular_flux[m][group], n_x, corner_order, x);
+    accumulateLocalVectorIntoRow(scalar_flux[group], n_x, corner_order, x, w);
   }
 }

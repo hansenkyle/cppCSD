@@ -1,12 +1,23 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include <vector>
+
 #include <Eigen/Sparse>
 
 #include "cross_section.h"
 #include "fe_space.h"
 #include "input_deck.h"
 #include "mesh.h"
+
+// Which Eigen sparse solver a Solver uses for each ordinate/group's linear
+// system, chosen at runtime rather than compile time so a caller can pick
+// (or change) it without recompiling. SparseLU is a general (unsymmetric-
+// safe) direct solver; BiCGSTAB and GMRES are general iterative solvers.
+// SweepDirect is a placeholder for a future sweep-based direct solve
+// exploiting this problem's specific structure -- selecting it currently
+// throws, since it isn't implemented yet.
+enum class LinearSolverKind { SparseLU, BiCGSTAB, GMRES, SweepDirect };
 
 // Base class for iterative transport solve strategies (e.g.
 // SourceIterationSolver, SecondMomentSolver). Holds functionality shared by
@@ -30,18 +41,38 @@ public:
   // is only checked when something actually needs it. corner_order fixes
   // the corner-ordering convention this Solver's own assembly code uses
   // consistently, matching whatever Field the results are eventually
-  // written into.
-  Solver(InputDeck input_deck, const FESpace& fe_space, AxisOrder corner_order = AxisOrder::XMajor);
+  // written into. linear_solver_kind selects which Eigen solver sweep()
+  // uses for each ordinate/group's linear system.
+  Solver(InputDeck input_deck, const FESpace& fe_space, AxisOrder corner_order = AxisOrder::XMajor,
+         LinearSolverKind linear_solver_kind = LinearSolverKind::SparseLU);
   virtual ~Solver() = default;
 
   InputDeck input_deck;
   const FESpace fe_space;
   const AxisOrder corner_order;
+  const LinearSolverKind linear_solver_kind;
 
 protected:
-  // Performs one high-order transport sweep. Shared by every derived solve
-  // strategy; not yet implemented.
-  void sweep();
+  // Performs one high-order transport sweep over every ordinate for a
+  // single group -- the outer loop over all groups (sequential, high
+  // energy to low) is not this method's job; it's expected to live in each
+  // derived class's own solve loop, calling sweep() once per group.
+  //
+  // scalar_flux (all groups) has group `group`'s row zeroed and then
+  // accumulated into (quadrature-weighted sum over ordinates) as each
+  // ordinate is solved. angular_flux (one Field per ordinate, all groups
+  // each) has group `group`'s row of every ordinate's Field overwritten
+  // with that ordinate's freshly-solved result; group `group - 1`'s row is
+  // read (for CSD's upwind term) -- for group == 0, where there's no
+  // previous group, an all-zero view is substituted internally rather than
+  // requiring the caller to supply one.
+  //
+  // latest_scalar_flux and external_source are passed straight through to
+  // constructTransportLinear (see its own doc comment) for every ordinate;
+  // external_source is indexed by ordinate, matching angular_flux.
+  void sweep(int group, Field& scalar_flux, std::vector<Field>& angular_flux,
+             Field::ConstRow latest_scalar_flux,
+             const std::vector<Eigen::VectorXd>& external_source) const;
 
   // Builds the high-order transport equation's LHS bilinear form for a
   // single ordinate mu and a single energy group: streaming (upwinded in x,
@@ -97,6 +128,23 @@ private:
   // as requireCrossSection(), for the same reason -- there's no meaningful
   // way to assemble a boundary-facing RHS without it.
   const BoundaryConditions& requireBoundaryConditions() const;
+
+  // Returns input_deck.angular_quadrature. Same fatal-if-unset treatment as
+  // requireCrossSection() -- sweep() can't even know how many ordinates to
+  // loop over without it.
+  const AngularQuadrature& requireAngularQuadrature() const;
+
+protected:
+  // Solves A*x = b using whichever Eigen solver linear_solver_kind selects.
+  // Throws std::runtime_error if the solve doesn't succeed (e.g. failure to
+  // converge, a singular matrix) -- unlike the require*() methods above,
+  // this is a per-solve numerical failure a caller could plausibly retry
+  // (e.g. with a different linear_solver_kind), not a "this Solver was
+  // never fully configured" condition, so it isn't treated as fatal.
+  // protected (not private): derived solvers may reasonably want to call
+  // this directly too, e.g. for a low-order solve.
+  Eigen::VectorXd solveLinearSystem(const Eigen::SparseMatrix<double>& A,
+                                    const Eigen::VectorXd& b) const;
 };
 
 // Solves the high-order transport equation by source iteration (repeated

@@ -28,7 +28,9 @@ class TestSolver : public Solver {
 public:
   using Solver::constructTransportBilinear;
   using Solver::constructTransportLinear;
+  using Solver::solveLinearSystem;
   using Solver::Solver;
+  using Solver::sweep;
 };
 
 } // namespace
@@ -72,6 +74,24 @@ TEST_SUITE("Solver") {
     const Solver solver(deck, fe_space, AxisOrder::EMajor);
 
     CHECK(solver.corner_order == AxisOrder::EMajor);
+  }
+
+  TEST_CASE("defaults to SparseLU as the linear solver") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+
+    const Solver solver(deck, fe_space);
+
+    CHECK(solver.linear_solver_kind == LinearSolverKind::SparseLU);
+  }
+
+  TEST_CASE("stores the linear_solver_kind it's constructed with") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+
+    const Solver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::GMRES);
+
+    CHECK(solver.linear_solver_kind == LinearSolverKind::GMRES);
   }
 
   TEST_CASE("input_deck can be reconfigured after construction") {
@@ -527,5 +547,184 @@ TEST_SUITE("Solver::constructTransportLinear") {
     // The left boundary (cell 0) is untouched by mu < 0.
     CHECK(b(0) == doctest::Approx(0.0));
     CHECK(b(1) == doctest::Approx(0.0));
+  }
+}
+
+TEST_SUITE("Solver::solveLinearSystem") {
+  // 2x + y = 5, x + 3y = 10 -> x = 1, y = 3.
+  Eigen::SparseMatrix<double> makeSimpleMatrix() {
+    Eigen::SparseMatrix<double> A(2, 2);
+    const std::vector<Eigen::Triplet<double>> triplets = {
+        {0, 0, 2.0}, {0, 1, 1.0}, {1, 0, 1.0}, {1, 1, 3.0}};
+    A.setFromTriplets(triplets.begin(), triplets.end());
+    return A;
+  }
+
+  TEST_CASE("SparseLU solves a small system correctly") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::SparseLU);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    const Eigen::VectorXd x = solver.solveLinearSystem(A, b);
+    CHECK(x(0) == doctest::Approx(1.0));
+    CHECK(x(1) == doctest::Approx(3.0));
+  }
+
+  TEST_CASE("BiCGSTAB solves a small system correctly") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::BiCGSTAB);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    const Eigen::VectorXd x = solver.solveLinearSystem(A, b);
+    CHECK(x(0) == doctest::Approx(1.0));
+    CHECK(x(1) == doctest::Approx(3.0));
+  }
+
+  TEST_CASE("GMRES solves a small system correctly") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::GMRES);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    const Eigen::VectorXd x = solver.solveLinearSystem(A, b);
+    CHECK(x(0) == doctest::Approx(1.0));
+    CHECK(x(1) == doctest::Approx(3.0));
+  }
+
+  TEST_CASE("SweepDirect throws, since it isn't implemented yet") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::SweepDirect);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    CHECK_THROWS_AS(solver.solveLinearSystem(A, b), std::runtime_error);
+  }
+}
+
+TEST_SUITE("Solver::sweep") {
+  // 2-cell, 1-group mesh, 2 ordinates -- group 0 has no previous group, so
+  // this exercises sweep()'s internal all-zero-upwind substitution too.
+  Mesh makeSweepMesh() { return Mesh({0.0, 1.0, 2.0}, {2.0, 0.0}); }
+
+  CrossSection makeSweepCrossSection(const Mesh& mesh) {
+    return CrossSection(mesh, {{1.0, 1.0}}, {{{0, 0, 0.1}}, {{0, 0, 0.1}}}, {{0.5, 0.5}},
+                        {{0.2, 0.2}, {0.3, 0.3}}, {"water", "water"});
+  }
+
+  InputDeck makeSweepInputDeck() {
+    InputDeck deck;
+    deck.setMesh(makeSweepMesh());
+    deck.xs.emplace(makeSweepCrossSection(*deck.mesh));
+    deck.setAngularQuadrature(AngularQuadrature({-0.5, 0.5}, {1.0, 1.0}));
+    const std::vector<std::vector<DownUp>> bc(2, std::vector<DownUp>(1, DownUp{1.0, 2.0}));
+    deck.setBoundaryConditions(BoundaryConditions(bc, bc, 2, 1));
+    return deck;
+  }
+
+  TEST_CASE("writes angular_flux and scalar_flux matching independently-solved systems") {
+    InputDeck deck = makeSweepInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    Field scalar_flux(2, 1);
+    std::vector<Field> angular_flux(2, Field(2, 1));
+    const Field latest_storage(2, 1);
+    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+
+    solver.sweep(0, scalar_flux, angular_flux, latest_storage[0], external_source);
+
+    // Independently re-derive each ordinate's system via the same protected
+    // methods sweep() itself uses, and confirm sweep()'s outputs match.
+    const AngularQuadrature& quadrature = *deck.angular_quadrature;
+    const Field zero_field(2, 1);
+    const AxisOrder order = solver.corner_order;
+
+    Field expected_scalar_flux(2, 1);
+    for (int m = 0; m < 2; ++m) {
+      Eigen::SparseMatrix<double> A;
+      Eigen::VectorXd b;
+      solver.constructTransportBilinear(A, quadrature.mu[m], 0);
+      // scalar_flux is post-sweep here, but this fixture's only scattering
+      // entry is in-group (routed to latest_storage instead), so that's
+      // safe -- scalar_flux's own contents are never actually read.
+      solver.constructTransportLinear(b, quadrature.mu[m], 0, m, zero_field[0], scalar_flux,
+                                      latest_storage[0], external_source[m]);
+      const Eigen::VectorXd x = solver.solveLinearSystem(A, b);
+
+      for (int i = 0; i < 2; ++i) {
+        const int idx_ld = i * 4 + cornerSlot(Corner::LeftDown, order);
+        const int idx_ru = i * 4 + cornerSlot(Corner::RightUp, order);
+        CHECK(angular_flux[m][0][i].leftDown() == doctest::Approx(x(idx_ld)));
+        CHECK(angular_flux[m][0][i].rightUp() == doctest::Approx(x(idx_ru)));
+
+        expected_scalar_flux[0][i].leftDown() += quadrature.w[m] * x(idx_ld);
+        expected_scalar_flux[0][i].rightUp() += quadrature.w[m] * x(idx_ru);
+      }
+    }
+
+    for (int i = 0; i < 2; ++i) {
+      CHECK(scalar_flux[0][i].leftDown() == doctest::Approx(expected_scalar_flux[0][i].leftDown()));
+      CHECK(scalar_flux[0][i].rightUp() == doctest::Approx(expected_scalar_flux[0][i].rightUp()));
+    }
+  }
+
+  TEST_CASE("rejects an out-of-range group") {
+    InputDeck deck = makeSweepInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    Field scalar_flux(2, 1);
+    std::vector<Field> angular_flux(2, Field(2, 1));
+    const Field latest_storage(2, 1);
+    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+
+    CHECK_THROWS_AS(solver.sweep(-1, scalar_flux, angular_flux, latest_storage[0], external_source),
+                    std::out_of_range);
+    CHECK_THROWS_AS(solver.sweep(1, scalar_flux, angular_flux, latest_storage[0], external_source),
+                    std::out_of_range);
+  }
+
+  TEST_CASE("rejects angular_flux with the wrong number of ordinates") {
+    InputDeck deck = makeSweepInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    Field scalar_flux(2, 1);
+    std::vector<Field> wrong_angular_flux(1, Field(2, 1)); // should be 2
+    const Field latest_storage(2, 1);
+    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+
+    CHECK_THROWS_AS(
+        solver.sweep(0, scalar_flux, wrong_angular_flux, latest_storage[0], external_source),
+        std::invalid_argument);
+  }
+
+  TEST_CASE("rejects external_source with the wrong number of ordinates") {
+    InputDeck deck = makeSweepInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    Field scalar_flux(2, 1);
+    std::vector<Field> angular_flux(2, Field(2, 1));
+    const Field latest_storage(2, 1);
+    const std::vector<Eigen::VectorXd> wrong_external_source(1, Eigen::VectorXd::Zero(8));
+
+    CHECK_THROWS_AS(
+        solver.sweep(0, scalar_flux, angular_flux, latest_storage[0], wrong_external_source),
+        std::invalid_argument);
   }
 }
