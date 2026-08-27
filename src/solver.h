@@ -4,15 +4,15 @@
 #include "cross_section.h"
 #include "mesh.h"
 
-/// @class Solver
-/// @brief Base class for iterative transport solve strategies (e.g. SourceIterationSolver,
-/// SecondMomentSolver)
-/// @details Holds functionality shared by every derived solve strategy -- the high-order transport
-/// sweep chief among them -- so it lives in exactly one place rather than being duplicated across
-/// methods that all need it. Derived classes differ in what they do around the sweep (e.g. whether
-/// they also run a low-order solve to accelerate it), not in the sweep itself. Owns its own copies
-/// of the Mesh and CrossSection it was constructed with, so it doesn't depend on the caller's
-/// originals outliving it.
+// Base class for iterative transport solve strategies (e.g.
+// SourceIterationSolver, SecondMomentSolver). Holds functionality shared by
+// every derived solve strategy -- the high-order transport sweep chief among
+// them -- so it lives in exactly one place rather than being duplicated
+// across methods that all need it. Derived classes differ in what they do
+// around the sweep (e.g. whether they also run a low-order solve to
+// accelerate it), not in the sweep itself. Owns its own copies of the Mesh
+// and CrossSection it was constructed with, so it doesn't depend on the
+// caller's originals outliving it.
 class Solver {
 public:
   // Constructs a Solver over its own copies of mesh and cross_section.
@@ -31,17 +31,15 @@ protected:
   void sweep();
 };
 
-/// @class SourceIterationSolver
-/// @brief Solves the high-order transport equation by source iteration (repeated sweeps to
-/// convergence)
+// Solves the high-order transport equation by source iteration (repeated
+// sweeps to convergence).
 class SourceIterationSolver : public Solver {
 public:
   using Solver::Solver;
 };
 
-/// @class SecondMomentSolver
-/// @brief Solves the transport equation via the Second Moment Method: alternates high-order sweeps
-/// with a low-order solve to accelerate convergence
+// Solves the transport equation via the Second Moment Method: alternates
+// high-order sweeps with a low-order solve to accelerate convergence.
 class SecondMomentSolver : public Solver {
 public:
   using Solver::Solver;
