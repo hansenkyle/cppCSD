@@ -1,15 +1,27 @@
 #include "solver.h"
 
 #include <array>
+#include <cstdlib>
 #include <stdexcept>
 #include <vector>
 
-Solver::Solver(const Mesh& mesh, const CrossSection& cross_section, const FESpace& fe_space,
-               AxisOrder corner_order)
-    : mesh(mesh), cross_section(this->mesh, cross_section.total, cross_section.scattering,
-                                cross_section.stop_power, cross_section.stop_power_boundary,
-                                cross_section.material),
-      fe_space(fe_space), corner_order(corner_order) {}
+#include "logger.h"
+
+Solver::Solver(InputDeck input_deck, const FESpace& fe_space, AxisOrder corner_order)
+    : input_deck(std::move(input_deck)), fe_space(fe_space), corner_order(corner_order) {
+  if (!this->input_deck.mesh.has_value()) {
+    throw std::invalid_argument("Solver: input_deck.mesh must be set");
+  }
+}
+
+const CrossSection& Solver::requireCrossSection() const {
+  if (!input_deck.xs.has_value()) {
+    LDCSD_LOG_ERROR("Solver: input_deck.xs is not set (cleared by a mesh change and never "
+                    "reconfigured?) -- cannot solve");
+    std::exit(1);
+  }
+  return *input_deck.xs;
+}
 
 void Solver::sweep() {}
 
@@ -42,6 +54,9 @@ void appendSelfBlock(std::vector<Eigen::Triplet<double>>& triplets, int cell,
 
 void Solver::constructTransportBilinear(Eigen::SparseMatrix<double>& A, double mu,
                                         int group) const {
+  const Mesh& mesh = *input_deck.mesh;
+  const CrossSection& cross_section = requireCrossSection();
+
   if (group < 0 || group >= mesh.G) {
     throw std::out_of_range("Solver::constructTransportBilinear: group index out of range");
   }

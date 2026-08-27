@@ -1,7 +1,5 @@
 #include "solver.h"
 
-#include <memory>
-
 #include <doctest.h>
 
 namespace {
@@ -16,6 +14,15 @@ CrossSection makeCrossSection(const Mesh& mesh) {
 
 FESpace makeFESpace() { return FESpace(1, 1); }
 
+// An InputDeck with just mesh and xs set -- enough for Solver's constructor
+// and constructTransportBilinear, without going through a full YAML read().
+InputDeck makeInputDeck() {
+  InputDeck deck;
+  deck.setMesh(makeMesh());
+  deck.xs.emplace(makeCrossSection(*deck.mesh));
+  return deck;
+}
+
 // Exposes Solver's protected members for testing.
 class TestSolver : public Solver {
 public:
@@ -26,63 +33,31 @@ public:
 } // namespace
 
 TEST_SUITE("Solver") {
-  TEST_CASE("stores its own copy of mesh, not a reference to the caller's") {
-    Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+  TEST_CASE("stores its own copy of input_deck") {
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
 
-    const Solver solver(mesh, xs, fe_space);
+    const Solver solver(deck, fe_space);
 
-    CHECK(&solver.mesh != &mesh);
-    CHECK(solver.mesh.n_x == mesh.n_x);
-    CHECK(solver.mesh.G == mesh.G);
+    CHECK(&solver.input_deck != &deck);
+    REQUIRE(solver.input_deck.mesh.has_value());
+    CHECK(solver.input_deck.mesh->n_x == deck.mesh->n_x);
+    REQUIRE(solver.input_deck.xs.has_value());
+    CHECK(solver.input_deck.xs->total == deck.xs->total);
   }
 
-  TEST_CASE("stores its own copy of cross_section's data") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+  TEST_CASE("rejects an input_deck with no mesh set") {
+    const InputDeck deck; // fresh, mesh unset
     const FESpace fe_space = makeFESpace();
 
-    const Solver solver(mesh, xs, fe_space);
-
-    CHECK(&solver.cross_section != &xs);
-    CHECK(solver.cross_section.total == xs.total);
-    CHECK(solver.cross_section.scattering == xs.scattering);
-    CHECK(solver.cross_section.stop_power == xs.stop_power);
-    CHECK(solver.cross_section.stop_power_boundary == xs.stop_power_boundary);
-    CHECK(solver.cross_section.material == xs.material);
-  }
-
-  TEST_CASE("rebinds cross_section's Mesh reference to its own mesh, not the caller's") {
-    Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
-    const FESpace fe_space = makeFESpace();
-
-    const Solver solver(mesh, xs, fe_space);
-
-    CHECK(&solver.cross_section.mesh == &solver.mesh);
-    CHECK(&solver.cross_section.mesh != &mesh);
-  }
-
-  TEST_CASE("outlives the Mesh and CrossSection it was constructed from") {
-    auto mesh = std::make_unique<Mesh>(makeMesh());
-    auto xs = std::make_unique<CrossSection>(makeCrossSection(*mesh));
-    const FESpace fe_space = makeFESpace();
-
-    const Solver solver(*mesh, *xs, fe_space);
-    xs.reset();
-    mesh.reset();
-
-    CHECK(solver.mesh.n_x == 2);
-    CHECK(&solver.cross_section.mesh == &solver.mesh);
+    CHECK_THROWS_AS(Solver(deck, fe_space), std::invalid_argument);
   }
 
   TEST_CASE("stores its own copy of fe_space and defaults to XMajor corner order") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
 
-    const Solver solver(mesh, xs, fe_space);
+    const Solver solver(deck, fe_space);
 
     CHECK(&solver.fe_space != &fe_space);
     CHECK(solver.fe_space.spatial_degree == fe_space.spatial_degree);
@@ -90,37 +65,45 @@ TEST_SUITE("Solver") {
   }
 
   TEST_CASE("stores the corner_order it's constructed with") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
 
-    const Solver solver(mesh, xs, fe_space, AxisOrder::EMajor);
+    const Solver solver(deck, fe_space, AxisOrder::EMajor);
 
     CHECK(solver.corner_order == AxisOrder::EMajor);
+  }
+
+  TEST_CASE("input_deck can be reconfigured after construction") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    Solver solver(deck, fe_space);
+
+    solver.input_deck.setAngularQuadrature(AngularQuadrature({-0.5, 0.5}, {1.0, 1.0}));
+
+    REQUIRE(solver.input_deck.angular_quadrature.has_value());
+    CHECK(solver.input_deck.angular_quadrature->mu == std::vector<double>{-0.5, 0.5});
   }
 }
 
 TEST_SUITE("SourceIterationSolver") {
   TEST_CASE("constructs via the inherited Solver constructor") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
 
-    const SourceIterationSolver solver(mesh, xs, fe_space);
+    const SourceIterationSolver solver(deck, fe_space);
 
-    CHECK(solver.mesh.n_x == mesh.n_x);
+    CHECK(solver.input_deck.mesh->n_x == deck.mesh->n_x);
   }
 }
 
 TEST_SUITE("SecondMomentSolver") {
   TEST_CASE("constructs via the inherited Solver constructor") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
 
-    const SecondMomentSolver solver(mesh, xs, fe_space);
+    const SecondMomentSolver solver(deck, fe_space);
 
-    CHECK(solver.mesh.n_x == mesh.n_x);
+    CHECK(solver.input_deck.mesh->n_x == deck.mesh->n_x);
   }
 }
 
@@ -135,11 +118,17 @@ TEST_SUITE("Solver::constructTransportBilinear") {
                         {"water", "water"});
   }
 
+  InputDeck makeBilinearInputDeck() {
+    InputDeck deck;
+    deck.setMesh(makeBilinearMesh());
+    deck.xs.emplace(makeBilinearCrossSection(*deck.mesh));
+    return deck;
+  }
+
   TEST_CASE("produces a 4*n_x x 4*n_x matrix") {
-    const Mesh mesh = makeBilinearMesh();
-    const CrossSection xs = makeBilinearCrossSection(mesh);
+    InputDeck deck = makeBilinearInputDeck();
     const FESpace fe_space = makeFESpace();
-    const TestSolver solver(mesh, xs, fe_space);
+    const TestSolver solver(deck, fe_space);
 
     Eigen::SparseMatrix<double> A;
     solver.constructTransportBilinear(A, 0.5, 0);
@@ -149,10 +138,9 @@ TEST_SUITE("Solver::constructTransportBilinear") {
   }
 
   TEST_CASE("rejects an out-of-range group") {
-    const Mesh mesh = makeBilinearMesh();
-    const CrossSection xs = makeBilinearCrossSection(mesh);
+    InputDeck deck = makeBilinearInputDeck();
     const FESpace fe_space = makeFESpace();
-    const TestSolver solver(mesh, xs, fe_space);
+    const TestSolver solver(deck, fe_space);
 
     Eigen::SparseMatrix<double> A;
     CHECK_THROWS_AS(solver.constructTransportBilinear(A, 0.5, -1), std::out_of_range);
@@ -160,16 +148,17 @@ TEST_SUITE("Solver::constructTransportBilinear") {
   }
 
   TEST_CASE("self-block entries match the closed-form streaming + absorption coefficients") {
-    const Mesh mesh = makeBilinearMesh();
-    const CrossSection xs = makeBilinearCrossSection(mesh);
+    InputDeck deck = makeBilinearInputDeck();
     const FESpace fe_space = makeFESpace();
-    const TestSolver solver(mesh, xs, fe_space);
+    const TestSolver solver(deck, fe_space);
     const double mu = 0.5;
 
     Eigen::SparseMatrix<double> A;
     solver.constructTransportBilinear(A, mu, 0);
 
     // Cell 0's own data (uniform across both cells in this fixture).
+    const Mesh& mesh = *deck.mesh;
+    const CrossSection& xs = *deck.xs;
     const double dx = mesh.dx[0];
     const double dE = mesh.dE[0];
     const double xs_total = xs.total[0][0];
@@ -194,10 +183,9 @@ TEST_SUITE("Solver::constructTransportBilinear") {
   }
 
   TEST_CASE("mu > 0 couples a cell's left corners to its left neighbor's right corners") {
-    const Mesh mesh = makeBilinearMesh();
-    const CrossSection xs = makeBilinearCrossSection(mesh);
+    InputDeck deck = makeBilinearInputDeck();
     const FESpace fe_space = makeFESpace();
-    const TestSolver solver(mesh, xs, fe_space);
+    const TestSolver solver(deck, fe_space);
     const double mu = 0.5;
 
     Eigen::SparseMatrix<double> A;
@@ -222,10 +210,9 @@ TEST_SUITE("Solver::constructTransportBilinear") {
   }
 
   TEST_CASE("mu < 0 couples a cell's right corners to its right neighbor's left corners") {
-    const Mesh mesh = makeBilinearMesh();
-    const CrossSection xs = makeBilinearCrossSection(mesh);
+    InputDeck deck = makeBilinearInputDeck();
     const FESpace fe_space = makeFESpace();
-    const TestSolver solver(mesh, xs, fe_space);
+    const TestSolver solver(deck, fe_space);
     const double mu = -0.3;
 
     Eigen::SparseMatrix<double> A;
