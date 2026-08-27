@@ -10,13 +10,13 @@
 #include "cross_section.h"
 #include "mesh.h"
 
-// Cross sections and stopping power for a single material, indexed by
-// energy group. Group g spans mesh->E_boundary[g] to mesh->E_boundary[g + 1].
+/// @struct MaterialData
+/// @brief Cross sections and stopping power for a single material, indexed by energy group
 struct MaterialData {
   std::vector<double> sigma_t;                 // group total xs, size == num_groups
-  std::vector<double> sigma_s;                  // group isotropic scattering xs, size == num_groups
-  std::vector<double> stopping_power_average;   // group-average S, size == num_groups
-  std::vector<double> stopping_power_boundary;  // S at group boundaries, size == num_groups + 1
+  std::vector<double> sigma_s;                 // group isotropic scattering xs, size == num_groups
+  std::vector<double> stopping_power_average;  // group-average S, size == num_groups
+  std::vector<double> stopping_power_boundary; // S at group boundaries, size == num_groups + 1
 };
 
 // Placeholder convergence criteria; more sophisticated criteria to follow.
@@ -25,19 +25,20 @@ struct ConvergenceCriteria {
   double epsilon = 0.0;
 };
 
-// Holds a run's input parameters, read in from a YAML input file.
+/// @class InputDeck
+/// @brief Holds formatted input data (via helper classes), read from YAML
 class InputDeck {
 public:
   // Reads and validates path_to_yaml, populating this deck's members.
   // Returns 0 if the file is valid; returns 1 early on the first error
   // found in the file (missing/malformed keys, undefined material
   // references, mismatched sizes, etc.).
-  int read(const std::filesystem::path &path_to_yaml);
+  int read(const std::filesystem::path& path_to_yaml);
 
-  std::optional<Mesh> mesh;                       // set once read() succeeds
-  std::vector<std::string> region_materials;    // material name per cell, size == mesh->n_x
-  std::map<std::string, MaterialData> materials;  // keyed by material name
-  std::optional<CrossSection> xs;                 // per-cell expansion of materials; set once read() succeeds
+  std::optional<Mesh> mesh;                      // set once read() succeeds
+  std::vector<std::string> region_materials;     // material name per cell, size == mesh->n_x
+  std::map<std::string, MaterialData> materials; // keyed by material name
+  std::optional<CrossSection> xs; // per-cell expansion of materials; set once read() succeeds
   ConvergenceCriteria convergence;
 };
 
