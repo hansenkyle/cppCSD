@@ -25,6 +25,14 @@ struct ConvergenceCriteria {
   double epsilon = 0.0;
 };
 
+// Discrete ordinates for angular quadrature: direction cosines and their
+// integration weights, one entry per ordinate. Read from the input deck,
+// which enforces mu strictly ascending and normalizes w to sum to 2.
+struct AngularQuadrature {
+  std::vector<double> mu; // direction cosines, strictly ascending
+  std::vector<double> w;  // quadrature weights, normalized to sum to 2
+};
+
 /// @class InputDeck
 /// @brief Holds formatted input data (via helper classes), read from YAML
 class InputDeck {
@@ -40,6 +48,7 @@ public:
   std::map<std::string, MaterialData> materials; // keyed by material name
   std::optional<CrossSection> xs; // per-cell expansion of materials; set once read() succeeds
   ConvergenceCriteria convergence;
+  std::optional<AngularQuadrature> angular_quadrature; // set once read() succeeds
 };
 
 #endif

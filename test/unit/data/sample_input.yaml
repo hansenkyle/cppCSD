@@ -21,6 +21,10 @@ materials:
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]
 
+angular_quadrature:
+  mu: [-0.9, -0.3, 0.3, 0.9]
+  w: [0.5, 0.5, 0.5, 0.5]
+
 convergence:
   max_iters: 200
   epsilon: 1.0e-8

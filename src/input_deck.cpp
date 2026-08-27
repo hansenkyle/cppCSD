@@ -61,6 +61,37 @@ MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
   return material;
 }
 
+AngularQuadrature parseAngularQuadrature(const YAML::Node& node) {
+  AngularQuadrature quadrature;
+  quadrature.mu = requireNode(node, "mu").as<std::vector<double>>();
+  quadrature.w = requireNode(node, "w").as<std::vector<double>>();
+
+  requireSize(quadrature.w, quadrature.mu.size(), "angular_quadrature.w");
+
+  for (std::size_t m = 1; m < quadrature.mu.size(); ++m) {
+    if (quadrature.mu[m] <= quadrature.mu[m - 1]) {
+      throw std::runtime_error("angular_quadrature.mu must be strictly ascending");
+    }
+  }
+
+  double sum = 0.0;
+  for (double weight : quadrature.w) {
+    sum += weight;
+  }
+  if (sum <= 0.0) {
+    throw std::runtime_error("angular_quadrature.w must sum to a positive value");
+  }
+
+  const double scale = 2.0 / sum;
+  for (double& weight : quadrature.w) {
+    weight *= scale;
+  }
+  LDCSD_LOG_INFO("normalized angular_quadrature.w: sum was " + std::to_string(sum) +
+                 ", scaled by " + std::to_string(scale) + " to sum to 2");
+
+  return quadrature;
+}
+
 } // namespace
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
@@ -103,6 +134,9 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
                               &MaterialData::stopping_power_boundary),
                region_materials);
 
+    const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
+    angular_quadrature.emplace(parseAngularQuadrature(angular_quadrature_node));
+
     const YAML::Node convergence_node = requireNode(root, "convergence");
     convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
     convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
@@ -114,6 +148,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
 
   LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh->n_x) +
                  " cells, " + std::to_string(mesh->G) + " groups, " +
-                 std::to_string(materials.size()) + " materials");
+                 std::to_string(materials.size()) + " materials, " +
+                 std::to_string(angular_quadrature->mu.size()) + " ordinates");
   return 0;
 }

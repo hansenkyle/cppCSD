@@ -51,6 +51,10 @@ TEST_SUITE("InputDeck") {
 
     CHECK(deck.convergence.max_iters == 200);
     CHECK(deck.convergence.epsilon == doctest::Approx(1.0e-8));
+
+    REQUIRE(deck.angular_quadrature.has_value());
+    CHECK(deck.angular_quadrature->mu == std::vector<double>{-0.9, -0.3, 0.3, 0.9});
+    CHECK(deck.angular_quadrature->w == std::vector<double>{0.5, 0.5, 0.5, 0.5});
   }
 
   TEST_CASE("rejects a non-ascending spatial mesh") {
@@ -66,6 +70,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -87,6 +94,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -108,6 +118,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -129,6 +142,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -150,6 +166,9 @@ materials:
     stopping_power:
       group_average: [1.0, 1.0]
       group_boundary: [1.0, 1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -171,6 +190,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -192,6 +214,9 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -212,11 +237,90 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
 convergence:
   max_iters: 1
   epsilon: 1.0
 )");
     InputDeck deck;
     CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects a non-ascending angular_quadrature.mu") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [0.5, -0.5]
+  w: [1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects angular_quadrature.w with the wrong number of entries") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0, 1.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("normalizes angular_quadrature.w to sum to 2") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 3.0]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 0);
+
+    REQUIRE(deck.angular_quadrature.has_value());
+    CHECK(deck.angular_quadrature->w[0] == doctest::Approx(0.5));
+    CHECK(deck.angular_quadrature->w[1] == doctest::Approx(1.5));
   }
 }

@@ -1,8 +1,8 @@
 # Input Deck Format
 
 An input deck fully describes one problem: spatial mesh, region
-materials, energy mesh, per-material cross sections, and convergence
-criteria. Read by `InputDeck::read()`
+materials, energy mesh, per-material cross sections, angular
+quadrature, and convergence criteria. Read by `InputDeck::read()`
 ([../src/input_deck.h](../src/input_deck.h),
 [../src/input_deck.cpp](../src/input_deck.cpp)).
 
@@ -37,6 +37,10 @@ materials:                             # one entry per name used in regions.mate
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]
 
+angular_quadrature:
+  mu: [-0.9, -0.3, 0.3, 0.9]           # direction cosines, strictly ascending [num_ordinates floats]
+  w: [0.5, 0.5, 0.5, 0.5]              # quadrature weights, normalized to sum to 2 [num_ordinates floats]
+
 convergence:
   max_iters: 200                       # [1 integer]
   epsilon: 1.0e-8                      # [1 float]
@@ -60,6 +64,9 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 - Group index 0 is the highest energy group. `stopping_power.group_boundary`
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
+- `angular_quadrature.mu` must be strictly ascending. `angular_quadrature.w`
+  is rescaled so its entries sum to exactly `2`, regardless of what's
+  written in the file; the applied scale factor is logged.
 
 `InputDeck::read()` throws `std::runtime_error` naming the offending
 field and the size or order it expected, catches it internally, and
