@@ -25,6 +25,23 @@ FetchContent_MakeAvailable(eigen)
 add_library(Eigen3::Eigen INTERFACE IMPORTED)
 target_include_directories(Eigen3::Eigen INTERFACE ${eigen_SOURCE_DIR})
 
+# Boost.Multiprecision (cpp_bin_float backend), used for evaluating
+# residuals in extended precision during verification. Fetched from Boost's
+# official CMake-ready release archive (all libraries pre-populated, no git
+# submodule step) rather than the boostorg/boost git superproject, which
+# needs submodules already checked out before its own CMake can run.
+# BOOST_INCLUDE_LIBRARIES limits what actually gets configured/built to
+# multiprecision and its dependencies (a couple of which -- container,
+# random -- are compiled, not header-only, but small and fast to build).
+set(BOOST_INCLUDE_LIBRARIES multiprecision)
+set(BOOST_ENABLE_CMAKE ON)
+FetchContent_Declare(
+    Boost
+    URL https://github.com/boostorg/boost/releases/download/boost-1.87.0/boost-1.87.0-cmake.tar.xz
+    URL_HASH SHA256=7da75f171837577a52bbf217e17f8ea576c7c246e4594d617bfde7fafd408be5
+)
+FetchContent_MakeAvailable(Boost)
+
 # yaml-cpp, used by InputDeck to load input decks
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
@@ -49,9 +66,11 @@ add_library(ldcsd_core STATIC
     src/mesh.cpp
     src/cross_section.cpp
     src/output.cpp
+    src/solver.cpp
+    src/residual.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp)
+target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
 if(LDCSD_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(ldcsd_core PUBLIC LDCSD_ENABLE_DEBUG_LOGGING)
 endif()
@@ -87,7 +106,8 @@ if(LDCSD_BUILD_TESTS)
         test/unit/fe_space.test.cpp
         test/unit/mesh.test.cpp
         test/unit/cross_section.test.cpp
-        test/unit/output.test.cpp)
+        test/unit/output.test.cpp
+        test/unit/solver.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")

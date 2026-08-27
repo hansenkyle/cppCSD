@@ -58,6 +58,25 @@ TEST_SUITE("InputDeck") {
 
     CHECK(deck.convergence.max_iters == 200);
     CHECK(deck.convergence.epsilon == doctest::Approx(1.0e-8));
+
+    REQUIRE(deck.angular_quadrature.has_value());
+    CHECK(deck.angular_quadrature->mu == std::vector<double>{-0.9, -0.3, 0.3, 0.9});
+    CHECK(deck.angular_quadrature->w == std::vector<double>{0.5, 0.5, 0.5, 0.5});
+
+    // boundary_conditions.left/right follow down = 10*m + g (left) or
+    // 100*m + g (right), up = down + 0.5 -- see sample_input.yaml.
+    REQUIRE(deck.boundary_conditions.has_value());
+    const BoundaryConditions& bc = *deck.boundary_conditions;
+    REQUIRE(bc.left.size() == 4);
+    REQUIRE(bc.left[0].size() == 3);
+    for (int m = 0; m < 4; ++m) {
+      for (int g = 0; g < 3; ++g) {
+        CHECK(bc.left[m][g].down == doctest::Approx(10 * m + g));
+        CHECK(bc.left[m][g].up == doctest::Approx(10 * m + g + 0.5));
+        CHECK(bc.right[m][g].down == doctest::Approx(100 * m + g));
+        CHECK(bc.right[m][g].up == doctest::Approx(100 * m + g + 0.5));
+      }
+    }
   }
 
   TEST_CASE("rejects a non-ascending spatial mesh") {
@@ -73,6 +92,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -94,6 +123,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -115,6 +154,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -136,6 +185,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -157,6 +216,16 @@ materials:
     stopping_power:
       group_average: [1.0, 1.0]
       group_boundary: [1.0, 1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -178,6 +247,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -199,6 +278,16 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0
@@ -219,6 +308,181 @@ materials:
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects a non-ascending angular_quadrature.mu") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [0.5, -0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects angular_quadrature.w with the wrong number of entries") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("normalizes angular_quadrature.w to sum to 2") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 3.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 0);
+
+    REQUIRE(deck.angular_quadrature.has_value());
+    CHECK(deck.angular_quadrature->w[0] == doctest::Approx(0.5));
+    CHECK(deck.angular_quadrature->w[1] == doctest::Approx(1.5));
+
+    REQUIRE(deck.boundary_conditions.has_value());
+    CHECK(deck.boundary_conditions->left.size() == 2);
+    CHECK(deck.boundary_conditions->left[0].size() == 1);
+    CHECK(deck.boundary_conditions->left[0][0].down == doctest::Approx(0.0));
+    CHECK(deck.boundary_conditions->left[0][0].up == doctest::Approx(0.0));
+  }
+
+  TEST_CASE("rejects boundary_conditions.left.down with the wrong number of ordinates") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects boundary_conditions.right.up with the wrong number of groups") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [1.0]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0, 0.0], [0.0, 0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0

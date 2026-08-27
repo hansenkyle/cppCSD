@@ -26,6 +26,43 @@ TEST_SUITE("FESpace") {
   TEST_CASE("rejects a negative energy degree") {
     CHECK_THROWS_AS(FESpace(0, -1), std::invalid_argument);
   }
+
+  TEST_CASE("defaults to a consistent (unlumped) mass matrix") {
+    const FESpace space(1, 1);
+
+    CHECK(space.mass_matrix_kind == MassMatrixKind::Consistent);
+    CHECK(space.M(0, 0) == doctest::Approx(1.0 / 3.0));
+    CHECK(space.M(0, 1) == doctest::Approx(1.0 / 6.0));
+    CHECK(space.M(1, 0) == doctest::Approx(1.0 / 6.0));
+    CHECK(space.M(1, 1) == doctest::Approx(1.0 / 3.0));
+  }
+
+  TEST_CASE("uses the lumped mass matrix when requested") {
+    const FESpace space(1, 1, MassMatrixKind::Lumped);
+
+    CHECK(space.mass_matrix_kind == MassMatrixKind::Lumped);
+    CHECK(space.M(0, 0) == doctest::Approx(0.5));
+    CHECK(space.M(0, 1) == doctest::Approx(0.0));
+    CHECK(space.M(1, 0) == doctest::Approx(0.0));
+    CHECK(space.M(1, 1) == doctest::Approx(0.5));
+  }
+
+  TEST_CASE("L and Lb are fixed regardless of mass_matrix_kind") {
+    const FESpace consistent(1, 1, MassMatrixKind::Consistent);
+    const FESpace lumped(1, 1, MassMatrixKind::Lumped);
+
+    for (const FESpace& space : {consistent, lumped}) {
+      CHECK(space.L(0, 0) == doctest::Approx(0.5));
+      CHECK(space.L(0, 1) == doctest::Approx(0.5));
+      CHECK(space.L(1, 0) == doctest::Approx(-0.5));
+      CHECK(space.L(1, 1) == doctest::Approx(-0.5));
+
+      CHECK(space.Lb(0, 0) == doctest::Approx(-1.0));
+      CHECK(space.Lb(0, 1) == doctest::Approx(0.0));
+      CHECK(space.Lb(1, 0) == doctest::Approx(0.0));
+      CHECK(space.Lb(1, 1) == doctest::Approx(1.0));
+    }
+  }
 }
 
 TEST_SUITE("Field") {
@@ -125,21 +162,19 @@ TEST_SUITE("Field") {
     CHECK_THROWS_AS(field[0][2], std::out_of_range);
   }
 
-  TEST_CASE("defaults to EMajor storage and XMajor corner order") {
+  TEST_CASE("defaults to XMajor corner order") {
     const Field field(3, 5);
 
-    CHECK(field.axisOrder() == AxisOrder::EMajor);
     CHECK(field.cornerOrder() == AxisOrder::XMajor);
   }
 
-  TEST_CASE("stores the axis and corner order it's constructed with") {
-    const Field field(3, 5, AxisOrder::XMajor, AxisOrder::EMajor);
+  TEST_CASE("stores the corner order it's constructed with") {
+    const Field field(3, 5, AxisOrder::EMajor);
 
-    CHECK(field.axisOrder() == AxisOrder::XMajor);
     CHECK(field.cornerOrder() == AxisOrder::EMajor);
   }
 
-  TEST_CASE("index() matches the default (group * n_x + cell) * 4 + corner layout") {
+  TEST_CASE("index() matches the (group * n_x + cell) * 4 + corner layout") {
     const Field field(3, 5);
 
     CHECK(field.index(1, 2, Corner::LeftDown) == (1 * 3 + 2) * 4 + 0);
@@ -148,14 +183,8 @@ TEST_SUITE("Field") {
     CHECK(field.index(1, 2, Corner::RightUp) == (1 * 3 + 2) * 4 + 3);
   }
 
-  TEST_CASE("index() reflects XMajor storage: cell is the more significant axis") {
-    const Field field(3, 5, AxisOrder::XMajor);
-
-    CHECK(field.index(1, 2, Corner::LeftDown) == (2 * 5 + 1) * 4 + 0);
-  }
-
   TEST_CASE("index() reflects EMajor corner order: E-side is the more significant bit") {
-    const Field field(3, 5, AxisOrder::EMajor, AxisOrder::EMajor);
+    const Field field(3, 5, AxisOrder::EMajor);
 
     // Under EMajor corners, slot = e_bit * 2 + x_bit, so leftUp (x=0,E=1) and
     // rightDown (x=1,E=0) swap places relative to the XMajor default.
@@ -175,7 +204,7 @@ TEST_SUITE("Field") {
   }
 
   TEST_CASE("index() agrees with the value field[group][cell]'s accessor reads/writes") {
-    Field field(3, 4, AxisOrder::XMajor, AxisOrder::EMajor);
+    Field field(3, 4, AxisOrder::EMajor);
 
     field[2][1].rightUp() = 11.0;
 
@@ -183,7 +212,7 @@ TEST_SUITE("Field") {
   }
 
   TEST_CASE("EMajor corner order round-trips through the named accessors") {
-    Field field(2, 2, AxisOrder::EMajor, AxisOrder::EMajor);
+    Field field(2, 2, AxisOrder::EMajor);
 
     field[0][0].leftDown() = 1.0;
     field[0][0].leftUp() = 2.0;
@@ -200,14 +229,5 @@ TEST_SUITE("Field") {
     CHECK(field.values()(field.index(0, 0, Corner::LeftUp)) == 2.0);
     CHECK(field.values()(1) == 3.0);
     CHECK(field.values()(2) == 2.0);
-  }
-
-  TEST_CASE("XMajor storage round-trips through field[group][cell] the same as EMajor") {
-    Field field(2, 3, AxisOrder::XMajor);
-
-    field[2][1].leftUp() = 5.0;
-
-    CHECK(field[2][1].leftUp() == 5.0);
-    CHECK(field.values()(field.index(2, 1, Corner::LeftUp)) == 5.0);
   }
 }
