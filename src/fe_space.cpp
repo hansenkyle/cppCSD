@@ -2,8 +2,28 @@
 
 #include <stdexcept>
 
-FESpace::FESpace(int spatial_degree, int energy_degree)
-    : spatial_degree(spatial_degree), energy_degree(energy_degree) {
+namespace {
+
+Eigen::Matrix2d massMatrix(MassMatrixKind kind) {
+  Eigen::Matrix2d m;
+  switch (kind) {
+  case MassMatrixKind::Consistent:
+    m << 2.0, 1.0, 1.0, 2.0;
+    break;
+  case MassMatrixKind::Lumped:
+    m << 3.0, 0.0, 0.0, 3.0;
+    break;
+  }
+  return m / 6.0;
+}
+
+} // namespace
+
+FESpace::FESpace(int spatial_degree, int energy_degree, MassMatrixKind mass_matrix_kind)
+    : spatial_degree(spatial_degree), energy_degree(energy_degree),
+      mass_matrix_kind(mass_matrix_kind), M(massMatrix(mass_matrix_kind)),
+      L((Eigen::Matrix2d() << 0.5, 0.5, -0.5, -0.5).finished()),
+      Lb((Eigen::Matrix2d() << -1.0, 0.0, 0.0, 1.0).finished()) {
   if (spatial_degree < 0) {
     throw std::invalid_argument("FESpace: spatial_degree must be non-negative");
   }
@@ -26,13 +46,11 @@ int checkedFieldSize(int n_x, int G) {
 
 } // namespace
 
-Field::Field(int n_x, int G, AxisOrder axis_order, AxisOrder corner_order)
-    : n_x_(n_x), G_(G), axis_order_(axis_order), corner_order_(corner_order),
+Field::Field(int n_x, int G, AxisOrder corner_order)
+    : n_x_(n_x), G_(G), corner_order_(corner_order),
       values_(Eigen::VectorXd::Zero(checkedFieldSize(n_x, G))) {}
 
-int Field::blockOffset(int group, int cell) const {
-  return axis_order_ == AxisOrder::EMajor ? (group * n_x_ + cell) * 4 : (cell * G_ + group) * 4;
-}
+int Field::blockOffset(int group, int cell) const { return (group * n_x_ + cell) * 4; }
 
 // Bounds are checked with a throw rather than assert so out-of-range access
 // fails the same way in Release as in Debug. If this ever shows up as a
@@ -42,16 +60,14 @@ Field::Row Field::operator[](int group) {
   if (group < 0 || group >= G_) {
     throw std::out_of_range("Field: group index out of range");
   }
-  const int base_offset = blockOffset(group, 0);
-  const int stride_cell = axis_order_ == AxisOrder::EMajor ? 4 : G_ * 4;
-  return Row(values_.data(), base_offset, stride_cell, n_x_, corner_order_);
+  return Row(values_.data(), group, n_x_, corner_order_);
 }
 
 CornerValues Field::Row::operator[](int cell) {
   if (cell < 0 || cell >= n_x_) {
     throw std::out_of_range("Field: cell index out of range");
   }
-  const int offset = base_offset_ + cell * stride_cell_;
+  const int offset = (group_ * n_x_ + cell) * 4;
   return CornerValues(Eigen::Map<Eigen::Vector4d>(data_ + offset), corner_order_);
 }
 
