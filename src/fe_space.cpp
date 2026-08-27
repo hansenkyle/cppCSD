@@ -78,6 +78,21 @@ CornerValues Field::Row::operator[](int cell) {
   return CornerValues(Eigen::Map<Eigen::Vector4d>(data_ + offset), corner_order_);
 }
 
+Field::ConstRow Field::operator[](int group) const {
+  if (group < 0 || group >= G_) {
+    throw std::out_of_range("Field: group index out of range");
+  }
+  return ConstRow(values_.data(), group, n_x_, corner_order_);
+}
+
+ConstCornerValues Field::ConstRow::operator[](int cell) const {
+  if (cell < 0 || cell >= n_x_) {
+    throw std::out_of_range("Field: cell index out of range");
+  }
+  const int offset = (group_ * n_x_ + cell) * 4;
+  return ConstCornerValues(Eigen::Map<const Eigen::Vector4d>(data_ + offset), corner_order_);
+}
+
 int Field::index(int group, int cell, Corner corner) const {
   if (group < 0 || group >= G_) {
     throw std::out_of_range("Field: group index out of range");

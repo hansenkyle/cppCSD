@@ -91,6 +91,26 @@ private:
   AxisOrder corner_order_;
 };
 
+/// @class ConstCornerValues
+/// @brief Read-only counterpart to CornerValues
+/// @details Same named corner accessors as CornerValues, but backed by a Map into read-only
+/// storage -- what field[group][cell] returns for a `const Field&`, where writing through the
+/// view isn't an option.
+class ConstCornerValues {
+public:
+  ConstCornerValues(Eigen::Map<const Eigen::Vector4d> values, AxisOrder corner_order)
+      : values_(values), corner_order_(corner_order) {}
+
+  double leftDown() const { return values_(cornerSlot(Corner::LeftDown, corner_order_)); }
+  double leftUp() const { return values_(cornerSlot(Corner::LeftUp, corner_order_)); }
+  double rightDown() const { return values_(cornerSlot(Corner::RightDown, corner_order_)); }
+  double rightUp() const { return values_(cornerSlot(Corner::RightUp, corner_order_)); }
+
+private:
+  Eigen::Map<const Eigen::Vector4d> values_;
+  AxisOrder corner_order_;
+};
+
 /// @class Field
 /// @brief Scalar field: holds 4 corner values in a n_x by G rectangular grid
 /// @details Storage is always group-major: (group * n_x + cell) * 4 + corner -- fixed, not
@@ -136,7 +156,25 @@ public:
     friend class Field;
   };
 
+  // Read-only counterpart to Row, returned by the const overload of
+  // Field::operator[] so `field[group][cell]` still works on a `const
+  // Field&` -- just without write access.
+  class ConstRow {
+  public:
+    ConstCornerValues operator[](int cell) const;
+
+  private:
+    ConstRow(const double* data, int group, int n_x, AxisOrder corner_order)
+        : data_(data), group_(group), n_x_(n_x), corner_order_(corner_order) {}
+    const double* data_;
+    int group_;
+    int n_x_;
+    AxisOrder corner_order_;
+    friend class Field;
+  };
+
   Row operator[](int group);
+  ConstRow operator[](int group) const;
 
   // Underlying flat storage, laid out for direct use in a linear solve.
   Eigen::VectorXd& values() { return values_; }

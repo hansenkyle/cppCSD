@@ -230,4 +230,22 @@ TEST_SUITE("Field") {
     CHECK(field.values()(1) == 3.0);
     CHECK(field.values()(2) == 2.0);
   }
+
+  TEST_CASE("a const Field can be read through field[group][cell]") {
+    Field field(2, 2);
+    field[1][0].rightUp() = 7.0;
+
+    const Field& const_field = field;
+    CHECK(const_field[1][0].rightUp() == 7.0);
+    CHECK(const_field[0][0].leftDown() == 0.0);
+  }
+
+  TEST_CASE("const access rejects an out-of-range group or cell") {
+    const Field field(2, 2);
+
+    CHECK_THROWS_AS(field[-1], std::out_of_range);
+    CHECK_THROWS_AS(field[2], std::out_of_range);
+    CHECK_THROWS_AS(field[0][-1], std::out_of_range);
+    CHECK_THROWS_AS(field[0][2], std::out_of_range);
+  }
 }
