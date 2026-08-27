@@ -99,6 +99,23 @@ the code says what a value *means*, not just its numeric shape.
 - Release builds compile with `-O3 -march=native` (see `CMakeLists.txt`) —
   binaries are not portable across differing CPU microarchitectures.
   
+## InputDeck: the trust boundary for input validation
+
+The YAML parser (`InputDeck::read()`) is the single point where input
+legality is enforced. Once data lives inside an `InputDeck`, the rest of
+the code trusts it completely -- no downstream code should re-validate
+mesh sizes, cross-section shapes, quadrature ordering, etc.
+
+A `Solver` should own an `InputDeck` (it's a small struct, cheap to hold
+by value). Any method on `Solver` that lets a caller reconfigure part of
+the problem (e.g. swap in a different angular quadrature) should just
+call `InputDeck`'s own mutating methods to change that data, rather than
+mutating fields directly or re-deriving validation logic itself.
+`InputDeck` re-validates on every mutation, not just during the initial
+YAML read, so no other method needs to worry about whether the data it's
+handed is legal -- that question is answered once, at the `InputDeck`
+boundary.
+
 ## Repository Interactions
 
 - Claude should *never* create a pull request unless specifically asked to do so.
