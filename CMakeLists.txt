@@ -67,6 +67,7 @@ add_library(ldcsd_core STATIC
     src/cross_section.cpp
     src/output.cpp
     src/solver.cpp
+    src/residual.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
