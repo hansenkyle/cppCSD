@@ -42,7 +42,13 @@ TEST_SUITE("InputDeck") {
     REQUIRE(deck.materials.contains("water"));
     const MaterialData& water = deck.materials.at("water");
     CHECK(water.sigma_t == std::vector<double>{1.2, 1.0, 0.8});
-    CHECK(water.sigma_s == std::vector<double>{1.1, 0.9, 0.7});
+    REQUIRE(water.scattering.size() == 5);
+    CHECK(water.scattering[0].from == 0);
+    CHECK(water.scattering[0].to == 0);
+    CHECK(water.scattering[0].value == doctest::Approx(1.1));
+    CHECK(water.scattering[1].from == 0);
+    CHECK(water.scattering[1].to == 1);
+    CHECK(water.scattering[1].value == doctest::Approx(0.05));
     CHECK(water.stopping_power_average == std::vector<double>{2.0, 1.8, 1.5});
     CHECK(water.stopping_power_boundary == std::vector<double>{2.2, 1.9, 1.6, 1.3});
 
@@ -52,7 +58,10 @@ TEST_SUITE("InputDeck") {
     CHECK(deck.xs->material == std::vector<std::string>{"water", "water", "lead"});
     CHECK(deck.xs->total[0] == std::vector<double>{1.2, 1.2, 3.2});
     CHECK(deck.xs->total[2] == std::vector<double>{0.8, 0.8, 2.8});
-    CHECK(deck.xs->scattering[0] == std::vector<double>{1.1, 1.1, 2.1});
+    // Cells 0/1 are water, cell 2 is lead -- scattering is indexed [cell].
+    CHECK(deck.xs->scattering[0] == deck.materials.at("water").scattering);
+    CHECK(deck.xs->scattering[1] == deck.materials.at("water").scattering);
+    CHECK(deck.xs->scattering[2] == deck.materials.at("lead").scattering);
     CHECK(deck.xs->stop_power[1] == std::vector<double>{1.8, 1.8, 4.8});
     CHECK(deck.xs->stop_power_boundary[3] == std::vector<double>{1.3, 1.3, 4.3});
 
@@ -88,7 +97,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -119,7 +128,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -150,7 +159,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -181,7 +190,7 @@ energy_mesh: [1.0, 0.5, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -212,7 +221,7 @@ energy_mesh: [0.5, 1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0, 1.0]
-    sigma_s: [1.0, 1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}, {from: 1, to: 1, value: 1.0}]
     stopping_power:
       group_average: [1.0, 1.0]
       group_boundary: [1.0, 1.0, 1.0]
@@ -243,7 +252,7 @@ energy_mesh: [1.0, 0.5]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -274,7 +283,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [-1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -304,7 +313,7 @@ regions:
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -335,7 +344,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -366,7 +375,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -397,7 +406,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -438,7 +447,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -469,7 +478,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -483,6 +492,68 @@ boundary_conditions:
   right:
     down: [[0.0], [0.0]]
     up: [[0.0, 0.0], [0.0, 0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects a material scattering entry with an out-of-range group") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: [{from: 0, to: 1, value: 1.0}]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects a duplicate material scattering entry") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}, {from: 0, to: 0, value: 2.0}]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
 convergence:
   max_iters: 1
   epsilon: 1.0

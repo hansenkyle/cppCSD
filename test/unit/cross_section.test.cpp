@@ -19,47 +19,52 @@ Mesh makeMesh() { return Mesh({0.0, 1.0, 3.0}, {5.0, 2.0, 0.0}); }
 } // namespace
 
 TEST_SUITE("CrossSection") {
-  TEST_CASE("stores per-cell, per-group data indexed [group][cell]") {
+  TEST_CASE("stores per-cell, per-group data indexed [group][cell], and per-cell scattering") {
     const Mesh mesh = makeMesh();
-    const CrossSection xs(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
-                          {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
-                          {"water", "lead"});
+    const CrossSection xs(mesh, {{1.0, 1.5}, {2.0, 2.5}},
+                          {{{0, 0, 0.1}, {1, 0, 0.05}}, {{1, 1, 0.4}}}, {{3.0, 3.5}, {4.0, 4.5}},
+                          {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}}, {"water", "lead"});
 
     CHECK(xs.total[0] == std::vector<double>{1.0, 1.5});
     CHECK(xs.total[1] == std::vector<double>{2.0, 2.5});
-    CHECK(xs.scattering[0] == std::vector<double>{0.1, 0.2});
     CHECK(xs.stop_power[1] == std::vector<double>{4.0, 4.5});
     CHECK(xs.stop_power_boundary[2] == std::vector<double>{7.0, 7.5});
     CHECK(xs.material == std::vector<std::string>{"water", "lead"});
+
+    REQUIRE(xs.scattering[0].size() == 2);
+    CHECK(xs.scattering[0][0].from == 0);
+    CHECK(xs.scattering[0][0].to == 0);
+    CHECK(xs.scattering[0][0].value == 0.1);
+    CHECK(xs.scattering[0][1].from == 1);
+    REQUIRE(xs.scattering[1].size() == 1);
+    CHECK(xs.scattering[1][0].to == 1);
+    CHECK(xs.scattering[1][0].value == 0.4);
   }
 
   TEST_CASE("rejects total with the wrong number of group rows") {
     const Mesh mesh = makeMesh();
-    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}}, {{0.1, 0.2}, {0.3, 0.4}},
-                                 {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
-                                 {"water", "lead"}),
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}}, {{}, {}}, {{3.0, 3.5}, {4.0, 4.5}},
+                                 {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}}, {"water", "lead"}),
                     std::invalid_argument);
   }
 
   TEST_CASE("rejects a group row with the wrong number of cells") {
     const Mesh mesh = makeMesh();
-    CHECK_THROWS_AS(CrossSection(mesh, {{1.0}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
-                                 {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
-                                 {"water", "lead"}),
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0}, {2.0, 2.5}}, {{}, {}}, {{3.0, 3.5}, {4.0, 4.5}},
+                                 {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}}, {"water", "lead"}),
                     std::invalid_argument);
   }
 
   TEST_CASE("rejects stop_power_boundary with G rows instead of G + 1") {
     const Mesh mesh = makeMesh();
-    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
-                                 {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}},
-                                 {"water", "lead"}),
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{}, {}}, {{3.0, 3.5}, {4.0, 4.5}},
+                                 {{5.0, 5.5}, {6.0, 6.5}}, {"water", "lead"}),
                     std::invalid_argument);
   }
 
   TEST_CASE("rejects a negative value") {
     const Mesh mesh = makeMesh();
-    CHECK_THROWS_AS(CrossSection(mesh, {{-1.0, 1.5}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
+    CHECK_THROWS_AS(CrossSection(mesh, {{-1.0, 1.5}, {2.0, 2.5}}, {{}, {}},
                                  {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
                                  {"water", "lead"}),
                     std::invalid_argument);
@@ -67,9 +72,39 @@ TEST_SUITE("CrossSection") {
 
   TEST_CASE("rejects a material vector with the wrong size") {
     const Mesh mesh = makeMesh();
-    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{}, {}}, {{3.0, 3.5}, {4.0, 4.5}},
+                                 {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}}, {"water"}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("rejects scattering with the wrong number of cells") {
+    const Mesh mesh = makeMesh();
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{}}, {{3.0, 3.5}, {4.0, 4.5}},
+                                 {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}}, {"water", "lead"}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("rejects a scattering entry with 'from' out of range") {
+    const Mesh mesh = makeMesh();
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{{2, 0, 0.1}}, {}},
                                  {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
-                                 {"water"}),
+                                 {"water", "lead"}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("rejects a scattering entry with 'to' out of range") {
+    const Mesh mesh = makeMesh();
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{{0, -1, 0.1}}, {}},
+                                 {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
+                                 {"water", "lead"}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("rejects a negative scattering value") {
+    const Mesh mesh = makeMesh();
+    CHECK_THROWS_AS(CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{{0, 0, -0.1}}, {}},
+                                 {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
+                                 {"water", "lead"}),
                     std::invalid_argument);
   }
 }

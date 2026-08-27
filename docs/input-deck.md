@@ -28,13 +28,25 @@ energy_mesh: [5.0, 1.0, 0.5, 0.0]      # MeV, descending group boundaries, endin
 materials:                             # one entry per name used in regions.materials
   water:
     sigma_t: [1.2, 1.0, 0.8]           # total macroscopic xs [num_groups floats]
-    sigma_s: [1.1, 0.9, 0.7]           # isotropic scattering xs [num_groups floats]
+    # Sparse group-to-group scattering matrix: only nonzero (from, to)
+    # entries need to appear. from/to in [0, num_groups).
+    scattering:
+      - {from: 0, to: 0, value: 1.1}
+      - {from: 0, to: 1, value: 0.05}
+      - {from: 1, to: 1, value: 0.9}
+      - {from: 1, to: 2, value: 0.03}
+      - {from: 2, to: 2, value: 0.7}
     stopping_power:
       group_average: [2.0, 1.8, 1.5]           # [num_groups floats]
       group_boundary: [2.2, 1.9, 1.6, 1.3]     # evaluated at group boundaries [num_groups + 1 floats]
   lead:
     sigma_t: [3.2, 3.0, 2.8]
-    sigma_s: [2.1, 1.9, 1.7]
+    scattering:
+      - {from: 0, to: 0, value: 2.1}
+      - {from: 0, to: 1, value: 0.1}
+      - {from: 1, to: 1, value: 1.9}
+      - {from: 1, to: 2, value: 0.08}
+      - {from: 2, to: 2, value: 1.7}
     stopping_power:
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]
@@ -74,6 +86,13 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 - Group index 0 is the highest energy group. `stopping_power.group_boundary`
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
+- A material's `scattering` entries are validated against `num_groups`
+  (`from`/`to` in range, non-negative `value`, no duplicate `(from, to)`
+  pair) and against each other -- a duplicate entry is almost certainly a
+  typo, so it's rejected rather than summed. `CrossSection::scattering` (see
+  [../src/cross_section.h](../src/cross_section.h)) is indexed `[cell]`
+  rather than `[group][cell]`, since each cell just gets a copy of its
+  material's sparse entry list.
 - `angular_quadrature.mu` must be strictly ascending. `angular_quadrature.w`
   is rescaled so its entries sum to exactly `2`, regardless of what's
   written in the file; the applied scale factor is logged.

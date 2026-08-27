@@ -20,8 +20,9 @@
 /// @struct MaterialData
 /// @brief Cross sections and stopping power for a single material, indexed by energy group
 struct MaterialData {
-  std::vector<double> sigma_t;                 // group total xs, size == num_groups
-  std::vector<double> sigma_s;                 // group isotropic scattering xs, size == num_groups
+  std::vector<double> sigma_t; // group total xs, size == num_groups
+  std::vector<ScatterEntry>
+      scattering; // sparse group-to-group scattering matrix, (from,to) in [0, num_groups)
   std::vector<double> stopping_power_average;  // group-average S, size == num_groups
   std::vector<double> stopping_power_boundary; // S at group boundaries, size == num_groups + 1
 };

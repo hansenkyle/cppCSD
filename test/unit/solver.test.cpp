@@ -7,7 +7,7 @@ namespace {
 Mesh makeMesh() { return Mesh({0.0, 1.0, 3.0}, {5.0, 2.0, 0.0}); }
 
 CrossSection makeCrossSection(const Mesh& mesh) {
-  return CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{0.1, 0.2}, {0.3, 0.4}},
+  return CrossSection(mesh, {{1.0, 1.5}, {2.0, 2.5}}, {{{0, 0, 0.1}}, {{1, 1, 0.4}}},
                       {{3.0, 3.5}, {4.0, 4.5}}, {{5.0, 5.5}, {6.0, 6.5}, {7.0, 7.5}},
                       {"water", "lead"});
 }
@@ -114,7 +114,7 @@ TEST_SUITE("Solver::constructTransportBilinear") {
   Mesh makeBilinearMesh() { return Mesh({0.0, 1.0, 2.0}, {2.0, 0.0}); }
 
   CrossSection makeBilinearCrossSection(const Mesh& mesh) {
-    return CrossSection(mesh, {{1.0, 1.0}}, {{0.0, 0.0}}, {{0.5, 0.5}}, {{0.2, 0.2}, {0.4, 0.4}},
+    return CrossSection(mesh, {{1.0, 1.0}}, {{}, {}}, {{0.5, 0.5}}, {{0.2, 0.2}, {0.4, 0.4}},
                         {"water", "water"});
   }
 

@@ -46,11 +46,60 @@ expandByRegion(const std::vector<std::string>& region_materials,
   return table;
 }
 
+// Expands each cell's material into its (shared, unmodified) sparse
+// scattering-matrix entry list -- unlike expandByRegion, there's no
+// per-group axis to transpose into, so this can't reuse it.
+std::vector<std::vector<ScatterEntry>>
+expandScatteringByRegion(const std::vector<std::string>& region_materials,
+                         const std::map<std::string, MaterialData>& materials) {
+  std::vector<std::vector<ScatterEntry>> table(region_materials.size());
+  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
+    table[cell] = materials.at(region_materials[cell]).scattering;
+  }
+  return table;
+}
+
+// Parses a material's `scattering:` block: a list of {from, to, value}
+// entries. Only nonzero entries need to appear -- see docs/input-deck.md.
+std::vector<ScatterEntry> parseScattering(const YAML::Node& node, int num_groups,
+                                          const std::string& name) {
+  std::vector<ScatterEntry> entries;
+  entries.reserve(node.size());
+  for (const YAML::Node& entry_node : node) {
+    ScatterEntry entry;
+    entry.from = requireNode(entry_node, "from").as<int>();
+    entry.to = requireNode(entry_node, "to").as<int>();
+    entry.value = requireNode(entry_node, "value").as<double>();
+
+    if (entry.from < 0 || entry.from >= num_groups || entry.to < 0 || entry.to >= num_groups) {
+      throw std::runtime_error("material '" + name + "' scattering entry (from=" +
+                               std::to_string(entry.from) + ", to=" + std::to_string(entry.to) +
+                               ") out of range [0, " + std::to_string(num_groups) + ")");
+    }
+    entries.push_back(entry);
+  }
+
+  for (std::size_t a = 0; a < entries.size(); ++a) {
+    for (std::size_t b = a + 1; b < entries.size(); ++b) {
+      if (entries[a].from == entries[b].from && entries[a].to == entries[b].to) {
+        throw std::runtime_error("material '" + name +
+                                 "' has a duplicate scattering entry for "
+                                 "(from=" +
+                                 std::to_string(entries[a].from) +
+                                 ", to=" + std::to_string(entries[a].to) + ")");
+      }
+    }
+  }
+
+  return entries;
+}
+
 MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
                            std::size_t num_groups) {
   MaterialData material;
   material.sigma_t = requireNode(node, "sigma_t").as<std::vector<double>>();
-  material.sigma_s = requireNode(node, "sigma_s").as<std::vector<double>>();
+  material.scattering =
+      parseScattering(requireNode(node, "scattering"), static_cast<int>(num_groups), name);
 
   const YAML::Node stopping_power = requireNode(node, "stopping_power");
   material.stopping_power_average =
@@ -59,7 +108,6 @@ MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
       requireNode(stopping_power, "group_boundary").as<std::vector<double>>();
 
   requireSize(material.sigma_t, num_groups, "material '" + name + "' sigma_t");
-  requireSize(material.sigma_s, num_groups, "material '" + name + "' sigma_s");
   requireSize(material.stopping_power_average, num_groups,
               "material '" + name + "' stopping_power.group_average");
   requireSize(material.stopping_power_boundary, num_groups + 1,
@@ -201,7 +249,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     const auto num_groups = static_cast<std::size_t>(mesh->G);
     xs.emplace(*mesh,
                expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_t),
-               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_s),
+               expandScatteringByRegion(region_materials, materials),
                expandByRegion(region_materials, materials, num_groups,
                               &MaterialData::stopping_power_average),
                expandByRegion(region_materials, materials, num_groups + 1,

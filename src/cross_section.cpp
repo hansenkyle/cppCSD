@@ -36,10 +36,33 @@ void requireNonNegative(const std::vector<std::vector<double>>& table, const std
   }
 }
 
+void requireValidScattering(const std::vector<std::vector<ScatterEntry>>& scattering,
+                            std::size_t expected_cells, int num_groups) {
+  if (scattering.size() != expected_cells) {
+    throw std::invalid_argument("CrossSection: scattering has " +
+                                std::to_string(scattering.size()) + " cell(s), expected " +
+                                std::to_string(expected_cells));
+  }
+  for (const std::vector<ScatterEntry>& cell_entries : scattering) {
+    for (const ScatterEntry& entry : cell_entries) {
+      if (entry.from < 0 || entry.from >= num_groups || entry.to < 0 || entry.to >= num_groups) {
+        throw std::invalid_argument(
+            "CrossSection: scattering entry (from=" + std::to_string(entry.from) + ", to=" +
+            std::to_string(entry.to) + ") out of range [0, " + std::to_string(num_groups) + ")");
+      }
+      if (entry.value < 0.0) {
+        throw std::invalid_argument(
+            "CrossSection: scattering entry (from=" + std::to_string(entry.from) +
+            ", to=" + std::to_string(entry.to) + ") must be non-negative");
+      }
+    }
+  }
+}
+
 } // namespace
 
 CrossSection::CrossSection(const Mesh& mesh_in, std::vector<std::vector<double>> total_in,
-                           std::vector<std::vector<double>> scattering_in,
+                           std::vector<std::vector<ScatterEntry>> scattering_in,
                            std::vector<std::vector<double>> stop_power_in,
                            std::vector<std::vector<double>> stop_power_boundary_in,
                            std::vector<std::string> material_in)
@@ -50,12 +73,11 @@ CrossSection::CrossSection(const Mesh& mesh_in, std::vector<std::vector<double>>
   const auto num_cells = static_cast<std::size_t>(mesh.n_x);
 
   requireShape(total, num_groups, num_cells, "total");
-  requireShape(scattering, num_groups, num_cells, "scattering");
   requireShape(stop_power, num_groups, num_cells, "stop_power");
   requireShape(stop_power_boundary, num_groups + 1, num_cells, "stop_power_boundary");
+  requireValidScattering(scattering, num_cells, mesh.G);
 
   requireNonNegative(total, "total");
-  requireNonNegative(scattering, "scattering");
   requireNonNegative(stop_power, "stop_power");
   requireNonNegative(stop_power_boundary, "stop_power_boundary");
 
