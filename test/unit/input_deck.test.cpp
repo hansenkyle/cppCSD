@@ -491,3 +491,89 @@ convergence:
     CHECK(deck.read(path) == 1);
   }
 }
+
+TEST_SUITE("AngularQuadrature") {
+  TEST_CASE("rejects mismatched mu/w sizes") {
+    CHECK_THROWS_AS(AngularQuadrature({-0.5, 0.5}, {1.0}), std::invalid_argument);
+  }
+
+  TEST_CASE("rejects a non-ascending mu") {
+    CHECK_THROWS_AS(AngularQuadrature({0.5, -0.5}, {1.0, 1.0}), std::invalid_argument);
+  }
+
+  TEST_CASE("normalizes w to sum to 2") {
+    const AngularQuadrature quadrature({-0.5, 0.5}, {1.0, 3.0});
+
+    CHECK(quadrature.w[0] == doctest::Approx(0.5));
+    CHECK(quadrature.w[1] == doctest::Approx(1.5));
+  }
+}
+
+TEST_SUITE("BoundaryConditions") {
+  TEST_CASE("rejects left with the wrong number of ordinates") {
+    CHECK_THROWS_AS(BoundaryConditions({{{0.0, 0.0}}}, {{{0.0, 0.0}}, {{0.0, 0.0}}}, 2, 1),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("rejects right with the wrong number of groups") {
+    // left: 2 ordinates x 1 group each (matches expected). right: 2
+    // ordinates x 2 groups each (expected only 1 group).
+    CHECK_THROWS_AS(BoundaryConditions({{{0.0, 0.0}}, {{0.0, 0.0}}},
+                                       {{{0.0, 0.0}, {0.0, 0.0}}, {{0.0, 0.0}, {0.0, 0.0}}}, 2, 1),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("accepts left/right matching num_ordinates x num_groups") {
+    const BoundaryConditions bc({{{1.0, 2.0}}, {{3.0, 4.0}}}, {{{5.0, 6.0}}, {{7.0, 8.0}}}, 2, 1);
+
+    CHECK(bc.left[0][0].down == 1.0);
+    CHECK(bc.left[0][0].up == 2.0);
+    CHECK(bc.right[1][0].down == 7.0);
+    CHECK(bc.right[1][0].up == 8.0);
+  }
+}
+
+TEST_SUITE("InputDeck setters") {
+  TEST_CASE("setMesh replaces mesh and leaves xs unset if it was never set") {
+    InputDeck deck;
+    deck.setMesh(Mesh({0.0, 1.0}, {1.0, 0.0}));
+
+    REQUIRE(deck.mesh.has_value());
+    CHECK(deck.mesh->n_x == 1);
+    CHECK_FALSE(deck.xs.has_value());
+  }
+
+  TEST_CASE("setMesh clears an existing xs") {
+    InputDeck deck;
+    REQUIRE(deck.read(sampleInputPath()) == 0);
+    REQUIRE(deck.xs.has_value());
+
+    deck.setMesh(Mesh({0.0, 1.0, 2.0, 3.0}, {5.0, 1.0, 0.5, 0.0}));
+
+    CHECK_FALSE(deck.xs.has_value());
+  }
+
+  TEST_CASE("setAngularQuadrature replaces angular_quadrature") {
+    InputDeck deck;
+    deck.setAngularQuadrature(AngularQuadrature({-0.5, 0.5}, {1.0, 1.0}));
+
+    REQUIRE(deck.angular_quadrature.has_value());
+    CHECK(deck.angular_quadrature->mu == std::vector<double>{-0.5, 0.5});
+  }
+
+  TEST_CASE("setBoundaryConditions replaces boundary_conditions") {
+    InputDeck deck;
+    deck.setBoundaryConditions(BoundaryConditions({{{1.0, 2.0}}}, {{{3.0, 4.0}}}, 1, 1));
+
+    REQUIRE(deck.boundary_conditions.has_value());
+    CHECK(deck.boundary_conditions->left[0][0].down == 1.0);
+  }
+
+  TEST_CASE("setConvergence replaces convergence") {
+    InputDeck deck;
+    deck.setConvergence(ConvergenceCriteria{42, 1.0e-6});
+
+    CHECK(deck.convergence.max_iters == 42);
+    CHECK(deck.convergence.epsilon == doctest::Approx(1.0e-6));
+  }
+}

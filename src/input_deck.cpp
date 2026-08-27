@@ -68,81 +68,105 @@ MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
   return material;
 }
 
-AngularQuadrature parseAngularQuadrature(const YAML::Node& node) {
-  AngularQuadrature quadrature;
-  quadrature.mu = requireNode(node, "mu").as<std::vector<double>>();
-  quadrature.w = requireNode(node, "w").as<std::vector<double>>();
-
-  requireSize(quadrature.w, quadrature.mu.size(), "angular_quadrature.w");
-
-  for (std::size_t m = 1; m < quadrature.mu.size(); ++m) {
-    if (quadrature.mu[m] <= quadrature.mu[m - 1]) {
-      throw std::runtime_error("angular_quadrature.mu must be strictly ascending");
-    }
-  }
-
-  double sum = 0.0;
-  for (double weight : quadrature.w) {
-    sum += weight;
-  }
-  if (sum <= 0.0) {
-    throw std::runtime_error("angular_quadrature.w must sum to a positive value");
-  }
-
-  const double scale = 2.0 / sum;
-  for (double& weight : quadrature.w) {
-    weight *= scale;
-  }
-  LDCSD_LOG_INFO("normalized angular_quadrature.w: sum was " + std::to_string(sum) +
-                 ", scaled by " + std::to_string(scale) + " to sum to 2");
-
-  return quadrature;
-}
-
-void requireShape2D(const std::vector<std::vector<double>>& table, std::size_t expected_rows,
-                    std::size_t expected_cols, const std::string& name) {
-  if (table.size() != expected_rows) {
-    throw std::runtime_error(name + " has " + std::to_string(table.size()) + " row(s), expected " +
-                             std::to_string(expected_rows));
-  }
-  for (const std::vector<double>& row : table) {
-    if (row.size() != expected_cols) {
-      throw std::runtime_error(name + " row has size " + std::to_string(row.size()) +
-                               ", expected " + std::to_string(expected_cols));
-    }
-  }
-}
-
-std::vector<std::vector<DownUp>> parseBoundarySide(const YAML::Node& side_node,
-                                                   std::size_t num_ordinates,
-                                                   std::size_t num_groups,
-                                                   const std::string& side_name) {
+// Parses boundary_conditions.<side>.down/up into a [ordinate][group] table
+// of DownUp pairs. Only checks that down and up agree with each other in
+// shape -- whether that shape matches the deck's actual ordinate/group
+// counts is BoundaryConditions' own constructor's job, not this function's.
+std::vector<std::vector<DownUp>> parseBoundarySide(const YAML::Node& side_node) {
   const std::vector<std::vector<double>> down =
       requireNode(side_node, "down").as<std::vector<std::vector<double>>>();
   const std::vector<std::vector<double>> up =
       requireNode(side_node, "up").as<std::vector<std::vector<double>>>();
 
-  requireShape2D(down, num_ordinates, num_groups, "boundary_conditions." + side_name + ".down");
-  requireShape2D(up, num_ordinates, num_groups, "boundary_conditions." + side_name + ".up");
-
-  std::vector<std::vector<DownUp>> side(num_ordinates, std::vector<DownUp>(num_groups));
-  for (std::size_t m = 0; m < num_ordinates; ++m) {
-    for (std::size_t g = 0; g < num_groups; ++g) {
+  if (down.size() != up.size()) {
+    throw std::runtime_error("boundary_conditions: down and up have different ordinate counts");
+  }
+  std::vector<std::vector<DownUp>> side(down.size());
+  for (std::size_t m = 0; m < down.size(); ++m) {
+    if (down[m].size() != up[m].size()) {
+      throw std::runtime_error("boundary_conditions: down and up have different group counts");
+    }
+    side[m].resize(down[m].size());
+    for (std::size_t g = 0; g < down[m].size(); ++g) {
       side[m][g] = DownUp{down[m][g], up[m][g]};
     }
   }
   return side;
 }
 
-BoundaryConditions parseBoundaryConditions(const YAML::Node& node, std::size_t num_ordinates,
-                                           std::size_t num_groups) {
-  BoundaryConditions bc;
-  bc.left = parseBoundarySide(requireNode(node, "left"), num_ordinates, num_groups, "left");
-  bc.right = parseBoundarySide(requireNode(node, "right"), num_ordinates, num_groups, "right");
-  return bc;
+void requireShapeDownUp(const std::vector<std::vector<DownUp>>& table, int expected_rows,
+                        int expected_cols, const std::string& name) {
+  if (static_cast<int>(table.size()) != expected_rows) {
+    throw std::invalid_argument(name + " has " + std::to_string(table.size()) +
+                                " row(s), expected " + std::to_string(expected_rows));
+  }
+  for (const std::vector<DownUp>& row : table) {
+    if (static_cast<int>(row.size()) != expected_cols) {
+      throw std::invalid_argument(name + " row has size " + std::to_string(row.size()) +
+                                  ", expected " + std::to_string(expected_cols));
+    }
+  }
 }
 
 } // namespace
+
+AngularQuadrature::AngularQuadrature(std::vector<double> mu_in, std::vector<double> w_in)
+    : mu(std::move(mu_in)), w(std::move(w_in)) {
+  if (w.size() != mu.size()) {
+    throw std::invalid_argument("AngularQuadrature: w has size " + std::to_string(w.size()) +
+                                ", expected " + std::to_string(mu.size()));
+  }
+
+  for (std::size_t m = 1; m < mu.size(); ++m) {
+    if (mu[m] <= mu[m - 1]) {
+      throw std::invalid_argument("AngularQuadrature: mu must be strictly ascending");
+    }
+  }
+
+  double sum = 0.0;
+  for (double weight : w) {
+    sum += weight;
+  }
+  if (sum <= 0.0) {
+    throw std::invalid_argument("AngularQuadrature: w must sum to a positive value");
+  }
+
+  const double scale = 2.0 / sum;
+  for (double& weight : w) {
+    weight *= scale;
+  }
+  LDCSD_LOG_INFO("normalized AngularQuadrature.w: sum was " + std::to_string(sum) + ", scaled by " +
+                 std::to_string(scale) + " to sum to 2");
+}
+
+BoundaryConditions::BoundaryConditions(std::vector<std::vector<DownUp>> left_in,
+                                       std::vector<std::vector<DownUp>> right_in, int num_ordinates,
+                                       int num_groups)
+    : left(std::move(left_in)), right(std::move(right_in)) {
+  requireShapeDownUp(left, num_ordinates, num_groups, "BoundaryConditions: left");
+  requireShapeDownUp(right, num_ordinates, num_groups, "BoundaryConditions: right");
+}
+
+void InputDeck::setMesh(Mesh new_mesh) {
+  mesh.emplace(std::move(new_mesh));
+  if (xs.has_value()) {
+    xs.reset();
+    LDCSD_LOG_INFO("cleared xs: mesh was replaced, so the existing cross-section expansion is no "
+                   "longer valid against it");
+  }
+}
+
+void InputDeck::setAngularQuadrature(AngularQuadrature new_angular_quadrature) {
+  angular_quadrature.emplace(std::move(new_angular_quadrature));
+}
+
+void InputDeck::setBoundaryConditions(BoundaryConditions new_boundary_conditions) {
+  boundary_conditions.emplace(std::move(new_boundary_conditions));
+}
+
+void InputDeck::setConvergence(ConvergenceCriteria new_convergence) {
+  convergence = new_convergence;
+}
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   try {
@@ -151,7 +175,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
 
     std::vector<double> x_boundary = requireNode(root, "spatial_mesh").as<std::vector<double>>();
     std::vector<double> E_boundary = requireNode(root, "energy_mesh").as<std::vector<double>>();
-    mesh.emplace(std::move(x_boundary), std::move(E_boundary));
+    setMesh(Mesh(std::move(x_boundary), std::move(E_boundary)));
 
     const YAML::Node regions = requireNode(root, "regions");
     region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
@@ -185,16 +209,24 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
                region_materials);
 
     const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
-    angular_quadrature.emplace(parseAngularQuadrature(angular_quadrature_node));
+    std::vector<double> mu = requireNode(angular_quadrature_node, "mu").as<std::vector<double>>();
+    std::vector<double> w = requireNode(angular_quadrature_node, "w").as<std::vector<double>>();
+    setAngularQuadrature(AngularQuadrature(std::move(mu), std::move(w)));
 
     const YAML::Node boundary_conditions_node = requireNode(root, "boundary_conditions");
-    boundary_conditions.emplace(parseBoundaryConditions(boundary_conditions_node,
-                                                        angular_quadrature->mu.size(),
-                                                        static_cast<std::size_t>(mesh->G)));
+    std::vector<std::vector<DownUp>> left =
+        parseBoundarySide(requireNode(boundary_conditions_node, "left"));
+    std::vector<std::vector<DownUp>> right =
+        parseBoundarySide(requireNode(boundary_conditions_node, "right"));
+    setBoundaryConditions(BoundaryConditions(std::move(left), std::move(right),
+                                             static_cast<int>(angular_quadrature->mu.size()),
+                                             mesh->G));
 
     const YAML::Node convergence_node = requireNode(root, "convergence");
-    convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
-    convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
+    ConvergenceCriteria new_convergence;
+    new_convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
+    new_convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
+    setConvergence(new_convergence);
   } catch (const std::exception& e) {
     LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
                     "': " + e.what());

@@ -33,9 +33,12 @@ struct ConvergenceCriteria {
 };
 
 // Discrete ordinates for angular quadrature: direction cosines and their
-// integration weights, one entry per ordinate. Read from the input deck,
-// which enforces mu strictly ascending and normalizes w to sum to 2.
+// integration weights, one entry per ordinate. Validates and normalizes
+// itself at construction: mu must be strictly ascending, and w is always
+// rescaled so its entries sum to 2 (logging the applied scale factor).
 struct AngularQuadrature {
+  AngularQuadrature(std::vector<double> mu, std::vector<double> w);
+
   std::vector<double> mu; // direction cosines, strictly ascending
   std::vector<double> w;  // quadrature weights, normalized to sum to 2
 };
@@ -50,9 +53,12 @@ struct DownUp {
 };
 
 // Incoming angular flux at the domain's two spatial boundaries, indexed
-// [ordinate][group]. Read from the input deck; sized to match
-// angular_quadrature.mu.size() ordinates and mesh->G groups.
+// [ordinate][group]. Validates at construction that left and right are each
+// exactly num_ordinates x num_groups.
 struct BoundaryConditions {
+  BoundaryConditions(std::vector<std::vector<DownUp>> left, std::vector<std::vector<DownUp>> right,
+                     int num_ordinates, int num_groups);
+
   std::vector<std::vector<DownUp>> left;
   std::vector<std::vector<DownUp>> right;
 };
@@ -66,6 +72,19 @@ public:
   // found in the file (missing/malformed keys, undefined material
   // references, mismatched sizes, etc.).
   int read(const std::filesystem::path& path_to_yaml);
+
+  // Individually reconfigure this deck after construction/read(), each
+  // taking an already-validated domain object (its own constructor is what
+  // enforces legality) so this is the only place callers need to look --
+  // nothing downstream has to re-check what it's handed.
+  //
+  // Replacing the mesh invalidates xs (which was expanded against the old
+  // one): setMesh clears it and logs that it did, rather than leaving a
+  // stale cross section in place silently.
+  void setMesh(Mesh new_mesh);
+  void setAngularQuadrature(AngularQuadrature new_angular_quadrature);
+  void setBoundaryConditions(BoundaryConditions new_boundary_conditions);
+  void setConvergence(ConvergenceCriteria new_convergence);
 
   std::optional<Mesh> mesh;                      // set once read() succeeds
   std::vector<std::string> region_materials;     // material name per cell, size == mesh->n_x
