@@ -105,7 +105,8 @@ if(LDCSD_BUILD_TESTS)
         test/unit/fe_space.test.cpp
         test/unit/mesh.test.cpp
         test/unit/cross_section.test.cpp
-        test/unit/output.test.cpp)
+        test/unit/output.test.cpp
+        test/unit/solver.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
