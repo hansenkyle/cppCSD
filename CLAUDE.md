@@ -106,3 +106,4 @@ the code says what a value *means*, not just its numeric shape.
 from the idea behind the current branch, and suggest switching to a different 
 branch or opening a new branch if appropriate.
 - Claude should always ask before creating a new branch.
+- Claude should not write Doxygen-formatted comments, but should still write descriptive comments before classes and methods (invisible to doxygen)
