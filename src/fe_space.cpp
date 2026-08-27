@@ -26,8 +26,13 @@ int checkedFieldSize(int n_x, int G) {
 
 } // namespace
 
-Field::Field(int n_x, int G)
-    : n_x_(n_x), G_(G), values_(Eigen::VectorXd::Zero(checkedFieldSize(n_x, G))) {}
+Field::Field(int n_x, int G, AxisOrder axis_order, AxisOrder corner_order)
+    : n_x_(n_x), G_(G), axis_order_(axis_order), corner_order_(corner_order),
+      values_(Eigen::VectorXd::Zero(checkedFieldSize(n_x, G))) {}
+
+int Field::blockOffset(int group, int cell) const {
+  return axis_order_ == AxisOrder::EMajor ? (group * n_x_ + cell) * 4 : (cell * G_ + group) * 4;
+}
 
 // Bounds are checked with a throw rather than assert so out-of-range access
 // fails the same way in Release as in Debug. If this ever shows up as a
@@ -37,13 +42,25 @@ Field::Row Field::operator[](int group) {
   if (group < 0 || group >= G_) {
     throw std::out_of_range("Field: group index out of range");
   }
-  return Row(values_.data(), group, n_x_);
+  const int base_offset = blockOffset(group, 0);
+  const int stride_cell = axis_order_ == AxisOrder::EMajor ? 4 : G_ * 4;
+  return Row(values_.data(), base_offset, stride_cell, n_x_, corner_order_);
 }
 
 CornerValues Field::Row::operator[](int cell) {
   if (cell < 0 || cell >= n_x_) {
     throw std::out_of_range("Field: cell index out of range");
   }
-  const int offset = (group_ * n_x_ + cell) * 4;
-  return CornerValues(Eigen::Map<Eigen::Vector4d>(data_ + offset));
+  const int offset = base_offset_ + cell * stride_cell_;
+  return CornerValues(Eigen::Map<Eigen::Vector4d>(data_ + offset), corner_order_);
+}
+
+int Field::index(int group, int cell, Corner corner) const {
+  if (group < 0 || group >= G_) {
+    throw std::out_of_range("Field: group index out of range");
+  }
+  if (cell < 0 || cell >= n_x_) {
+    throw std::out_of_range("Field: cell index out of range");
+  }
+  return blockOffset(group, cell) + cornerSlot(corner, corner_order_);
 }
