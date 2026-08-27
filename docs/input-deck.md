@@ -2,7 +2,8 @@
 
 An input deck fully describes one problem: spatial mesh, region
 materials, energy mesh, per-material cross sections, angular
-quadrature, and convergence criteria. Read by `InputDeck::read()`
+quadrature, boundary conditions, and convergence criteria. Read by
+`InputDeck::read()`
 ([../src/input_deck.h](../src/input_deck.h),
 [../src/input_deck.cpp](../src/input_deck.cpp)).
 
@@ -11,8 +12,9 @@ quadrature, and convergence criteria. Read by `InputDeck::read()`
 YAML. Sizes below are given in terms of:
 
 ```
-num_cells  = spatial_mesh.size() - 1
-num_groups = energy_mesh.size() - 1
+num_cells     = spatial_mesh.size() - 1
+num_groups    = energy_mesh.size() - 1
+num_ordinates = angular_quadrature.mu.size()
 ```
 
 ```yaml
@@ -41,6 +43,14 @@ angular_quadrature:
   mu: [-0.9, -0.3, 0.3, 0.9]           # direction cosines, strictly ascending [num_ordinates floats]
   w: [0.5, 0.5, 0.5, 0.5]              # quadrature weights, normalized to sum to 2 [num_ordinates floats]
 
+boundary_conditions:                   # incoming angular flux at each spatial boundary
+  left:                                # [num_ordinates][num_groups], each a down/up pair
+    down: [[0, 1, 2], [10, 11, 12], [20, 21, 22], [30, 31, 32]]
+    up: [[0.5, 1.5, 2.5], [10.5, 11.5, 12.5], [20.5, 21.5, 22.5], [30.5, 31.5, 32.5]]
+  right:
+    down: [[0, 1, 2], [100, 101, 102], [200, 201, 202], [300, 301, 302]]
+    up: [[0.5, 1.5, 2.5], [100.5, 101.5, 102.5], [200.5, 201.5, 202.5], [300.5, 301.5, 302.5]]
+
 convergence:
   max_iters: 200                       # [1 integer]
   epsilon: 1.0e-8                      # [1 float]
@@ -67,6 +77,11 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 - `angular_quadrature.mu` must be strictly ascending. `angular_quadrature.w`
   is rescaled so its entries sum to exactly `2`, regardless of what's
   written in the file; the applied scale factor is logged.
+- `boundary_conditions.left`/`right` each hold a down/up pair (`DownUp`,
+  see [../src/input_deck.h](../src/input_deck.h)) per ordinate and group --
+  down is the lower-energy edge, up the higher-energy edge, matching the
+  same convention used elsewhere (e.g. `Corner` in
+  [../src/fe_space.h](../src/fe_space.h)).
 
 `InputDeck::read()` throws `std::runtime_error` naming the offending
 field and the size or order it expected, catches it internally, and

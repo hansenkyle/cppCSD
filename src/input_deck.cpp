@@ -92,6 +92,49 @@ AngularQuadrature parseAngularQuadrature(const YAML::Node& node) {
   return quadrature;
 }
 
+void requireShape2D(const std::vector<std::vector<double>>& table, std::size_t expected_rows,
+                    std::size_t expected_cols, const std::string& name) {
+  if (table.size() != expected_rows) {
+    throw std::runtime_error(name + " has " + std::to_string(table.size()) + " row(s), expected " +
+                             std::to_string(expected_rows));
+  }
+  for (const std::vector<double>& row : table) {
+    if (row.size() != expected_cols) {
+      throw std::runtime_error(name + " row has size " + std::to_string(row.size()) +
+                               ", expected " + std::to_string(expected_cols));
+    }
+  }
+}
+
+std::vector<std::vector<DownUp>> parseBoundarySide(const YAML::Node& side_node,
+                                                   std::size_t num_ordinates,
+                                                   std::size_t num_groups,
+                                                   const std::string& side_name) {
+  const std::vector<std::vector<double>> down =
+      requireNode(side_node, "down").as<std::vector<std::vector<double>>>();
+  const std::vector<std::vector<double>> up =
+      requireNode(side_node, "up").as<std::vector<std::vector<double>>>();
+
+  requireShape2D(down, num_ordinates, num_groups, "boundary_conditions." + side_name + ".down");
+  requireShape2D(up, num_ordinates, num_groups, "boundary_conditions." + side_name + ".up");
+
+  std::vector<std::vector<DownUp>> side(num_ordinates, std::vector<DownUp>(num_groups));
+  for (std::size_t m = 0; m < num_ordinates; ++m) {
+    for (std::size_t g = 0; g < num_groups; ++g) {
+      side[m][g] = DownUp{down[m][g], up[m][g]};
+    }
+  }
+  return side;
+}
+
+BoundaryConditions parseBoundaryConditions(const YAML::Node& node, std::size_t num_ordinates,
+                                           std::size_t num_groups) {
+  BoundaryConditions bc;
+  bc.left = parseBoundarySide(requireNode(node, "left"), num_ordinates, num_groups, "left");
+  bc.right = parseBoundarySide(requireNode(node, "right"), num_ordinates, num_groups, "right");
+  return bc;
+}
+
 } // namespace
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
@@ -136,6 +179,11 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
 
     const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
     angular_quadrature.emplace(parseAngularQuadrature(angular_quadrature_node));
+
+    const YAML::Node boundary_conditions_node = requireNode(root, "boundary_conditions");
+    boundary_conditions.emplace(parseBoundaryConditions(boundary_conditions_node,
+                                                        angular_quadrature->mu.size(),
+                                                        static_cast<std::size_t>(mesh->G)));
 
     const YAML::Node convergence_node = requireNode(root, "convergence");
     convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();

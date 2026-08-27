@@ -33,6 +33,23 @@ struct AngularQuadrature {
   std::vector<double> w;  // quadrature weights, normalized to sum to 2
 };
 
+// A down/up pair of incoming angular flux values at one boundary, for one
+// ordinate and one energy group -- down is the lower-energy edge, up the
+// higher-energy edge (matching the same down/up convention used elsewhere,
+// e.g. fe_space.h's Corner).
+struct DownUp {
+  double down;
+  double up;
+};
+
+// Incoming angular flux at the domain's two spatial boundaries, indexed
+// [ordinate][group]. Read from the input deck; sized to match
+// angular_quadrature.mu.size() ordinates and mesh->G groups.
+struct BoundaryConditions {
+  std::vector<std::vector<DownUp>> left;
+  std::vector<std::vector<DownUp>> right;
+};
+
 /// @class InputDeck
 /// @brief Holds formatted input data (via helper classes), read from YAML
 class InputDeck {
@@ -48,7 +65,8 @@ public:
   std::map<std::string, MaterialData> materials; // keyed by material name
   std::optional<CrossSection> xs; // per-cell expansion of materials; set once read() succeeds
   ConvergenceCriteria convergence;
-  std::optional<AngularQuadrature> angular_quadrature; // set once read() succeeds
+  std::optional<AngularQuadrature> angular_quadrature;   // set once read() succeeds
+  std::optional<BoundaryConditions> boundary_conditions; // set once read() succeeds
 };
 
 #endif
