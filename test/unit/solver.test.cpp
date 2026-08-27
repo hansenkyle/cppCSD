@@ -27,6 +27,7 @@ InputDeck makeInputDeck() {
 class TestSolver : public Solver {
 public:
   using Solver::constructTransportBilinear;
+  using Solver::constructTransportLinear;
   using Solver::Solver;
 };
 
@@ -234,5 +235,297 @@ TEST_SUITE("Solver::constructTransportBilinear") {
     const int row1_right_up = 1 * 4 + cornerSlot(Corner::RightUp, order);
     const Eigen::VectorXd row1_right_up_dense = A.row(row1_right_up);
     CHECK((row1_right_up_dense.array() != 0.0).count() == 4);
+  }
+}
+
+TEST_SUITE("Solver::constructTransportLinear") {
+  // 2-cell, 2-group mesh -- group 1 is "the group being solved" throughout,
+  // with group 0 available as the other source group for scattering tests.
+  // Each test isolates one RHS term by zeroing the others (empty
+  // scattering, an all-zero upwind view, or a zero boundary condition).
+  Mesh makeLinearMesh() { return Mesh({0.0, 1.0, 2.0}, {2.0, 1.0, 0.0}); }
+
+  CrossSection makeLinearCrossSection(const Mesh& mesh, std::vector<ScatterEntry> cell0_scattering,
+                                      std::vector<ScatterEntry> cell1_scattering) {
+    return CrossSection(
+        mesh, {{1.0, 1.0}, {1.0, 1.0}}, {std::move(cell0_scattering), std::move(cell1_scattering)},
+        {{0.5, 0.5}, {0.5, 0.5}}, {{0.1, 0.1}, {0.2, 0.2}, {0.3, 0.3}}, {"water", "water"});
+  }
+
+  InputDeck makeLinearInputDeck(std::vector<ScatterEntry> cell0_scattering = {},
+                                std::vector<ScatterEntry> cell1_scattering = {}) {
+    InputDeck deck;
+    deck.setMesh(makeLinearMesh());
+    deck.xs.emplace(makeLinearCrossSection(*deck.mesh, std::move(cell0_scattering),
+                                           std::move(cell1_scattering)));
+    // 2 ordinates x 2 groups, all zero unless a test overrides it.
+    std::vector<std::vector<DownUp>> zero_bc(2, std::vector<DownUp>(2, DownUp{0.0, 0.0}));
+    deck.setBoundaryConditions(BoundaryConditions(zero_bc, zero_bc, 2, 2));
+    return deck;
+  }
+
+  TEST_CASE("produces a 4*n_x vector") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, 0.5, 1, 0, zero_flux[0], scalar_flux, zero_flux[0],
+                                    external_source);
+
+    CHECK(b.size() == 8);
+  }
+
+  TEST_CASE("rejects an out-of-range group") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    CHECK_THROWS_AS(solver.constructTransportLinear(b, 0.5, -1, 0, zero_flux[0], scalar_flux,
+                                                    zero_flux[0], external_source),
+                    std::out_of_range);
+    CHECK_THROWS_AS(solver.constructTransportLinear(b, 0.5, 2, 0, zero_flux[0], scalar_flux,
+                                                    zero_flux[0], external_source),
+                    std::out_of_range);
+  }
+
+  TEST_CASE("rejects an out-of-range ordinate_index") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    CHECK_THROWS_AS(solver.constructTransportLinear(b, 0.5, 1, -1, zero_flux[0], scalar_flux,
+                                                    zero_flux[0], external_source),
+                    std::out_of_range);
+    CHECK_THROWS_AS(solver.constructTransportLinear(b, 0.5, 1, 2, zero_flux[0], scalar_flux,
+                                                    zero_flux[0], external_source),
+                    std::out_of_range);
+  }
+
+  TEST_CASE("rejects an external_source with the wrong size") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd wrong_size_source = Eigen::VectorXd::Zero(7);
+
+    Eigen::VectorXd b;
+    CHECK_THROWS_AS(solver.constructTransportLinear(b, 0.5, 1, 0, zero_flux[0], scalar_flux,
+                                                    zero_flux[0], wrong_size_source),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("external source term matches the closed-form coefficients") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    Eigen::VectorXd external_source(8);
+    external_source << 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0;
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, 0.5, 1, 0, zero_flux[0], scalar_flux, zero_flux[0],
+                                    external_source);
+
+    const double dx = deck.mesh->dx[0];
+    const double m00 = fe_space.M(0, 0);
+    const double m01 = fe_space.M(0, 1);
+    const double m10 = fe_space.M(1, 0);
+    const double m11 = fe_space.M(1, 1);
+    const double q_ld = external_source(0);
+    const double q_lu = external_source(1);
+    const double q_rd = external_source(2);
+    const double q_ru = external_source(3);
+
+    const double expected_lu = (dx / 6.0) * (m00 * (q_ld + 2.0 * q_lu) + m01 * (q_rd + 2.0 * q_ru));
+    const double expected_ru = (dx / 6.0) * (m10 * (q_ld + 2.0 * q_lu) + m11 * (q_rd + 2.0 * q_ru));
+    const double expected_ld = (dx / 6.0) * (m00 * (2.0 * q_ld + q_lu) + m01 * (2.0 * q_rd + q_ru));
+    const double expected_rd = (dx / 6.0) * (m10 * (2.0 * q_ld + q_lu) + m11 * (2.0 * q_rd + q_ru));
+
+    CHECK(b(1) == doctest::Approx(expected_lu));
+    CHECK(b(3) == doctest::Approx(expected_ru));
+    CHECK(b(0) == doctest::Approx(expected_ld));
+    CHECK(b(2) == doctest::Approx(expected_rd));
+  }
+
+  TEST_CASE("CSD term matches the closed-form coefficients") {
+    InputDeck deck = makeLinearInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    Field upwind_mutable(2, 1);
+    upwind_mutable[0][0].leftDown() = 0.1;
+    upwind_mutable[0][0].leftUp() = 0.2;
+    upwind_mutable[0][0].rightDown() = 0.3;
+    upwind_mutable[0][0].rightUp() = 0.4;
+    const Field& upwind = upwind_mutable;
+    const Field scalar_flux(2, 2);
+    const Field zero_latest(2, 1);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, 0.5, 1, 0, upwind[0], scalar_flux, zero_latest[0],
+                                    external_source);
+
+    const double dx = deck.mesh->dx[0];
+    const double dE = deck.mesh->dE[1];
+    const double stop_power_bound_up = deck.xs->stop_power_boundary[1][0]; // row `group`
+    const double m00 = fe_space.M(0, 0);
+    const double m01 = fe_space.M(0, 1);
+    const double m10 = fe_space.M(1, 0);
+    const double m11 = fe_space.M(1, 1);
+
+    const double expected_lu = (dx / dE) * stop_power_bound_up * (m00 * 0.1 + m01 * 0.3);
+    const double expected_ru = (dx / dE) * stop_power_bound_up * (m10 * 0.1 + m11 * 0.3);
+
+    CHECK(b(1) == doctest::Approx(expected_lu));
+    CHECK(b(3) == doctest::Approx(expected_ru));
+    // No CSD contribution to the down rows.
+    CHECK(b(0) == doctest::Approx(0.0));
+    CHECK(b(2) == doctest::Approx(0.0));
+  }
+
+  TEST_CASE("scattering term (cross-group) reads scalar_flux[from]") {
+    InputDeck deck = makeLinearInputDeck({{0, 1, 0.05}}, {});
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    Field scalar_flux(2, 2);
+    scalar_flux[0][0].leftDown() = 1.0;
+    scalar_flux[0][0].leftUp() = 2.0;
+    scalar_flux[0][0].rightDown() = 3.0;
+    scalar_flux[0][0].rightUp() = 4.0;
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, 0.5, 1, 0, zero_flux[0], scalar_flux, zero_flux[0],
+                                    external_source);
+
+    const double dx = deck.mesh->dx[0];
+    const double dE_from = deck.mesh->dE[0]; // dE of the source group (from=0)
+    const double xs = 0.05;
+    const double m00 = fe_space.M(0, 0);
+    const double m01 = fe_space.M(0, 1);
+    const double m10 = fe_space.M(1, 0);
+    const double m11 = fe_space.M(1, 1);
+    const double sc_left = 1.0 + 2.0;
+    const double sc_right = 3.0 + 4.0;
+
+    const double expected_left = (dx * dE_from / 8.0) * xs * (m00 * sc_left + m01 * sc_right);
+    const double expected_right = (dx * dE_from / 8.0) * xs * (m10 * sc_left + m11 * sc_right);
+
+    CHECK(b(0) == doctest::Approx(expected_left));  // LeftDown
+    CHECK(b(1) == doctest::Approx(expected_left));  // LeftUp
+    CHECK(b(2) == doctest::Approx(expected_right)); // RightDown
+    CHECK(b(3) == doctest::Approx(expected_right)); // RightUp
+  }
+
+  TEST_CASE("scattering term (in-group) reads latest_scalar_flux, not scalar_flux[group]") {
+    InputDeck deck = makeLinearInputDeck({{1, 1, 0.3}}, {});
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+
+    // scalar_flux[1] (group 1's stored, stale value) is a decoy: if the
+    // implementation mistakenly used it instead of latest_scalar_flux, the
+    // check below would fail.
+    Field scalar_flux(2, 2);
+    scalar_flux[1][0].leftDown() = 999.0;
+    scalar_flux[1][0].leftUp() = 999.0;
+    scalar_flux[1][0].rightDown() = 999.0;
+    scalar_flux[1][0].rightUp() = 999.0;
+
+    Field latest_mutable(2, 1);
+    latest_mutable[0][0].leftDown() = 10.0;
+    latest_mutable[0][0].leftUp() = 11.0;
+    latest_mutable[0][0].rightDown() = 12.0;
+    latest_mutable[0][0].rightUp() = 13.0;
+    const Field& latest = latest_mutable;
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, 0.5, 1, 0, zero_flux[0], scalar_flux, latest[0],
+                                    external_source);
+
+    const double dx = deck.mesh->dx[0];
+    const double dE_from = deck.mesh->dE[1]; // dE of the source group (from=1, in-group)
+    const double xs = 0.3;
+    const double m00 = fe_space.M(0, 0);
+    const double m01 = fe_space.M(0, 1);
+    const double sc_left = 10.0 + 11.0;
+    const double sc_right = 12.0 + 13.0;
+
+    const double expected_left = (dx * dE_from / 8.0) * xs * (m00 * sc_left + m01 * sc_right);
+
+    CHECK(b(0) == doctest::Approx(expected_left));
+    CHECK(b(1) == doctest::Approx(expected_left));
+  }
+
+  TEST_CASE("boundary condition term (mu > 0, left)") {
+    InputDeck deck = makeLinearInputDeck();
+    std::vector<std::vector<DownUp>> zero_bc(2, std::vector<DownUp>(2, DownUp{0.0, 0.0}));
+    std::vector<std::vector<DownUp>> left_bc = zero_bc;
+    left_bc[0][1] = DownUp{100.0, 200.0};
+    deck.setBoundaryConditions(BoundaryConditions(left_bc, zero_bc, 2, 2));
+
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+    const double mu = 0.5;
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, mu, 1, 0, zero_flux[0], scalar_flux, zero_flux[0],
+                                    external_source);
+
+    const double expected_lu = (mu / 6.0) * (100.0 + 2.0 * 200.0);
+    const double expected_ld = (mu / 6.0) * (2.0 * 100.0 + 200.0);
+    CHECK(b(1) == doctest::Approx(expected_lu));
+    CHECK(b(0) == doctest::Approx(expected_ld));
+    // The right boundary (cell 1) is untouched by mu > 0.
+    CHECK(b(6) == doctest::Approx(0.0));
+    CHECK(b(7) == doctest::Approx(0.0));
+  }
+
+  TEST_CASE("boundary condition term (mu < 0, right)") {
+    InputDeck deck = makeLinearInputDeck();
+    std::vector<std::vector<DownUp>> zero_bc(2, std::vector<DownUp>(2, DownUp{0.0, 0.0}));
+    std::vector<std::vector<DownUp>> right_bc = zero_bc;
+    right_bc[0][1] = DownUp{100.0, 200.0};
+    deck.setBoundaryConditions(BoundaryConditions(zero_bc, right_bc, 2, 2));
+
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+    const Field zero_flux(2, 1);
+    const Field scalar_flux(2, 2);
+    const Eigen::VectorXd external_source = Eigen::VectorXd::Zero(8);
+    const double mu = -0.5;
+
+    Eigen::VectorXd b;
+    solver.constructTransportLinear(b, mu, 1, 0, zero_flux[0], scalar_flux, zero_flux[0],
+                                    external_source);
+
+    const double expected_ru = -(mu / 6.0) * (100.0 + 2.0 * 200.0);
+    const double expected_rd = (-mu / 6.0) * (2.0 * 100.0 + 200.0);
+    // Cell 1 (index n_x - 1 = 1) occupies local indices 4..7; under the
+    // default XMajor corner order, RightDown=slot 2, RightUp=slot 3.
+    CHECK(b(7) == doctest::Approx(expected_ru));
+    CHECK(b(6) == doctest::Approx(expected_rd));
+    // The left boundary (cell 0) is untouched by mu < 0.
+    CHECK(b(0) == doctest::Approx(0.0));
+    CHECK(b(1) == doctest::Approx(0.0));
   }
 }

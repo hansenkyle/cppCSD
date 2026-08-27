@@ -54,12 +54,49 @@ protected:
   // previous contents are discarded. group must be in [0, G).
   void constructTransportBilinear(Eigen::SparseMatrix<double>& A, double mu, int group) const;
 
+  // Builds the high-order transport equation's RHS for the same single
+  // ordinate/group system constructTransportBilinear's A pairs with:
+  // external source, CSD inflow from the previous (higher-energy, already-
+  // solved) group, scattering source, and (at whichever spatial boundary mu
+  // points away from) the incoming boundary condition. b is resized to
+  // 4*n_x; its previous contents are discarded.
+  //
+  // ordinate_index is this ordinate's position in
+  // input_deck.angular_quadrature.mu -- needed to look up its boundary
+  // condition, since BoundaryConditions is indexed by position, not by mu's
+  // value.
+  //
+  // upwind_angular_flux is a view of the previous group's (group - 1)
+  // solved angular flux for this same ordinate -- not the whole Field. For
+  // group == 0 there is no previous group; pass a view over an all-zero
+  // Field row rather than special-casing here, since the multiplying
+  // stopping-power term is finite either way.
+  //
+  // scalar_flux is the current best-known scalar flux for every group, used
+  // for the scattering sum's source groups other than `group` itself.
+  // latest_scalar_flux is group `group`'s own scalar flux specifically --
+  // it may differ from scalar_flux[group], since that hasn't been updated
+  // with the best-available value yet (this group is still being solved)
+  // while latest_scalar_flux has.
+  //
+  // external_source is this ordinate/group's fixed source, in the same
+  // local (cell, corner) layout as b itself (size 4*n_x).
+  void constructTransportLinear(Eigen::VectorXd& b, double mu, int group, int ordinate_index,
+                                Field::ConstRow upwind_angular_flux, const Field& scalar_flux,
+                                Field::ConstRow latest_scalar_flux,
+                                const Eigen::VectorXd& external_source) const;
+
 private:
   // Returns input_deck.xs. If it's unset (e.g. left cleared after a mesh
   // change and never reconfigured), logs a fatal error and terminates the
   // program -- solving without cross sections isn't a recoverable
   // condition, so this isn't a throw a caller is expected to catch.
   const CrossSection& requireCrossSection() const;
+
+  // Returns input_deck.boundary_conditions. Same fatal-if-unset treatment
+  // as requireCrossSection(), for the same reason -- there's no meaningful
+  // way to assemble a boundary-facing RHS without it.
+  const BoundaryConditions& requireBoundaryConditions() const;
 };
 
 // Solves the high-order transport equation by source iteration (repeated

@@ -23,6 +23,14 @@ const CrossSection& Solver::requireCrossSection() const {
   return *input_deck.xs;
 }
 
+const BoundaryConditions& Solver::requireBoundaryConditions() const {
+  if (!input_deck.boundary_conditions.has_value()) {
+    LDCSD_LOG_ERROR("Solver: input_deck.boundary_conditions is not set -- cannot solve");
+    std::exit(1);
+  }
+  return *input_deck.boundary_conditions;
+}
+
 void Solver::sweep() {}
 
 namespace {
@@ -170,4 +178,112 @@ void Solver::constructTransportBilinear(Eigen::SparseMatrix<double>& A, double m
   const int size = 4 * n_x;
   A = Eigen::SparseMatrix<double>(size, size);
   A.setFromTriplets(triplets.begin(), triplets.end());
+}
+
+void Solver::constructTransportLinear(Eigen::VectorXd& b, double mu, int group, int ordinate_index,
+                                      Field::ConstRow upwind_angular_flux, const Field& scalar_flux,
+                                      Field::ConstRow latest_scalar_flux,
+                                      const Eigen::VectorXd& external_source) const {
+  const Mesh& mesh = *input_deck.mesh;
+  const CrossSection& cross_section = requireCrossSection();
+  const BoundaryConditions& bc = requireBoundaryConditions();
+
+  if (group < 0 || group >= mesh.G) {
+    throw std::out_of_range("Solver::constructTransportLinear: group index out of range");
+  }
+  if (ordinate_index < 0 || ordinate_index >= static_cast<int>(bc.left.size())) {
+    throw std::out_of_range("Solver::constructTransportLinear: ordinate_index out of range");
+  }
+
+  const int n_x = mesh.n_x;
+  if (external_source.size() != 4 * n_x) {
+    throw std::invalid_argument(
+        "Solver::constructTransportLinear: external_source has the wrong size");
+  }
+
+  // This group's own upper-energy-edge stopping power -- the flux this
+  // group receives from the previous (higher-energy, already-solved)
+  // group. Row `group` (not group + 1, which is the LHS's lower-edge
+  // value).
+  const std::vector<double>& stop_power_bound_up = cross_section.stop_power_boundary[group];
+
+  const double m00 = fe_space.M(0, 0);
+  const double m01 = fe_space.M(0, 1);
+  const double m10 = fe_space.M(1, 0);
+  const double m11 = fe_space.M(1, 1);
+
+  b = Eigen::VectorXd::Zero(4 * n_x);
+
+  for (int i = 0; i < n_x; ++i) {
+    const double dx = mesh.dx[i];
+    const int idx_left_down = localIndex(i, Corner::LeftDown, corner_order);
+    const int idx_left_up = localIndex(i, Corner::LeftUp, corner_order);
+    const int idx_right_down = localIndex(i, Corner::RightDown, corner_order);
+    const int idx_right_up = localIndex(i, Corner::RightUp, corner_order);
+
+    // external source
+    const double q_left_down = external_source(idx_left_down);
+    const double q_left_up = external_source(idx_left_up);
+    const double q_right_down = external_source(idx_right_down);
+    const double q_right_up = external_source(idx_right_up);
+
+    b(idx_left_up) += (dx / 6.0) * (m00 * (q_left_down + 2.0 * q_left_up) +
+                                    m01 * (q_right_down + 2.0 * q_right_up));
+    b(idx_right_up) += (dx / 6.0) * (m10 * (q_left_down + 2.0 * q_left_up) +
+                                     m11 * (q_right_down + 2.0 * q_right_up));
+    b(idx_left_down) += (dx / 6.0) * (m00 * (2.0 * q_left_down + q_left_up) +
+                                      m01 * (2.0 * q_right_down + q_right_up));
+    b(idx_right_down) += (dx / 6.0) * (m10 * (2.0 * q_left_down + q_left_up) +
+                                       m11 * (2.0 * q_right_down + q_right_up));
+
+    // CSD source: inflow from the previous (higher-energy) group. For
+    // group == 0, upwind_angular_flux is expected to be an all-zero view,
+    // so this naturally contributes nothing rather than needing a
+    // special case here.
+    const double dE = mesh.dE[group];
+    const ConstCornerValues upwind = upwind_angular_flux[i];
+    b(idx_left_up) +=
+        (dx / dE) * stop_power_bound_up[i] * (m00 * upwind.leftDown() + m01 * upwind.rightDown());
+    b(idx_right_up) +=
+        (dx / dE) * stop_power_bound_up[i] * (m10 * upwind.leftDown() + m11 * upwind.rightDown());
+
+    // scattering source: sum over source groups gp with a nonzero transfer
+    // into `group`. Only in-group (gp == group) uses latest_scalar_flux
+    // rather than scalar_flux[gp] -- see the doc comment on this function.
+    for (const ScatterEntry& entry : cross_section.scattering[i]) {
+      if (entry.to != group) {
+        continue;
+      }
+      const int gp = entry.from;
+      const ConstCornerValues sc = (gp == group) ? latest_scalar_flux[i] : scalar_flux[gp][i];
+      const double sc_left = sc.leftDown() + sc.leftUp();
+      const double sc_right = sc.rightDown() + sc.rightUp();
+
+      const double contribution_left =
+          (dx * mesh.dE[gp] / 8.0) * entry.value * (m00 * sc_left + m01 * sc_right);
+      const double contribution_right =
+          (dx * mesh.dE[gp] / 8.0) * entry.value * (m10 * sc_left + m11 * sc_right);
+
+      b(idx_left_down) += contribution_left;
+      b(idx_left_up) += contribution_left;
+      b(idx_right_down) += contribution_right;
+      b(idx_right_up) += contribution_right;
+    }
+  }
+
+  // boundary condition, at whichever edge mu points away from (the edge mu
+  // points into is handled by the LHS's upwind coupling instead).
+  if (mu > 0.0) {
+    const DownUp& incoming = bc.left[ordinate_index][group];
+    const int idx_left_down = localIndex(0, Corner::LeftDown, corner_order);
+    const int idx_left_up = localIndex(0, Corner::LeftUp, corner_order);
+    b(idx_left_up) += (mu / 6.0) * (incoming.down + 2.0 * incoming.up);
+    b(idx_left_down) += (mu / 6.0) * (2.0 * incoming.down + incoming.up);
+  } else {
+    const DownUp& incoming = bc.right[ordinate_index][group];
+    const int idx_right_up = localIndex(n_x - 1, Corner::RightUp, corner_order);
+    const int idx_right_down = localIndex(n_x - 1, Corner::RightDown, corner_order);
+    b(idx_right_up) += -(mu / 6.0) * (incoming.down + 2.0 * incoming.up);
+    b(idx_right_down) += (-mu / 6.0) * (2.0 * incoming.down + incoming.up);
+  }
 }
