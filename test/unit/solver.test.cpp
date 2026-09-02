@@ -613,118 +613,102 @@ TEST_SUITE("Solver::solveLinearSystem") {
 
     CHECK_THROWS_AS(solver.solveLinearSystem(A, b), std::runtime_error);
   }
+
+  TEST_CASE("x-reference overload matches the return-value overload") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::SparseLU);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    Eigen::VectorXd x;
+    solver.solveLinearSystem(A, x, b);
+    CHECK(x(0) == doctest::Approx(1.0));
+    CHECK(x(1) == doctest::Approx(3.0));
+  }
+
+  TEST_CASE("x-reference overload overwrites a pre-existing value of x") {
+    InputDeck deck = makeInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space, AxisOrder::XMajor, LinearSolverKind::SparseLU);
+
+    const Eigen::SparseMatrix<double> A = makeSimpleMatrix();
+    Eigen::VectorXd b(2);
+    b << 5.0, 10.0;
+
+    Eigen::VectorXd x(2);
+    x << 100.0, -100.0;
+    solver.solveLinearSystem(A, x, b);
+    CHECK(x(0) == doctest::Approx(1.0));
+    CHECK(x(1) == doctest::Approx(3.0));
+  }
 }
 
 TEST_SUITE("Solver::sweep") {
-  // 2-cell, 1-group mesh, 2 ordinates -- group 0 has no previous group, so
-  // this exercises sweep()'s internal all-zero-upwind substitution too.
-  Mesh makeSweepMesh() { return Mesh({0.0, 1.0, 2.0}, {2.0, 0.0}); }
-
-  CrossSection makeSweepCrossSection(const Mesh& mesh) {
-    return CrossSection(mesh, {{1.0, 1.0}}, {{{0, 0, 0.1}}, {{0, 0, 0.1}}}, {{0.5, 0.5}},
-                        {{0.2, 0.2}, {0.3, 0.3}}, {"water", "water"});
-  }
-
-  InputDeck makeSweepInputDeck() {
-    InputDeck deck;
-    deck.setMesh(makeSweepMesh());
-    deck.xs.emplace(makeSweepCrossSection(*deck.mesh));
-    deck.setAngularQuadrature(AngularQuadrature({-0.5, 0.5}, {1.0, 1.0}));
-    const std::vector<std::vector<DownUp>> bc(2, std::vector<DownUp>(1, DownUp{1.0, 2.0}));
-    deck.setBoundaryConditions(BoundaryConditions(bc, bc, 2, 1));
-    return deck;
-  }
-
-  TEST_CASE("writes angular_flux and scalar_flux matching independently-solved systems") {
-    InputDeck deck = makeSweepInputDeck();
+  TEST_CASE("builds A via constructTransportBilinear for this mu/group and solves A*x=b") {
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
     const TestSolver solver(deck, fe_space);
 
-    Field scalar_flux(2, 1);
-    std::vector<Field> angular_flux(2, Field(2, 1));
-    const Field latest_storage(2, 1);
-    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+    const double mu = 0.5;
+    const int group = 1;
 
-    solver.sweep(0, scalar_flux, angular_flux, latest_storage[0], external_source);
+    Eigen::SparseMatrix<double> expected_A;
+    solver.constructTransportBilinear(expected_A, mu, group);
+    const Eigen::VectorXd b = Eigen::VectorXd::LinSpaced(expected_A.rows(), 1.0, expected_A.rows());
+    const Eigen::VectorXd expected_x = solver.solveLinearSystem(expected_A, b);
 
-    // Independently re-derive each ordinate's system via the same protected
-    // methods sweep() itself uses, and confirm sweep()'s outputs match.
-    const AngularQuadrature& quadrature = *deck.angular_quadrature;
-    const Field zero_field(2, 1);
-    const AxisOrder order = solver.corner_order;
+    Eigen::SparseMatrix<double> A;
+    Eigen::VectorXd x;
+    solver.sweep(x, A, b, mu, group);
 
-    Field expected_scalar_flux(2, 1);
-    for (int m = 0; m < 2; ++m) {
-      Eigen::SparseMatrix<double> A;
-      Eigen::VectorXd b;
-      solver.constructTransportBilinear(A, quadrature.mu[m], 0);
-      // scalar_flux is post-sweep here, but this fixture's only scattering
-      // entry is in-group (routed to latest_storage instead), so that's
-      // safe -- scalar_flux's own contents are never actually read.
-      solver.constructTransportLinear(b, quadrature.mu[m], 0, m, zero_field[0], scalar_flux,
-                                      latest_storage[0], external_source[m]);
-      const Eigen::VectorXd x = solver.solveLinearSystem(A, b);
+    REQUIRE(A.rows() == expected_A.rows());
+    REQUIRE(A.cols() == expected_A.cols());
+    CHECK((A - expected_A).norm() == doctest::Approx(0.0));
 
-      for (int i = 0; i < 2; ++i) {
-        const int idx_ld = i * 4 + cornerSlot(Corner::LeftDown, order);
-        const int idx_ru = i * 4 + cornerSlot(Corner::RightUp, order);
-        CHECK(angular_flux[m][0][i].leftDown() == doctest::Approx(x(idx_ld)));
-        CHECK(angular_flux[m][0][i].rightUp() == doctest::Approx(x(idx_ru)));
-
-        expected_scalar_flux[0][i].leftDown() += quadrature.w[m] * x(idx_ld);
-        expected_scalar_flux[0][i].rightUp() += quadrature.w[m] * x(idx_ru);
-      }
-    }
-
-    for (int i = 0; i < 2; ++i) {
-      CHECK(scalar_flux[0][i].leftDown() == doctest::Approx(expected_scalar_flux[0][i].leftDown()));
-      CHECK(scalar_flux[0][i].rightUp() == doctest::Approx(expected_scalar_flux[0][i].rightUp()));
+    REQUIRE(x.size() == expected_x.size());
+    for (int i = 0; i < x.size(); ++i) {
+      CHECK(x(i) == doctest::Approx(expected_x(i)));
     }
   }
 
-  TEST_CASE("rejects an out-of-range group") {
-    InputDeck deck = makeSweepInputDeck();
+  TEST_CASE("overwrites a pre-existing value of A rather than accumulating into it") {
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
     const TestSolver solver(deck, fe_space);
 
-    Field scalar_flux(2, 1);
-    std::vector<Field> angular_flux(2, Field(2, 1));
-    const Field latest_storage(2, 1);
-    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+    const double mu = -0.5;
+    const int group = 0;
 
-    CHECK_THROWS_AS(solver.sweep(-1, scalar_flux, angular_flux, latest_storage[0], external_source),
-                    std::out_of_range);
-    CHECK_THROWS_AS(solver.sweep(1, scalar_flux, angular_flux, latest_storage[0], external_source),
-                    std::out_of_range);
+    Eigen::SparseMatrix<double> expected_A;
+    solver.constructTransportBilinear(expected_A, mu, group);
+    const Eigen::VectorXd b = Eigen::VectorXd::LinSpaced(expected_A.rows(), 1.0, expected_A.rows());
+
+    // Pre-fill A with a stale matrix of a different size to confirm sweep()
+    // fully replaces it rather than adding to whatever was already there.
+    Eigen::SparseMatrix<double> A(2, 2);
+    A.insert(0, 0) = 123.0;
+
+    Eigen::VectorXd x;
+    solver.sweep(x, A, b, mu, group);
+
+    REQUIRE(A.rows() == expected_A.rows());
+    REQUIRE(A.cols() == expected_A.cols());
+    CHECK((A - expected_A).norm() == doctest::Approx(0.0));
   }
 
-  TEST_CASE("rejects angular_flux with the wrong number of ordinates") {
-    InputDeck deck = makeSweepInputDeck();
+  TEST_CASE("propagates an out-of-range group from constructTransportBilinear") {
+    InputDeck deck = makeInputDeck();
     const FESpace fe_space = makeFESpace();
     const TestSolver solver(deck, fe_space);
 
-    Field scalar_flux(2, 1);
-    std::vector<Field> wrong_angular_flux(1, Field(2, 1)); // should be 2
-    const Field latest_storage(2, 1);
-    const std::vector<Eigen::VectorXd> external_source(2, Eigen::VectorXd::Zero(8));
+    Eigen::SparseMatrix<double> A;
+    Eigen::VectorXd x;
+    const Eigen::VectorXd b = Eigen::VectorXd::Zero(12);
 
-    CHECK_THROWS_AS(
-        solver.sweep(0, scalar_flux, wrong_angular_flux, latest_storage[0], external_source),
-        std::invalid_argument);
-  }
-
-  TEST_CASE("rejects external_source with the wrong number of ordinates") {
-    InputDeck deck = makeSweepInputDeck();
-    const FESpace fe_space = makeFESpace();
-    const TestSolver solver(deck, fe_space);
-
-    Field scalar_flux(2, 1);
-    std::vector<Field> angular_flux(2, Field(2, 1));
-    const Field latest_storage(2, 1);
-    const std::vector<Eigen::VectorXd> wrong_external_source(1, Eigen::VectorXd::Zero(8));
-
-    CHECK_THROWS_AS(
-        solver.sweep(0, scalar_flux, angular_flux, latest_storage[0], wrong_external_source),
-        std::invalid_argument);
+    CHECK_THROWS_AS(solver.sweep(x, A, b, 0.5, -1), std::out_of_range);
+    CHECK_THROWS_AS(solver.sweep(x, A, b, 0.5, 2), std::out_of_range);
   }
 }

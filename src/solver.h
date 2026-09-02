@@ -56,7 +56,7 @@ protected:
   /// @param mu Angle cosine for this ordinate; required to implement boundary conditions
   /// @param group Group index, used to index cross sections. Must be [0, G).
   void sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b,
-             double mu, int group);
+             double mu, int group) const;
 
   /// @brief Construct LHS matrix for high-order transport equation
   ///
@@ -123,6 +123,12 @@ protected:
   // this directly too, e.g. for a low-order solve.
   Eigen::VectorXd solveLinearSystem(const Eigen::SparseMatrix<double>& A,
                                     const Eigen::VectorXd& b) const;
+
+  // Same as solveLinearSystem(A, b), but writes the result into x instead of
+  // returning it, for callers (e.g. sweep()) that already have a vector to
+  // write into.
+  void solveLinearSystem(const Eigen::SparseMatrix<double>& A, Eigen::VectorXd& x,
+                         const Eigen::VectorXd& b) const;
 };
 
 /// @class SourceIterationSolver

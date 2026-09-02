@@ -85,6 +85,11 @@ Eigen::VectorXd Solver::solveLinearSystem(const Eigen::SparseMatrix<double>& A,
   throw std::runtime_error("Solver::solveLinearSystem: unknown linear_solver_kind");
 }
 
+void Solver::solveLinearSystem(const Eigen::SparseMatrix<double>& A, Eigen::VectorXd& x,
+                               const Eigen::VectorXd& b) const {
+  x = solveLinearSystem(A, b);
+}
+
 namespace {
 
 // Row/column order for the local dense blocks below -- independent of any
@@ -376,12 +381,10 @@ void Solver::constructTransportLinear(Eigen::VectorXd& b, double mu, int group, 
   }
 }
 
-void Solver::sweep(Eigen::VectorXd& x,Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, double mu, int group) {
-  // Construct bilinear
+void Solver::sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b,
+                   double mu, int group) const {
   constructTransportBilinear(A, mu, group);
-
-  // solveLinearSystem
-  x = solveLinearSystem(A, b);
+  solveLinearSystem(A, x, b);
 }
 
 // void Solver::sweep(int group, Field& scalar_flux, std::vector<Field>& angular_flux,
@@ -399,7 +402,8 @@ void Solver::sweep(Eigen::VectorXd& x,Eigen::SparseMatrix<double>& A, const Eige
 //     throw std::invalid_argument("Solver::sweep: angular_flux has the wrong number of ordinates");
 //   }
 //   if (static_cast<int>(external_source.size()) != num_ordinates) {
-//     throw std::invalid_argument("Solver::sweep: external_source has the wrong number of ordinates");
+//     throw std::invalid_argument("Solver::sweep: external_source has the wrong number of
+//     ordinates");
 //   }
 //
 //   const int n_x = mesh.n_x;
