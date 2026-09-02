@@ -413,3 +413,21 @@ void Solver::solveTransport(std::vector<Eigen::VectorXd>& x, Eigen::SparseMatrix
     sweep(x[m], A, b[m], quadrature.mu[m], group);
   }
 }
+
+void SourceIterationSolver::solve(const SourceIterationParams& params) {
+  // TODO: loop solveTransport()/scattering-source update to convergence per
+  // params, storing whatever this needs for writeResults() to report later.
+}
+
+void SourceIterationSolver::writeResults(const std::filesystem::path& path) const {
+  // TODO: write this solve's results (once solve() actually produces any).
+}
+
+void SecondMomentSolver::solve(const SecondMomentParams& params) {
+  // TODO: outer loop (transport sweep + closure) / inner loop (low-order
+  // SMM solve) per params.
+}
+
+void SecondMomentSolver::writeResults(const std::filesystem::path& path) const {
+  // TODO: write this solve's results (once solve() actually produces any).
+}

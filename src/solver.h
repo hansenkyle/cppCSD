@@ -1,6 +1,7 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include <filesystem>
 #include <vector>
 
 #include <Eigen/Sparse>
@@ -136,6 +137,15 @@ protected:
                          const Eigen::VectorXd& b) const;
 };
 
+// Iteration parameters for SourceIterationSolver::solve() -- a single flat
+// loop (solve transport, update scattering source, repeat), so this is just
+// ConvergenceCriteria's shape. Plain aggregate, like ConvergenceCriteria: no
+// validation yet, since nothing parses this from YAML yet either.
+struct SourceIterationParams {
+  int max_iters = 0;
+  double epsilon = 0.0;
+};
+
 /// @class SourceIterationSolver
 /// @brief Transport solver with "naive" source iteration method; No projection, no acceleration
 /// @details A baseline method with no acceleration, preconditioning, or projection. Solves
@@ -144,6 +154,29 @@ protected:
 class SourceIterationSolver : public Solver {
 public:
   using Solver::Solver;
+
+  // Runs source iteration to convergence (or until params.max_iters), per
+  // params. Takes the concrete params type directly -- no base
+  // IterationParameters type, no runtime check that it's "the right"
+  // derived type: callers already have a SourceIterationSolver, so they
+  // already know which params type matches it.
+  void solve(const SourceIterationParams& params);
+
+  // Writes this solve's results to path. Not virtual: each solver's
+  // results are shaped differently, so there's no shared interface for
+  // this to satisfy.
+  void writeResults(const std::filesystem::path& path) const;
+};
+
+// Iteration parameters for SecondMomentSolver::solve(). Placeholder shape --
+// outer loop over transport sweep + closure, inner loop for the low-order
+// SMM solve -- to be refined once that iteration structure is actually
+// implemented.
+struct SecondMomentParams {
+  int outer_max_iters = 0;
+  double outer_epsilon = 0.0;
+  int inner_max_iters = 0;
+  double inner_epsilon = 0.0;
 };
 
 /// @class SecondMomentSolver
@@ -155,6 +188,12 @@ public:
 class SecondMomentSolver : public Solver {
 public:
   using Solver::Solver;
+
+  // See SourceIterationSolver::solve() -- same reasoning, different params.
+  void solve(const SecondMomentParams& params);
+
+  // See SourceIterationSolver::writeResults().
+  void writeResults(const std::filesystem::path& path) const;
 };
 
 #endif

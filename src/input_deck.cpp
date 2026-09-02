@@ -216,6 +216,10 @@ void InputDeck::setConvergence(ConvergenceCriteria new_convergence) {
   convergence = new_convergence;
 }
 
+void InputDeck::setSolverMethod(SolverMethod new_solver_method) {
+  solver_method = new_solver_method;
+}
+
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   try {
     const YAML::Node root = YAML::LoadFile(path_to_yaml.string());

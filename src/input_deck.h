@@ -27,11 +27,22 @@ struct MaterialData {
   std::vector<double> stopping_power_boundary; // S at group boundaries, size == num_groups + 1
 };
 
-// Placeholder convergence criteria; more sophisticated criteria to follow.
+// Placeholder convergence criteria; superseded by each Solver subclass's own
+// iteration-parameters struct (e.g. SourceIterationParams, solver.h) and
+// slated for removal once solve() is wired up to consume those instead.
 struct ConvergenceCriteria {
   int max_iters = 0;
   double epsilon = 0.0;
 };
+
+// Identifies which Solver subclass a deck is configured for. Read from the
+// YAML's "method" key and validated against this fixed, closed set --
+// registering a new solver means adding it here (see CONTRIBUTING.md).
+// Deliberately just an enum, not a polymorphic type: InputDeck must not
+// depend on solver.h (Solver already depends on InputDeck), so the deck can
+// only name a method, not construct one -- that dispatch happens where the
+// concrete Solver types are visible (main.cpp).
+enum class SolverMethod { SourceIteration, SecondMoment };
 
 // Discrete ordinates for angular quadrature: direction cosines and their
 // integration weights, one entry per ordinate. Validates and normalizes
@@ -86,6 +97,7 @@ public:
   void setAngularQuadrature(AngularQuadrature new_angular_quadrature);
   void setBoundaryConditions(BoundaryConditions new_boundary_conditions);
   void setConvergence(ConvergenceCriteria new_convergence);
+  void setSolverMethod(SolverMethod new_solver_method);
 
   std::optional<Mesh> mesh;                      // set once read() succeeds
   std::vector<std::string> region_materials;     // material name per cell, size == mesh->n_x
@@ -94,6 +106,7 @@ public:
   ConvergenceCriteria convergence;
   std::optional<AngularQuadrature> angular_quadrature;   // set once read() succeeds
   std::optional<BoundaryConditions> boundary_conditions; // set once read() succeeds
+  std::optional<SolverMethod> solver_method;             // set once read() succeeds
 };
 
 #endif
