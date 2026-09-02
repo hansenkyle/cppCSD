@@ -10,28 +10,20 @@
 #include "input_deck.h"
 #include "mesh.h"
 
-// Which Eigen sparse solver a Solver uses for each ordinate/group's linear
-// system, chosen at runtime rather than compile time so a caller can pick
-// (or change) it without recompiling. SparseLU is a general (unsymmetric-
-// safe) direct solver; BiCGSTAB and GMRES are general iterative solvers.
-// SweepDirect is a placeholder for a future sweep-based direct solve
-// exploiting this problem's specific structure -- selecting it currently
-// throws, since it isn't implemented yet.
-enum class LinearSolverKind { SparseLU, BiCGSTAB, GMRES, SweepDirect };
+/// @enum LinearSolverKind
+/// @brief Select at runtime which Eigen sparse linear solver is used
+enum class LinearSolverKind {
+  SparseLU,   ///< Sparse LU; Direct solver for genral matrices
+  BiCGSTAB,   ///< Stabilized Biconjugate Gradient; Iterative solver for general matrices
+  GMRES,      ///< General Minimal Residual; Iterative solver for general matrices
+  SweepDirect ///< PLACEHOLDER
+};
 
-// Base class for iterative transport solve strategies (e.g.
-// SourceIterationSolver, SecondMomentSolver). Holds functionality shared by
-// every derived solve strategy -- the high-order transport sweep chief among
-// them -- so it lives in exactly one place rather than being duplicated
-// across methods that all need it. Derived classes differ in what they do
-// around the sweep (e.g. whether they also run a low-order solve to
-// accelerate it), not in the sweep itself. Owns an InputDeck rather than
-// its own separate copies of mesh/cross-section data -- input_deck's own
-// setters (setMesh, setAngularQuadrature, etc.) are how a caller reconfigures
-// part of the problem after construction, e.g. to re-run the same problem
-// under a different angular quadrature. FESpace is discretization, not
-// problem data, so it stays a separate member rather than living on
-// InputDeck.
+/// @class Solver
+/// @brief Base class for iterative electron transport solver
+/// @details Holds functions and members common to multiple derived classes (of different methods)
+/// to avoid code duplication. Owns an InputDeck, so that Solver callers can declare solvers with
+/// the same reconfigured deck.
 class Solver {
 public:
   // Constructs a Solver over its own copy of input_deck and fe_space.
@@ -74,44 +66,32 @@ protected:
              Field::ConstRow latest_scalar_flux,
              const std::vector<Eigen::VectorXd>& external_source) const;
 
-  // Builds the high-order transport equation's LHS bilinear form for a
-  // single ordinate mu and a single energy group: streaming (upwinded in x,
-  // coupling to the neighboring cell) plus absorption and this group's own
-  // slowing-down removal term (both local to each cell, no neighbor
-  // coupling). Energy-group coupling never appears here -- groups are
-  // solved sequentially from high energy to low, so the previous
-  // (already-solved) group's inflow is a known RHS source, not an LHS
-  // unknown. A is resized to 4*n_x x 4*n_x (n_x from input_deck.mesh); its
-  // previous contents are discarded. group must be in [0, G).
+  /// @brief Construct LHS matrix for high-order transport equation
+  ///
+  /// Builds the high-order transport equation's LHS (bilinear form) for a single ordinate mu and a
+  /// single energy group. Each cell is coupled to the spatially upwind cell (in the -mu direction)
+  /// by the advection operator.
+  ///
+  /// @param &A Reference to the matrix to write the system to. A will be resized if necessary to
+  /// 4*n_x by 4*n_x, where n_x is the number of spatiall cells (from input_deck.mesh).
+  /// @param mu Cosine of the direction of travel for this ordinate
+  /// @param group Energy group. Group must be in [0, G).
   void constructTransportBilinear(Eigen::SparseMatrix<double>& A, double mu, int group) const;
 
-  // Builds the high-order transport equation's RHS for the same single
-  // ordinate/group system constructTransportBilinear's A pairs with:
-  // external source, CSD inflow from the previous (higher-energy, already-
-  // solved) group, scattering source, and (at whichever spatial boundary mu
-  // points away from) the incoming boundary condition. b is resized to
-  // 4*n_x; its previous contents are discarded.
-  //
-  // ordinate_index is this ordinate's position in
-  // input_deck.angular_quadrature.mu -- needed to look up its boundary
-  // condition, since BoundaryConditions is indexed by position, not by mu's
-  // value.
-  //
-  // upwind_angular_flux is a view of the previous group's (group - 1)
-  // solved angular flux for this same ordinate -- not the whole Field. For
-  // group == 0 there is no previous group; pass a view over an all-zero
-  // Field row rather than special-casing here, since the multiplying
-  // stopping-power term is finite either way.
-  //
-  // scalar_flux is the current best-known scalar flux for every group, used
-  // for the scattering sum's source groups other than `group` itself.
-  // latest_scalar_flux is group `group`'s own scalar flux specifically --
-  // it may differ from scalar_flux[group], since that hasn't been updated
-  // with the best-available value yet (this group is still being solved)
-  // while latest_scalar_flux has.
-  //
-  // external_source is this ordinate/group's fixed source, in the same
-  // local (cell, corner) layout as b itself (size 4*n_x).
+
+
+  /// @brief Construct RHS vector for high-order transport equation
+  ///
+  /// Computes scattering source from scalar_flux and latest_scalar_flux, computes CSD source from upwind_angular_flux, then combines scattering + CSD + external_source. Writes to b.
+  ///
+  /// @param &b Reference to the Eigen vector where the term is to be written. Resizes to 4*n_x if necessary.
+  /// @param mu Cosine of the direction of travel for this ordinate. Used to incorporate incoming flux boundary conditions (i.e. BC only added for mu > 0 on left face, mu < 0 on right face).
+  /// @param group Energy group. CSD source is zero for group=0; used for explicit in-group scattering treatment (use the most recent flux for this group).
+  /// @param ordinate_index this ordinate's position in input_deck.angular_quadrature.mu, needed to look up its boundary condition.
+  /// @param upwind_angular_flux Angular flux for previous group (or pass vector of zeros for group = 1), used to compute CSD source
+  /// @param scalar_flux Scalar flux for all groups (only upwind are used), used to compute scattering source
+  /// @param latest_scalar_flux Most recent value of scalar flux, used to calculate within-group scattering
+  /// @param external_source Fixed source for this mu.
   void constructTransportLinear(Eigen::VectorXd& b, double mu, int group, int ordinate_index,
                                 Field::ConstRow upwind_angular_flux, const Field& scalar_flux,
                                 Field::ConstRow latest_scalar_flux,
@@ -147,15 +127,22 @@ protected:
                                     const Eigen::VectorXd& b) const;
 };
 
-// Solves the high-order transport equation by source iteration (repeated
-// sweeps to convergence).
+/// @class SourceIterationSolver
+/// @brief Transport solver with "naive" source iteration method; No projection, no acceleration
+/// @details A baseline method with no acceleration, preconditioning, or projection. Solves
+/// transport equation with intial source guess, calculate scattering source, repeat. Exists to
+/// compare other methods to
 class SourceIterationSolver : public Solver {
 public:
   using Solver::Solver;
 };
 
-// Solves the transport equation via the Second Moment Method: alternates
-// high-order sweeps with a low-order solve to accelerate convergence.
+/// @class SecondMomentSolver
+/// @brief Transport solver using the Second Moment method
+/// @details Projective method; solves the coupled equations for angular flux, scalar flux, and
+/// current. Iterates between solution of the transport (high-order) equation, then calculates
+/// scalar flux and current using closure terms (calculated from angular flux), then uses scalar
+/// flux to calculate the source for the next transport sweep.
 class SecondMomentSolver : public Solver {
 public:
   using Solver::Solver;
