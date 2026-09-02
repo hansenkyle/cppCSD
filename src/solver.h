@@ -78,19 +78,25 @@ protected:
   /// @param group Energy group. Group must be in [0, G).
   void constructTransportBilinear(Eigen::SparseMatrix<double>& A, double mu, int group) const;
 
-
-
   /// @brief Construct RHS vector for high-order transport equation
   ///
-  /// Computes scattering source from scalar_flux and latest_scalar_flux, computes CSD source from upwind_angular_flux, then combines scattering + CSD + external_source. Writes to b.
+  /// Computes scattering source from scalar_flux and latest_scalar_flux, computes CSD source from
+  /// upwind_angular_flux, then combines scattering + CSD + external_source. Writes to b.
   ///
-  /// @param &b Reference to the Eigen vector where the term is to be written. Resizes to 4*n_x if necessary.
-  /// @param mu Cosine of the direction of travel for this ordinate. Used to incorporate incoming flux boundary conditions (i.e. BC only added for mu > 0 on left face, mu < 0 on right face).
-  /// @param group Energy group. CSD source is zero for group=0; used for explicit in-group scattering treatment (use the most recent flux for this group).
-  /// @param ordinate_index this ordinate's position in input_deck.angular_quadrature.mu, needed to look up its boundary condition.
-  /// @param upwind_angular_flux Angular flux for previous group (or pass vector of zeros for group = 1), used to compute CSD source
-  /// @param scalar_flux Scalar flux for all groups (only upwind are used), used to compute scattering source
-  /// @param latest_scalar_flux Most recent value of scalar flux, used to calculate within-group scattering
+  /// @param &b Reference to the Eigen vector where the term is to be written. Resizes to 4*n_x if
+  /// necessary.
+  /// @param mu Cosine of the direction of travel for this ordinate. Used to incorporate incoming
+  /// flux boundary conditions (i.e. BC only added for mu > 0 on left face, mu < 0 on right face).
+  /// @param group Energy group. CSD source is zero for group=0; used for explicit in-group
+  /// scattering treatment (use the most recent flux for this group).
+  /// @param ordinate_index this ordinate's position in input_deck.angular_quadrature.mu, needed to
+  /// look up its boundary condition.
+  /// @param upwind_angular_flux Angular flux for previous group (or pass vector of zeros for group
+  /// = 1), used to compute CSD source
+  /// @param scalar_flux Scalar flux for all groups (only upwind are used), used to compute
+  /// scattering source
+  /// @param latest_scalar_flux Most recent value of scalar flux, used to calculate within-group
+  /// scattering
   /// @param external_source Fixed source for this mu.
   void constructTransportLinear(Eigen::VectorXd& b, double mu, int group, int ordinate_index,
                                 Field::ConstRow upwind_angular_flux, const Field& scalar_flux,
