@@ -386,3 +386,17 @@ void Solver::sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eig
   constructTransportBilinear(A, mu, group);
   solveLinearSystem(A, x, b);
 }
+
+void Solver::solveTransport(Eigen::VectorXd& x,Eigen::SparseMatrix<double>& A, const std::vector<Eigen::VectorXd>&, int group) const {
+}
+
+
+
+
+
+
+
+
+
+
+
