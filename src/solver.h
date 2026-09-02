@@ -45,35 +45,27 @@ public:
   const LinearSolverKind linear_solver_kind;
 
 protected:
-  // Performs one high-order transport sweep over every ordinate for a
-  // single group -- the outer loop over all groups (sequential, high
-  // energy to low) is not this method's job; it's expected to live in each
-  // derived class's own solve loop, calling sweep() once per group.
-  //
-  // scalar_flux (all groups) has group `group`'s row zeroed and then
-  // accumulated into (quadrature-weighted sum over ordinates) as each
-  // ordinate is solved. angular_flux (one Field per ordinate, all groups
-  // each) has group `group`'s row of every ordinate's Field overwritten
-  // with that ordinate's freshly-solved result; group `group - 1`'s row is
-  // read (for CSD's upwind term) -- for group == 0, where there's no
-  // previous group, an all-zero view is substituted internally rather than
-  // requiring the caller to supply one.
-  //
-  // latest_scalar_flux and external_source are passed straight through to
-  // constructTransportLinear (see its own doc comment) for every ordinate;
-  // external_source is indexed by ordinate, matching angular_flux.
-  void sweep(int group, Field& scalar_flux, std::vector<Field>& angular_flux,
-             Field::ConstRow latest_scalar_flux,
-             const std::vector<Eigen::VectorXd>& external_source) const;
+  /// @brief Solve the high-order transport equation for a given source b.
+  ///
+  /// Builds the transport bilinear form matrix in A (over-writes current value), then use linear
+  /// solver declared at compile-time to solve the system.
+  ///
+  /// @param &x Vector to write result to (will over-write)
+  /// @param &A Reference to Eigen Sparse matrix at which to build the bilinear form
+  /// @param &b source vector; must be pre-defined (i.e. by calling constructTransportLinear)
+  /// @param mu Angle cosine for this ordinate; required to implement boundary conditions
+  /// @param group Group index, used to index cross sections. Must be [0, G).
+  void sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b,
+             double mu, int group);
 
   /// @brief Construct LHS matrix for high-order transport equation
   ///
-  /// Builds the high-order transport equation's LHS (bilinear form) for a single ordinate mu and a
-  /// single energy group. Each cell is coupled to the spatially upwind cell (in the -mu direction)
-  /// by the advection operator.
+  /// Builds the high-order transport equation's LHS (bilinear form) for a single ordinate mu
+  /// and a single energy group. Each cell is coupled to the spatially upwind cell (in the -mu
+  /// direction) by the advection operator.
   ///
-  /// @param &A Reference to the matrix to write the system to. A will be resized if necessary to
-  /// 4*n_x by 4*n_x, where n_x is the number of spatiall cells (from input_deck.mesh).
+  /// @param &A Reference to the matrix to write the system to. A will be resized if necessary
+  /// to 4*n_x by 4*n_x, where n_x is the number of spatiall cells (from input_deck.mesh).
   /// @param mu Cosine of the direction of travel for this ordinate
   /// @param group Energy group. Group must be in [0, G).
   void constructTransportBilinear(Eigen::SparseMatrix<double>& A, double mu, int group) const;
