@@ -58,8 +58,10 @@ protected:
   void sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b,
              double mu, int group) const;
 
-  // Solve transport equation for 1 group, fixed source. A loop over all angles m in angular quadrature. b is source, must be m by 4n_x. (rectangular). throws if b is the wrong size.
-  void solveTransport(Eigen::VectorXd& x,Eigen::SparseMatrix<double>& A, const std::vector<Eigen::VectorXd>& b, int group) const;
+  // Solve transport equation for 1 group, fixed source. A loop over all angles m in angular
+  // quadrature. b is source, must be m by 4n_x. (rectangular). throws if b is the wrong size.
+  void solveTransport(std::vector<Eigen::VectorXd>& x, Eigen::SparseMatrix<double>& A,
+                      const std::vector<Eigen::VectorXd>& b, int group) const;
 
   /// @brief Construct LHS matrix for high-order transport equation
   ///

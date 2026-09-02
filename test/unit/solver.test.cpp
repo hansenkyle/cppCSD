@@ -30,6 +30,7 @@ public:
   using Solver::constructTransportLinear;
   using Solver::solveLinearSystem;
   using Solver::Solver;
+  using Solver::solveTransport;
   using Solver::sweep;
 };
 
@@ -710,5 +711,86 @@ TEST_SUITE("Solver::sweep") {
 
     CHECK_THROWS_AS(solver.sweep(x, A, b, 0.5, -1), std::out_of_range);
     CHECK_THROWS_AS(solver.sweep(x, A, b, 0.5, 2), std::out_of_range);
+  }
+}
+
+TEST_SUITE("Solver::solveTransport") {
+  // Builds on makeInputDeck() (3-cell, 2-group), adding the angular
+  // quadrature solveTransport needs but makeInputDeck() doesn't set.
+  InputDeck makeTransportInputDeck() {
+    InputDeck deck = makeInputDeck();
+    deck.setAngularQuadrature(AngularQuadrature({-0.5, 0.5}, {1.0, 1.0}));
+    return deck;
+  }
+
+  TEST_CASE("sweeps every ordinate in the quadrature, matching independent sweep() calls") {
+    InputDeck deck = makeTransportInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    const int group = 1;
+    const int size = 4 * deck.mesh->n_x;
+    const std::vector<Eigen::VectorXd> b = {
+        Eigen::VectorXd::LinSpaced(size, 1.0, size),
+        Eigen::VectorXd::LinSpaced(size, size + 1.0, 2.0 * size),
+    };
+
+    Eigen::SparseMatrix<double> A;
+    std::vector<Eigen::VectorXd> x;
+    solver.solveTransport(x, A, b, group);
+
+    const AngularQuadrature& quadrature = *deck.angular_quadrature;
+    REQUIRE(x.size() == quadrature.mu.size());
+    for (std::size_t m = 0; m < quadrature.mu.size(); ++m) {
+      Eigen::SparseMatrix<double> expected_A;
+      solver.constructTransportBilinear(expected_A, quadrature.mu[m], group);
+      const Eigen::VectorXd expected_x = solver.solveLinearSystem(expected_A, b[m]);
+
+      REQUIRE(x[m].size() == expected_x.size());
+      for (int i = 0; i < x[m].size(); ++i) {
+        CHECK(x[m](i) == doctest::Approx(expected_x(i)));
+      }
+    }
+  }
+
+  TEST_CASE("rejects an out-of-range group") {
+    InputDeck deck = makeTransportInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    const int size = 4 * deck.mesh->n_x;
+    const std::vector<Eigen::VectorXd> b(2, Eigen::VectorXd::Zero(size));
+
+    Eigen::SparseMatrix<double> A;
+    std::vector<Eigen::VectorXd> x;
+    CHECK_THROWS_AS(solver.solveTransport(x, A, b, -1), std::out_of_range);
+    CHECK_THROWS_AS(solver.solveTransport(x, A, b, 2), std::out_of_range);
+  }
+
+  TEST_CASE("rejects b with the wrong number of ordinates") {
+    InputDeck deck = makeTransportInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    const int size = 4 * deck.mesh->n_x;
+    const std::vector<Eigen::VectorXd> wrong_b(1, Eigen::VectorXd::Zero(size)); // should be 2
+
+    Eigen::SparseMatrix<double> A;
+    std::vector<Eigen::VectorXd> x;
+    CHECK_THROWS_AS(solver.solveTransport(x, A, wrong_b, 0), std::invalid_argument);
+  }
+
+  TEST_CASE("rejects a b entry of the wrong size") {
+    InputDeck deck = makeTransportInputDeck();
+    const FESpace fe_space = makeFESpace();
+    const TestSolver solver(deck, fe_space);
+
+    const int size = 4 * deck.mesh->n_x;
+    std::vector<Eigen::VectorXd> wrong_b(2, Eigen::VectorXd::Zero(size));
+    wrong_b[1] = Eigen::VectorXd::Zero(size - 1);
+
+    Eigen::SparseMatrix<double> A;
+    std::vector<Eigen::VectorXd> x;
+    CHECK_THROWS_AS(solver.solveTransport(x, A, wrong_b, 0), std::invalid_argument);
   }
 }

@@ -387,16 +387,29 @@ void Solver::sweep(Eigen::VectorXd& x, Eigen::SparseMatrix<double>& A, const Eig
   solveLinearSystem(A, x, b);
 }
 
-void Solver::solveTransport(Eigen::VectorXd& x,Eigen::SparseMatrix<double>& A, const std::vector<Eigen::VectorXd>&, int group) const {
+void Solver::solveTransport(std::vector<Eigen::VectorXd>& x, Eigen::SparseMatrix<double>& A,
+                            const std::vector<Eigen::VectorXd>& b, int group) const {
+  const Mesh& mesh = *input_deck.mesh;
+  const AngularQuadrature& quadrature = requireAngularQuadrature();
+
+  if (group < 0 || group >= mesh.G) {
+    throw std::out_of_range("Solver::solveTransport: group index out of range");
+  }
+
+  const int num_ordinates = static_cast<int>(quadrature.mu.size());
+  if (static_cast<int>(b.size()) != num_ordinates) {
+    throw std::invalid_argument("Solver::solveTransport: b has the wrong number of ordinates");
+  }
+
+  const int n_x = mesh.n_x;
+  for (const Eigen::VectorXd& b_m : b) {
+    if (b_m.size() != 4 * n_x) {
+      throw std::invalid_argument("Solver::solveTransport: b has an entry of the wrong size");
+    }
+  }
+
+  x.resize(num_ordinates);
+  for (int m = 0; m < num_ordinates; ++m) {
+    sweep(x[m], A, b[m], quadrature.mu[m], group);
+  }
 }
-
-
-
-
-
-
-
-
-
-
-
