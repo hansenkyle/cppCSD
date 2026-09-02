@@ -144,6 +144,9 @@ protected:
 struct SourceIterationParams {
   int max_iters = 0;
   double epsilon = 0.0;
+
+  int eigen_max_iters = 0;
+  double eigen_tol = 0.0;
 };
 
 /// @class SourceIterationSolver
@@ -177,6 +180,9 @@ struct SecondMomentParams {
   double outer_epsilon = 0.0;
   int inner_max_iters = 0;
   double inner_epsilon = 0.0;
+
+  int eigen_max_iters = 0;
+  double eigen_tol = 0.0;
 };
 
 /// @class SecondMomentSolver
