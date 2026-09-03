@@ -5,10 +5,27 @@
 // Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 // or without modification are permitted provided that the terms of the license are met.
 
+#include <optional>
+
+#include "cli.h"
+#include "input_deck.h"
 #include "logger.h"
 
-int main() {
+int main(int argc, char** argv) {
+  int exit_code = 0;
+  const std::optional<std::filesystem::path> yaml_path = parseArgs(argc, argv, exit_code);
+  if (!yaml_path.has_value()) {
+    return exit_code;
+  }
+
   Logger::configure("ldcsd.log");
-  LDCSD_LOG_INFO("ldcsd starting");
+  LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
+
+  InputDeck deck;
+  if (deck.read(*yaml_path) != 0) {
+    // read() has already logged the specific failure.
+    return 1;
+  }
+
   return 0;
 }

@@ -57,6 +57,17 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(yaml-cpp)
 unset(CMAKE_POLICY_VERSION_MINIMUM)
 
+# CLI11, used by main to parse command-line arguments. Header-only; only
+# cli.cpp's implementation includes it (cli.h doesn't), so it's linked
+# PRIVATE below rather than alongside ldcsd_core's other, publicly-exposed
+# dependencies.
+FetchContent_Declare(
+    CLI11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG        v2.7.2
+)
+FetchContent_MakeAvailable(CLI11)
+
 # --- Core library, included by main and tests
 add_library(ldcsd_core STATIC
     src/input_deck.cpp
@@ -68,9 +79,11 @@ add_library(ldcsd_core STATIC
     src/output.cpp
     src/solver.cpp
     src/residual.cpp
+    src/cli.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
+target_link_libraries(ldcsd_core PRIVATE CLI11::CLI11)
 if(LDCSD_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(ldcsd_core PUBLIC LDCSD_ENABLE_DEBUG_LOGGING)
 endif()
@@ -107,7 +120,8 @@ if(LDCSD_BUILD_TESTS)
         test/unit/mesh.test.cpp
         test/unit/cross_section.test.cpp
         test/unit/output.test.cpp
-        test/unit/solver.test.cpp)
+        test/unit/solver.test.cpp
+        test/unit/cli.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
