@@ -1,5 +1,7 @@
 # Sample ldcsd input deck used by the InputDeck unit tests.
 
+method: source_iteration
+
 spatial_mesh: [0.0, 1.0, 2.0, 3.0]
 
 regions:

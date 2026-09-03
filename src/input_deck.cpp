@@ -8,12 +8,54 @@
 #include "input_deck.h"
 
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <yaml-cpp/yaml.h>
 
 #include "logger.h"
 
 namespace {
+
+// The registered set of valid "method" names -- the single place a new
+// Solver subclass needs to be added (alongside its SolverMethod enumerator,
+// input_deck.h) for InputDeck to recognize it. Order doesn't matter; used
+// for both name -> enum lookup and, in reverse, for logging/error messages.
+const std::vector<std::pair<std::string, SolverMethod>>& solverMethods() {
+  static const std::vector<std::pair<std::string, SolverMethod>> methods = {
+      {"source_iteration", SolverMethod::SourceIteration},
+      {"second_moment", SolverMethod::SecondMoment},
+  };
+  return methods;
+}
+
+SolverMethod parseSolverMethod(const YAML::Node& node) {
+  const std::string name = node.as<std::string>();
+  for (const auto& [candidate_name, method] : solverMethods()) {
+    if (name == candidate_name) {
+      return method;
+    }
+  }
+
+  std::string valid_names;
+  for (const auto& [candidate_name, method] : solverMethods()) {
+    if (!valid_names.empty()) {
+      valid_names += ", ";
+    }
+    valid_names += candidate_name;
+  }
+  throw std::runtime_error("unrecognized 'method': '" + name + "' (must be one of: " + valid_names +
+                           ")");
+}
+
+std::string solverMethodName(SolverMethod method) {
+  for (const auto& [candidate_name, candidate_method] : solverMethods()) {
+    if (candidate_method == method) {
+      return candidate_name;
+    }
+  }
+  return "unknown"; // unreachable as long as solverMethods() covers every enumerator
+}
 
 YAML::Node requireNode(const YAML::Node& parent, const std::string& key) {
   const YAML::Node node = parent[key];
@@ -274,6 +316,8 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
                                              static_cast<int>(angular_quadrature->mu.size()),
                                              mesh->G));
 
+    setSolverMethod(parseSolverMethod(requireNode(root, "method")));
+
     const YAML::Node convergence_node = requireNode(root, "convergence");
     ConvergenceCriteria new_convergence;
     new_convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
@@ -288,6 +332,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh->n_x) +
                  " cells, " + std::to_string(mesh->G) + " groups, " +
                  std::to_string(materials.size()) + " materials, " +
-                 std::to_string(angular_quadrature->mu.size()) + " ordinates");
+                 std::to_string(angular_quadrature->mu.size()) +
+                 " ordinates, method: " + solverMethodName(*solver_method));
   return 0;
 }

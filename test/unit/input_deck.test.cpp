@@ -34,6 +34,9 @@ TEST_SUITE("InputDeck") {
     InputDeck deck;
     CHECK(deck.read(sampleInputPath()) == 0);
 
+    REQUIRE(deck.solver_method.has_value());
+    CHECK(*deck.solver_method == SolverMethod::SourceIteration);
+
     REQUIRE(deck.mesh.has_value());
     CHECK(deck.mesh->x_boundary == std::vector<double>{0.0, 1.0, 2.0, 3.0});
     CHECK(deck.region_materials == std::vector<std::string>{"water", "water", "lead"});
@@ -335,6 +338,104 @@ convergence:
     CHECK(deck.read(path) == 1);
   }
 
+  TEST_CASE("accepts second_moment as a method") {
+    const auto path = writeTempYaml(R"(
+method: second_moment
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 0);
+
+    REQUIRE(deck.solver_method.has_value());
+    CHECK(*deck.solver_method == SolverMethod::SecondMoment);
+  }
+
+  TEST_CASE("rejects an input file missing 'method'") {
+    const auto path = writeTempYaml(R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
+  TEST_CASE("rejects an unrecognized 'method' value") {
+    const auto path = writeTempYaml(R"(
+method: not_a_real_method
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: [{from: 0, to: 0, value: 1.0}]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  left:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+  right:
+    down: [[0.0], [0.0]]
+    up: [[0.0], [0.0]]
+convergence:
+  max_iters: 1
+  epsilon: 1.0
+)");
+    InputDeck deck;
+    CHECK(deck.read(path) == 1);
+  }
+
   TEST_CASE("rejects a non-ascending angular_quadrature.mu") {
     const auto path = writeTempYaml(R"(
 spatial_mesh: [0.0, 1.0]
@@ -399,6 +500,7 @@ convergence:
 
   TEST_CASE("normalizes angular_quadrature.w to sum to 2") {
     const auto path = writeTempYaml(R"(
+method: source_iteration
 spatial_mesh: [0.0, 1.0]
 regions:
   materials: [water]
@@ -646,5 +748,13 @@ TEST_SUITE("InputDeck setters") {
 
     CHECK(deck.convergence.max_iters == 42);
     CHECK(deck.convergence.epsilon == doctest::Approx(1.0e-6));
+  }
+
+  TEST_CASE("setSolverMethod replaces solver_method") {
+    InputDeck deck;
+    deck.setSolverMethod(SolverMethod::SecondMoment);
+
+    REQUIRE(deck.solver_method.has_value());
+    CHECK(*deck.solver_method == SolverMethod::SecondMoment);
   }
 }
