@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "cli.h"
+#include "input_deck.h"
 #include "logger.h"
 
 int main(int argc, char** argv) {
@@ -19,5 +20,12 @@ int main(int argc, char** argv) {
 
   Logger::configure("ldcsd.log");
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
+
+  InputDeck deck;
+  if (deck.read(*yaml_path) != 0) {
+    // read() has already logged the specific failure.
+    return 1;
+  }
+
   return 0;
 }
