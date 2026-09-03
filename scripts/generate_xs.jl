@@ -2,47 +2,64 @@
 # generate_xs.jl — Macroscopic multigroup cross sections + stopping
 #                   powers for cppCSD, via Radiant.jl
 #
-# Builds electron cross-section data from one or more Radiant Materials,
-# writes them to YAML using format:
+# Builds electron cross-section data from one or more Radiant Materials
+# and writes them to a CSV intended for later automated conversion to
+# cppCSD's YAML input format (that conversion is a separate script, not
+# this one). Layout, one block per material after a shared header:
 #
-#   materials:
-#     <name>:
-#       sigma_t: [...]                          # size Ng
-#       sigma_s: [...]                          # size Ng
-#       stopping_power:
-#         group_average: [...]                  # size Ng
-#         group_boundary: [...]                 # size Ng + 1
+#   # metadata comment lines (generator, timestamp, particle,
+#   # group structure, material list)
+#   energy_mesh_MeV
+#   <Ng+1 ascending group boundary values>
+#   material,<name>
+#   composition
+#   <element>,<weight fraction>
+#   ...
+#   stopping_power_boundary_MeV_cm
+#   <Ng+1 values, at group boundaries>
+#   group,sigma_t_cm-1,stopping_power_average_MeV_cm
+#   <Ng rows, one per group>
+#   scattering_matrix_cm-1 (rows=from-group, cols=to-group, l=0 moment)
+#   from\to,1,2,...,Ng
+#   <Ng rows, one per from-group; zero entries left blank so the
+#   sparsity structure of the matrix stays visible>
 #
-# sigma_t and the stopping powers are the total macroscopic
-# cross-section / stopping power across all interactions below.
-
-# sigma_s is the first (l=0, isotropic) Legendre moment of the
-# in-group scattering matrix -- i.e. the diagonal of Radiant's
-# combined group-to-group scattering data, dominated by large-angle
-# elastic (Mott) scattering since Elastic_Collision's default angular
-# Fokker-Planck decomposition already strips the small-angle part out
-# into the (unused, here) momentum-transfer term.
+# The scattering matrix is always written in full (Ng x Ng), not just
+# its diagonal -- it is not assumed to be sparse or near-diagonal, even
+# though in practice only in-group scattering plus a small downscatter
+# band tends to be nonzero.
 # =====================================================================
 using Radiant
 using Printf
+using Dates
 
 # --------------------------- USER INPUT -----------------------------
-# One entry per material. `name` becomes the YAML key and must match
-# the material names used in the deck's `regions.materials` list.
+# One entry per material. `name` becomes the CSV material key and must
+# eventually match the material names used in the deck's
+# `regions.materials` list once converted to YAML.
 materials_input = [
     (name = "water", density = 1.0, elements = ["H", "O"], wfractions = [0.111894, 0.888106]),
 ]
 
-Ng         = 20                    # number of energy groups
-E_max      = 10.0                  # midpoint energy of highest group [MeV]
-E_cut      = 0.001                 # cutoff energy [MeV]
-group_type = "log"                 # "log" or "linear"
+Ng         = 20                    # number of energy groups (ignored if custom_energy_bounds is set below)
+E_max      = 10.0                  # midpoint energy of highest group [MeV] (ignored if custom_energy_bounds is set)
+E_cut      = 0.001                 # cutoff energy [MeV] (ignored if custom_energy_bounds is set)
+group_type = "log"                 # "log" or "linear" (ignored if custom_energy_bounds is set)
+
+# --- Custom energy group boundaries (optional) -------------------------
+# To use group boundaries that aren't a plain log/linear sweep, list them
+# here explicitly instead: Ng+1 boundary energies [MeV], either ascending
+# or descending (Radiant accepts either). This OVERRIDES Ng/E_max/E_cut/
+# group_type above -- Ng is derived from this vector's length instead.
+# Leave this empty ([]) to keep using the log/linear structure above.
+custom_energy_bounds = Float64[]   # e.g. Float64[0.001, 0.01, 0.1, 1.0, 10.0]
+# -------------------------------------------------------------------------
 
 legendre_order = 1                 # Legendre truncation order used internally by
                                     # Radiant's elastic-scattering decomposition;
                                     # only the l=0 moment is written out.
 
-output_name = "water_20g.yaml"  # output filename, written under scripts/xs_data/
+output_name = "water_20g.csv"  # output filename, written under scripts/xs_data/
 # ----------------------------------------------------------------------
 
 output_dir = joinpath(@__DIR__, "xs_data")
@@ -72,11 +89,18 @@ for m in materials_input
 end
 
 # --- Build cross sections ---
+using_custom_bounds = !isempty(custom_energy_bounds)
+
 cs = Radiant.Cross_Sections()
 cs.set_source("physics-models")
 cs.set_materials(material_list)
 cs.set_particles([particle])
-cs.set_group_structure(group_type, Ng, E_max, E_cut)
+if using_custom_bounds
+    cs.set_group_structure(custom_energy_bounds)
+    Ng = length(custom_energy_bounds) - 1
+else
+    cs.set_group_structure(group_type, Ng, E_max, E_cut)
+end
 cs.set_interactions(interaction_list)
 cs.set_legendre_order(legendre_order)
 cs.build()
@@ -84,40 +108,60 @@ cs.build()
 # --- Pull data ---
 # Radiant numbers groups from the highest energy down to the lowest (group 1
 # = E_max), but Parser::read requires a strictly ascending energy_mesh, so
-# every per-group quantity below is reversed to match.
+# every per-group quantity below is reversed to match -- the scattering
+# matrix is reversed along both axes for the same reason.
 Eb = reverse(cs.get_energy_boundaries(particle))                 # MeV, size Ng+1, ascending
 Σt = cs.get_total(particle)                                      # [Ng, Nmat], cm^-1
 Σs_moments = cs.get_scattering(particle, particle, legendre_order) # [Nmat, Ng, Ng, legendre_order+1]
 S  = cs.get_stopping_powers(particle)                             # [Ng, Nmat], MeV/cm
 Sb = cs.get_boundary_stopping_powers(particle)                    # [Ng+1, Nmat], MeV/cm
 
-# --- Write YAML ---
-format_floatvector(v) = "[" * join([@sprintf "%.6e" x for x in v], ", ") * "]"
-
-format_stringvector(v) = "[" * join(v, ", ") * "]"
+# --- Write CSV ---
+format_floatrow(v) = join([@sprintf "%.6e" x for x in v], ",")
 
 open(outfile, "w") do io
     println(io, "# Generated by scripts/generate_xs.jl (Radiant.jl)")
+    println(io, "# Generated: ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
     println(io, "# Particle: electron")
-    println(io, "# Group structure: ", group_type, ", Ng=", Ng,
-                 ", E_max=", E_max, " MeV, E_cut=", E_cut, " MeV")
+    if using_custom_bounds
+        println(io, "# Group structure: custom boundaries, Ng=", Ng)
+    else
+        println(io, "# Group structure: ", group_type, ", Ng=", Ng,
+                     ", E_max=", E_max, " MeV, E_cut=", E_cut, " MeV")
+    end
+    println(io, "# Materials: ", join([m.name for m in materials_input], ", "))
     println(io, "#")
-    println(io, "energy_mesh: ", format_floatvector(Eb))
-    println(io)
-    println(io, "materials:")
+    println(io, "energy_mesh_MeV")
+    println(io, format_floatrow(Eb))
+
     for (imat, m) in enumerate(materials_input)
         sigma_t = reverse(Σt[:, imat])
-        sigma_s = reverse([Σs_moments[imat, g, g, 1] for g in 1:Ng])
         stopping_power_average = reverse(S[:, imat])
         stopping_power_boundary = reverse(Sb[:, imat])
+        wfractions_norm = m.wfractions ./ sum(m.wfractions)
 
-        println(io, "  ", m.name, ":")
-        println(io, "  # ", format_stringvector(m.elements), format_floatvector(m.wfractions))
-        println(io, "    sigma_t: ", format_floatvector(sigma_t))
-        println(io, "    sigma_s: ", format_floatvector(sigma_s))
-        println(io, "    stopping_power:")
-        println(io, "      group_average: ", format_floatvector(stopping_power_average))
-        println(io, "      group_boundary: ", format_floatvector(stopping_power_boundary))
+        # Full l=0 scattering matrix for this material, reversed along both
+        # axes to match the ascending group order used everywhere else.
+        Σs_full = [Σs_moments[imat, Ng + 1 - f, Ng + 1 - t, 1] for f in 1:Ng, t in 1:Ng]
+
+        println(io, "#")
+        println(io, "material,", m.name)
+        println(io, "composition")
+        for (el, f) in zip(m.elements, wfractions_norm)
+            println(io, el, ",", @sprintf("%.6e", f))
+        end
+        println(io, "stopping_power_boundary_MeV_cm")
+        println(io, format_floatrow(stopping_power_boundary))
+        println(io, "group,sigma_t_cm-1,stopping_power_average_MeV_cm")
+        for g in 1:Ng
+            println(io, g, ",", @sprintf("%.6e", sigma_t[g]), ",", @sprintf("%.6e", stopping_power_average[g]))
+        end
+        println(io, "scattering_matrix_cm-1 (rows=from-group, cols=to-group, l=0 moment)")
+        println(io, "from\\to,", join(1:Ng, ","))
+        for f in 1:Ng
+            row = [Σs_full[f, t] == 0.0 ? "" : @sprintf("%.6e", Σs_full[f, t]) for t in 1:Ng]
+            println(io, f, ",", join(row, ","))
+        end
     end
 end
 
