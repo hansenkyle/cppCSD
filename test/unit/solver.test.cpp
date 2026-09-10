@@ -14,7 +14,7 @@ CrossSection makeCrossSection(const Mesh& mesh) {
                       {"water", "lead"});
 }
 
-FESpace makeFESpace() { return FESpace(1, 1); }
+FESpace makeFESpace() { return FESpace(); }
 
 // Exposes Solver's protected members for testing.
 class TestSolver : public Solver {
@@ -85,7 +85,7 @@ TEST_SUITE("Solver") {
     const Solver solver(mesh, xs, fe_space);
 
     CHECK(&solver.fe_space != &fe_space);
-    CHECK(solver.fe_space.spatial_degree == fe_space.spatial_degree);
+    CHECK(solver.fe_space.mass_matrix_kind == fe_space.mass_matrix_kind);
     CHECK(solver.corner_order == AxisOrder::XMajor);
   }
 
@@ -179,8 +179,8 @@ TEST_SUITE("Solver::constructTransportBilinear") {
     const double v2 = dx * ((1.0 / 3.0) * xs_total + (1.0 / (2.0 * dE)) * stop_power);
     const double v3 =
         dx * ((1.0 / 3.0) * xs_total + (1.0 / dE) * (-stop_power / 2.0 + stop_power_bound_down));
-    const double m00 = fe_space.M(0, 0);
-    const double m01 = fe_space.M(0, 1);
+    const double m00 = fe_space.M.left.left;
+    const double m01 = fe_space.M.left.right;
 
     const int row_left_up = 0 * 4 + cornerSlot(Corner::LeftUp, solver.corner_order);
     const int col_left_down = 0 * 4 + cornerSlot(Corner::LeftDown, solver.corner_order);

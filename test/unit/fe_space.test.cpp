@@ -12,55 +12,40 @@
 #include <doctest.h>
 
 TEST_SUITE("FESpace") {
-  TEST_CASE("stores the spatial and energy degrees it's constructed with") {
-    const FESpace space(1, 2);
-
-    CHECK(space.spatial_degree == 1);
-    CHECK(space.energy_degree == 2);
-  }
-
-  TEST_CASE("rejects a negative spatial degree") {
-    CHECK_THROWS_AS(FESpace(-1, 0), std::invalid_argument);
-  }
-
-  TEST_CASE("rejects a negative energy degree") {
-    CHECK_THROWS_AS(FESpace(0, -1), std::invalid_argument);
-  }
-
   TEST_CASE("defaults to a consistent (unlumped) mass matrix") {
-    const FESpace space(1, 1);
+    const FESpace space;
 
     CHECK(space.mass_matrix_kind == MassMatrixKind::Consistent);
-    CHECK(space.M(0, 0) == doctest::Approx(1.0 / 3.0));
-    CHECK(space.M(0, 1) == doctest::Approx(1.0 / 6.0));
-    CHECK(space.M(1, 0) == doctest::Approx(1.0 / 6.0));
-    CHECK(space.M(1, 1) == doctest::Approx(1.0 / 3.0));
+    CHECK(space.M.left.left == doctest::Approx(1.0 / 3.0));
+    CHECK(space.M.left.right == doctest::Approx(1.0 / 6.0));
+    CHECK(space.M.right.left == doctest::Approx(1.0 / 6.0));
+    CHECK(space.M.right.right == doctest::Approx(1.0 / 3.0));
   }
 
   TEST_CASE("uses the lumped mass matrix when requested") {
-    const FESpace space(1, 1, MassMatrixKind::Lumped);
+    const FESpace space(MassMatrixKind::Lumped);
 
     CHECK(space.mass_matrix_kind == MassMatrixKind::Lumped);
-    CHECK(space.M(0, 0) == doctest::Approx(0.5));
-    CHECK(space.M(0, 1) == doctest::Approx(0.0));
-    CHECK(space.M(1, 0) == doctest::Approx(0.0));
-    CHECK(space.M(1, 1) == doctest::Approx(0.5));
+    CHECK(space.M.left.left == doctest::Approx(0.5));
+    CHECK(space.M.left.right == doctest::Approx(0.0));
+    CHECK(space.M.right.left == doctest::Approx(0.0));
+    CHECK(space.M.right.right == doctest::Approx(0.5));
   }
 
   TEST_CASE("L and Lb are fixed regardless of mass_matrix_kind") {
-    const FESpace consistent(1, 1, MassMatrixKind::Consistent);
-    const FESpace lumped(1, 1, MassMatrixKind::Lumped);
+    const FESpace consistent(MassMatrixKind::Consistent);
+    const FESpace lumped(MassMatrixKind::Lumped);
 
     for (const FESpace& space : {consistent, lumped}) {
-      CHECK(space.L(0, 0) == doctest::Approx(0.5));
-      CHECK(space.L(0, 1) == doctest::Approx(0.5));
-      CHECK(space.L(1, 0) == doctest::Approx(-0.5));
-      CHECK(space.L(1, 1) == doctest::Approx(-0.5));
+      CHECK(space.L.left.left == doctest::Approx(0.5));
+      CHECK(space.L.left.right == doctest::Approx(0.5));
+      CHECK(space.L.right.left == doctest::Approx(-0.5));
+      CHECK(space.L.right.right == doctest::Approx(-0.5));
 
-      CHECK(space.Lb(0, 0) == doctest::Approx(-1.0));
-      CHECK(space.Lb(0, 1) == doctest::Approx(0.0));
-      CHECK(space.Lb(1, 0) == doctest::Approx(0.0));
-      CHECK(space.Lb(1, 1) == doctest::Approx(1.0));
+      CHECK(space.Lb.left.left == doctest::Approx(-1.0));
+      CHECK(space.Lb.left.right == doctest::Approx(0.0));
+      CHECK(space.Lb.right.left == doctest::Approx(0.0));
+      CHECK(space.Lb.right.right == doctest::Approx(1.0));
     }
   }
 }

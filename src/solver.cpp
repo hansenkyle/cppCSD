@@ -56,10 +56,10 @@ void Solver::constructTransportBilinear(Eigen::SparseMatrix<double>& A, double m
   // row g+1.
   const std::vector<double>& stop_power_bound_down = cross_section.stop_power_boundary[group + 1];
 
-  const double m00 = fe_space.M(0, 0);
-  const double m01 = fe_space.M(0, 1);
-  const double m10 = fe_space.M(1, 0);
-  const double m11 = fe_space.M(1, 1);
+  const double m00 = fe_space.M.left.left;
+  const double m01 = fe_space.M.left.right;
+  const double m10 = fe_space.M.right.left;
+  const double m11 = fe_space.M.right.right;
 
   std::vector<Eigen::Triplet<double>> triplets;
   triplets.reserve(static_cast<std::size_t>(n_x) * 20);

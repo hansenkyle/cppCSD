@@ -11,33 +11,21 @@
 
 namespace {
 
-Eigen::Matrix2d massMatrix(MassMatrixKind kind) {
-  Eigen::Matrix2d m;
+Mat2 massMatrix(MassMatrixKind kind) {
   switch (kind) {
   case MassMatrixKind::Consistent:
-    m << 2.0, 1.0, 1.0, 2.0;
-    break;
+    return Mat2{{2.0 / 6.0, 1.0 / 6.0}, {1.0 / 6.0, 2.0 / 6.0}};
   case MassMatrixKind::Lumped:
-    m << 3.0, 0.0, 0.0, 3.0;
-    break;
+    return Mat2{{0.5, 0.0}, {0.0, 0.5}};
   }
-  return m / 6.0;
+  return Mat2{};
 }
 
 } // namespace
 
-FESpace::FESpace(int spatial_degree, int energy_degree, MassMatrixKind mass_matrix_kind)
-    : spatial_degree(spatial_degree), energy_degree(energy_degree),
-      mass_matrix_kind(mass_matrix_kind), M(massMatrix(mass_matrix_kind)),
-      L((Eigen::Matrix2d() << 0.5, 0.5, -0.5, -0.5).finished()),
-      Lb((Eigen::Matrix2d() << -1.0, 0.0, 0.0, 1.0).finished()) {
-  if (spatial_degree < 0) {
-    throw std::invalid_argument("FESpace: spatial_degree must be non-negative");
-  }
-  if (energy_degree < 0) {
-    throw std::invalid_argument("FESpace: energy_degree must be non-negative");
-  }
-}
+FESpace::FESpace(MassMatrixKind mass_matrix_kind)
+    : mass_matrix_kind(mass_matrix_kind), M(massMatrix(mass_matrix_kind)),
+      L(Mat2{{0.5, 0.5}, {-0.5, -0.5}}), Lb(Mat2{{-1.0, 0.0}, {0.0, 1.0}}) {}
 
 namespace {
 
