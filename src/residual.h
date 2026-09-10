@@ -17,9 +17,12 @@
 // boost::multiprecision::cpp_bin_float_50) to verify convergence to machine
 // precision without the evaluation's own rounding error swamping the
 // result.
+//
+// TODO: takes no solution parameter yet -- the corner-quad solution storage
+// this will read from doesn't exist until something actually produces one
+// (Solver::sweep isn't implemented). Add it then, rather than now.
 template <typename Scalar>
-Scalar residualNorm(const Mesh& mesh, const CrossSection& cross_section, const FESpace& fe_space,
-                    const Field& solution) {
+Scalar residualNorm(const Mesh& mesh, const CrossSection& cross_section, const FESpace& fe_space) {
   return Scalar{};
 }
 
