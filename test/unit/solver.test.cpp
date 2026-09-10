@@ -77,7 +77,7 @@ TEST_SUITE("Solver") {
     CHECK(&solver.cross_section.mesh == &solver.mesh);
   }
 
-  TEST_CASE("stores its own copy of fe_space and defaults to XMajor corner order") {
+  TEST_CASE("stores its own copy of fe_space") {
     const Mesh mesh = makeMesh();
     const CrossSection xs = makeCrossSection(mesh);
     const FESpace fe_space = makeFESpace();
@@ -86,17 +86,6 @@ TEST_SUITE("Solver") {
 
     CHECK(&solver.fe_space != &fe_space);
     CHECK(solver.fe_space.mass_matrix_kind == fe_space.mass_matrix_kind);
-    CHECK(solver.corner_order == AxisOrder::XMajor);
-  }
-
-  TEST_CASE("stores the corner_order it's constructed with") {
-    const Mesh mesh = makeMesh();
-    const CrossSection xs = makeCrossSection(mesh);
-    const FESpace fe_space = makeFESpace();
-
-    const Solver solver(mesh, xs, fe_space, AxisOrder::EMajor);
-
-    CHECK(solver.corner_order == AxisOrder::EMajor);
   }
 }
 
@@ -182,14 +171,15 @@ TEST_SUITE("Solver::constructTransportBilinear") {
     const double m00 = fe_space.M.left.left;
     const double m01 = fe_space.M.left.right;
 
-    const int row_left_up = 0 * 4 + cornerSlot(Corner::LeftUp, solver.corner_order);
-    const int col_left_down = 0 * 4 + cornerSlot(Corner::LeftDown, solver.corner_order);
-    const int col_right_down = 0 * 4 + cornerSlot(Corner::RightDown, solver.corner_order);
+    // Local corner order: 0=LeftDown, 1=LeftUp, 2=RightDown, 3=RightUp.
+    const int row_left_up = 0 * 4 + 1;
+    const int col_left_down = 0 * 4 + 0;
+    const int col_right_down = 0 * 4 + 2;
 
     CHECK(A.coeff(row_left_up, col_left_down) == doctest::Approx((1.0 / 12.0) * mu + v1 * m00));
     CHECK(A.coeff(row_left_up, col_right_down) == doctest::Approx((1.0 / 12.0) * mu + v1 * m01));
 
-    const int row_left_down = 0 * 4 + cornerSlot(Corner::LeftDown, solver.corner_order);
+    const int row_left_down = 0 * 4 + 0;
     CHECK(A.coeff(row_left_down, col_left_down) == doctest::Approx((1.0 / 6.0) * mu + v3 * m00));
   }
 
@@ -203,11 +193,11 @@ TEST_SUITE("Solver::constructTransportBilinear") {
     Eigen::SparseMatrix<double> A;
     solver.constructTransportBilinear(A, mu, 0);
 
-    const AxisOrder order = solver.corner_order;
-    const int row_left_up = 1 * 4 + cornerSlot(Corner::LeftUp, order);
-    const int row_left_down = 1 * 4 + cornerSlot(Corner::LeftDown, order);
-    const int col_right_down = 0 * 4 + cornerSlot(Corner::RightDown, order);
-    const int col_right_up = 0 * 4 + cornerSlot(Corner::RightUp, order);
+    // Local corner order: 0=LeftDown, 1=LeftUp, 2=RightDown, 3=RightUp.
+    const int row_left_up = 1 * 4 + 1;
+    const int row_left_down = 1 * 4 + 0;
+    const int col_right_down = 0 * 4 + 2;
+    const int col_right_up = 0 * 4 + 3;
 
     CHECK(A.coeff(row_left_up, col_right_down) == doctest::Approx((-1.0 / 6.0) * mu));
     CHECK(A.coeff(row_left_up, col_right_up) == doctest::Approx((-1.0 / 3.0) * mu));
@@ -216,7 +206,7 @@ TEST_SUITE("Solver::constructTransportBilinear") {
 
     // Cell 0 has no left neighbor, so its LeftUp row gets only the 4
     // self-block entries -- no additional coupling entry.
-    const int row0_left_up = 0 * 4 + cornerSlot(Corner::LeftUp, order);
+    const int row0_left_up = 0 * 4 + 1;
     const Eigen::VectorXd row0_left_up_dense = A.row(row0_left_up);
     CHECK((row0_left_up_dense.array() != 0.0).count() == 4);
   }
@@ -231,11 +221,11 @@ TEST_SUITE("Solver::constructTransportBilinear") {
     Eigen::SparseMatrix<double> A;
     solver.constructTransportBilinear(A, mu, 0);
 
-    const AxisOrder order = solver.corner_order;
-    const int row_right_up = 0 * 4 + cornerSlot(Corner::RightUp, order);
-    const int row_right_down = 0 * 4 + cornerSlot(Corner::RightDown, order);
-    const int col_left_down = 1 * 4 + cornerSlot(Corner::LeftDown, order);
-    const int col_left_up = 1 * 4 + cornerSlot(Corner::LeftUp, order);
+    // Local corner order: 0=LeftDown, 1=LeftUp, 2=RightDown, 3=RightUp.
+    const int row_right_up = 0 * 4 + 3;
+    const int row_right_down = 0 * 4 + 2;
+    const int col_left_down = 1 * 4 + 0;
+    const int col_left_up = 1 * 4 + 1;
 
     CHECK(A.coeff(row_right_up, col_left_down) == doctest::Approx((1.0 / 6.0) * mu));
     CHECK(A.coeff(row_right_up, col_left_up) == doctest::Approx((1.0 / 3.0) * mu));
@@ -244,7 +234,7 @@ TEST_SUITE("Solver::constructTransportBilinear") {
 
     // Cell 1 has no right neighbor, so its RightUp row gets only the 4
     // self-block entries -- no additional coupling entry.
-    const int row1_right_up = 1 * 4 + cornerSlot(Corner::RightUp, order);
+    const int row1_right_up = 1 * 4 + 3;
     const Eigen::VectorXd row1_right_up_dense = A.row(row1_right_up);
     CHECK((row1_right_up_dense.array() != 0.0).count() == 4);
   }

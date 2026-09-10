@@ -22,17 +22,12 @@ public:
   // fe_space. cross_section's own Mesh reference is rebound to this
   // Solver's mesh copy, not the caller's original, so the two stay
   // consistent regardless of what happens to the objects passed in.
-  // corner_order fixes the corner-ordering convention this Solver's own
-  // assembly code uses consistently, matching whatever Field the results
-  // are eventually written into.
-  Solver(const Mesh& mesh, const CrossSection& cross_section, const FESpace& fe_space,
-         AxisOrder corner_order = AxisOrder::XMajor);
+  Solver(const Mesh& mesh, const CrossSection& cross_section, const FESpace& fe_space);
   virtual ~Solver() = default;
 
   const Mesh mesh;
   const CrossSection cross_section;
   const FESpace fe_space;
-  const AxisOrder corner_order;
 
 protected:
   // Performs one high-order transport sweep. Shared by every derived solve

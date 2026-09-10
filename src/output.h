@@ -92,7 +92,7 @@ private:
 /// @details A 2D, group-resolved result table: one sub-table per energy group (subtitled
 /// "g=<group>"), each with an auto-generated integer "i" column (0..n_x-1) and whatever named
 /// columns are added. A column added once applies across all groups, matching the [group][cell]
-/// layout used elsewhere in this codebase (CrossSection, Field).
+/// layout used elsewhere in this codebase (CrossSection).
 class OutputBlock2d : public OutputBlock {
 public:
   // Constructs a block over n_x cells and G groups. Both must be positive.
