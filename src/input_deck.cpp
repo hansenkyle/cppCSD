@@ -7,8 +7,10 @@
 
 #include "input_deck.h"
 
+#include <cmath>
+#include <map>
 #include <stdexcept>
-#include <utility>
+#include <string>
 #include <vector>
 
 #include <yaml-cpp/yaml.h>
@@ -16,6 +18,13 @@
 #include "logger.h"
 
 namespace {
+constexpr double kAngleWeightRelTol = 1e-4;
+
+void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
+  if (values.size() > 0 && values.minCoeff() < 0.0) {
+    throw std::runtime_error(name + " must be non-negative");
+  }
+}
 
 // The registered set of valid "method" names -- the single place a new
 // Solver subclass needs to be added (alongside its SolverMethod enumerator,
@@ -65,201 +74,173 @@ YAML::Node requireNode(const YAML::Node& parent, const std::string& key) {
   return node;
 }
 
-void requireSize(const std::vector<double>& values, std::size_t expected, const std::string& name) {
-  if (values.size() != expected) {
-    throw std::runtime_error(name + " has size " + std::to_string(values.size()) + ", expected " +
+Eigen::VectorXd toVector(const std::vector<double>& values) {
+  return Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
+}
+
+void requireSize(Eigen::Index actual, Eigen::Index expected, const std::string& name) {
+  if (actual != expected) {
+    throw std::runtime_error(name + " has size " + std::to_string(actual) + ", expected " +
                              std::to_string(expected));
   }
 }
 
-// Expands a per-material, per-group field (selected via `field`) into a
-// per-group, per-cell table by looking up each cell's material.
-std::vector<std::vector<double>>
-expandByRegion(const std::vector<std::string>& region_materials,
-               const std::map<std::string, MaterialData>& materials, std::size_t num_groups,
-               std::vector<double> MaterialData::* field) {
-  std::vector<std::vector<double>> table(num_groups, std::vector<double>(region_materials.size()));
-  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
-    const std::vector<double>& values = materials.at(region_materials[cell]).*field;
-    for (std::size_t g = 0; g < num_groups; ++g) {
-      table[g][cell] = values[g];
-    }
-  }
-  return table;
-}
+// Per-material cross sections and stopping power, indexed by energy group.
+// Parsing scratch only -- material names and this data are never retained
+// on the InputDeck, only the per-cell tables they expand into.
+struct Material {
+  Eigen::VectorXd sigma_t;            // size G
+  Eigen::VectorXd sigma_s;            // size G
+  Eigen::VectorXd stopping_power_avg; // size G
+  Eigen::VectorXd stopping_power_bnd; // size G + 1
+};
 
-// Expands each cell's material into its (shared, unmodified) sparse
-// scattering-matrix entry list -- unlike expandByRegion, there's no
-// per-group axis to transpose into, so this can't reuse it.
-std::vector<std::vector<ScatterEntry>>
-expandScatteringByRegion(const std::vector<std::string>& region_materials,
-                         const std::map<std::string, MaterialData>& materials) {
-  std::vector<std::vector<ScatterEntry>> table(region_materials.size());
-  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
-    table[cell] = materials.at(region_materials[cell]).scattering;
-  }
-  return table;
-}
-
-// Parses a material's `scattering:` block: a list of {from, to, value}
-// entries. Only nonzero entries need to appear -- see docs/input-deck.md.
-std::vector<ScatterEntry> parseScattering(const YAML::Node& node, int num_groups,
-                                          const std::string& name) {
-  std::vector<ScatterEntry> entries;
-  entries.reserve(node.size());
-  for (const YAML::Node& entry_node : node) {
-    ScatterEntry entry;
-    entry.from = requireNode(entry_node, "from").as<int>();
-    entry.to = requireNode(entry_node, "to").as<int>();
-    entry.value = requireNode(entry_node, "value").as<double>();
-
-    if (entry.from < 0 || entry.from >= num_groups || entry.to < 0 || entry.to >= num_groups) {
-      throw std::runtime_error("material '" + name + "' scattering entry (from=" +
-                               std::to_string(entry.from) + ", to=" + std::to_string(entry.to) +
-                               ") out of range [0, " + std::to_string(num_groups) + ")");
-    }
-    entries.push_back(entry);
-  }
-
-  for (std::size_t a = 0; a < entries.size(); ++a) {
-    for (std::size_t b = a + 1; b < entries.size(); ++b) {
-      if (entries[a].from == entries[b].from && entries[a].to == entries[b].to) {
-        throw std::runtime_error("material '" + name +
-                                 "' has a duplicate scattering entry for "
-                                 "(from=" +
-                                 std::to_string(entries[a].from) +
-                                 ", to=" + std::to_string(entries[a].to) + ")");
-      }
-    }
-  }
-
-  return entries;
-}
-
-MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
-                           std::size_t num_groups) {
-  MaterialData material;
-  material.sigma_t = requireNode(node, "sigma_t").as<std::vector<double>>();
-  material.scattering =
-      parseScattering(requireNode(node, "scattering"), static_cast<int>(num_groups), name);
+Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
+  Material material;
+  material.sigma_t = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
+  material.sigma_s = toVector(requireNode(node, "sigma_s").as<std::vector<double>>());
 
   const YAML::Node stopping_power = requireNode(node, "stopping_power");
-  material.stopping_power_average =
-      requireNode(stopping_power, "group_average").as<std::vector<double>>();
-  material.stopping_power_boundary =
-      requireNode(stopping_power, "group_boundary").as<std::vector<double>>();
+  material.stopping_power_avg =
+      toVector(requireNode(stopping_power, "group_average").as<std::vector<double>>());
+  material.stopping_power_bnd =
+      toVector(requireNode(stopping_power, "group_boundary").as<std::vector<double>>());
 
-  requireSize(material.sigma_t, num_groups, "material '" + name + "' sigma_t");
-  requireSize(material.stopping_power_average, num_groups,
+  requireSize(material.sigma_t.size(), G, "material '" + name + "' sigma_t");
+  requireSize(material.sigma_s.size(), G, "material '" + name + "' sigma_s");
+  requireSize(material.stopping_power_avg.size(), G,
               "material '" + name + "' stopping_power.group_average");
-  requireSize(material.stopping_power_boundary, num_groups + 1,
+  requireSize(material.stopping_power_bnd.size(), G + 1,
               "material '" + name + "' stopping_power.group_boundary");
-
   return material;
 }
 
-// Parses boundary_conditions.<side>.down/up into a [ordinate][group] table
-// of DownUp pairs. Only checks that down and up agree with each other in
-// shape -- whether that shape matches the deck's actual ordinate/group
-// counts is BoundaryConditions' own constructor's job, not this function's.
-std::vector<std::vector<DownUp>> parseBoundarySide(const YAML::Node& side_node) {
-  const std::vector<std::vector<double>> down =
-      requireNode(side_node, "down").as<std::vector<std::vector<double>>>();
-  const std::vector<std::vector<double>> up =
-      requireNode(side_node, "up").as<std::vector<std::vector<double>>>();
-
-  if (down.size() != up.size()) {
-    throw std::runtime_error("boundary_conditions: down and up have different ordinate counts");
+// Expands a per-material, per-group field (selected via `field`) into a
+// per-group, per-cell table by looking up each cell's material.
+Eigen::MatrixXd expandByRegion(const std::vector<std::string>& region_materials,
+                               const std::map<std::string, Material>& materials, Eigen::Index rows,
+                               Eigen::VectorXd Material::* field) {
+  Eigen::MatrixXd table(rows, static_cast<Eigen::Index>(region_materials.size()));
+  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
+    table.col(static_cast<Eigen::Index>(cell)) = materials.at(region_materials[cell]).*field;
   }
-  std::vector<std::vector<DownUp>> side(down.size());
-  for (std::size_t m = 0; m < down.size(); ++m) {
-    if (down[m].size() != up[m].size()) {
-      throw std::runtime_error("boundary_conditions: down and up have different group counts");
-    }
-    side[m].resize(down[m].size());
-    for (std::size_t g = 0; g < down[m].size(); ++g) {
-      side[m][g] = DownUp{down[m][g], up[m][g]};
-    }
-  }
-  return side;
+  return table;
 }
-
-void requireShapeDownUp(const std::vector<std::vector<DownUp>>& table, int expected_rows,
-                        int expected_cols, const std::string& name) {
-  if (static_cast<int>(table.size()) != expected_rows) {
-    throw std::invalid_argument(name + " has " + std::to_string(table.size()) +
-                                " row(s), expected " + std::to_string(expected_rows));
-  }
-  for (const std::vector<DownUp>& row : table) {
-    if (static_cast<int>(row.size()) != expected_cols) {
-      throw std::invalid_argument(name + " row has size " + std::to_string(row.size()) +
-                                  ", expected " + std::to_string(expected_cols));
-    }
-  }
-}
-
 } // namespace
 
-AngularQuadrature::AngularQuadrature(std::vector<double> mu_in, std::vector<double> w_in)
-    : mu(std::move(mu_in)), w(std::move(w_in)) {
-  if (w.size() != mu.size()) {
-    throw std::invalid_argument("AngularQuadrature: w has size " + std::to_string(w.size()) +
-                                ", expected " + std::to_string(mu.size()));
+void InputDeck::Mesh::validate() {
+  if (n_x <= 0) {
+    throw std::runtime_error("mesh.n_x must be positive");
   }
-
-  for (std::size_t m = 1; m < mu.size(); ++m) {
-    if (mu[m] <= mu[m - 1]) {
-      throw std::invalid_argument("AngularQuadrature: mu must be strictly ascending");
+  if (x_boundary.size() != n_x + 1) {
+    throw std::runtime_error("mesh.x_boundary has size " + std::to_string(x_boundary.size()) +
+                             ", expected n_x + 1 = " + std::to_string(n_x + 1));
+  }
+  for (int i = 1; i <= n_x; ++i) {
+    if (x_boundary[i] <= x_boundary[i - 1]) {
+      throw std::runtime_error("mesh.x_boundary must be strictly ascending");
     }
   }
 
-  double sum = 0.0;
-  for (double weight : w) {
-    sum += weight;
-  }
-  if (sum <= 0.0) {
-    throw std::invalid_argument("AngularQuadrature: w must sum to a positive value");
-  }
-
-  const double scale = 2.0 / sum;
-  for (double& weight : w) {
-    weight *= scale;
-  }
-  LDCSD_LOG_INFO("normalized AngularQuadrature.w: sum was " + std::to_string(sum) + ", scaled by " +
-                 std::to_string(scale) + " to sum to 2");
+  dx = x_boundary.tail(n_x) - x_boundary.head(n_x);
 }
 
-BoundaryConditions::BoundaryConditions(std::vector<std::vector<DownUp>> left_in,
-                                       std::vector<std::vector<DownUp>> right_in, int num_ordinates,
-                                       int num_groups)
-    : left(std::move(left_in)), right(std::move(right_in)) {
-  requireShapeDownUp(left, num_ordinates, num_groups, "BoundaryConditions: left");
-  requireShapeDownUp(right, num_ordinates, num_groups, "BoundaryConditions: right");
-}
+void InputDeck::Energy::validate() {
+  if (G <= 0) {
+    throw std::runtime_error("energy.G must be positive");
+  }
+  if (E_boundary.size() != G + 1) {
+    throw std::runtime_error("energy.E_boundary has size " + std::to_string(E_boundary.size()) +
+                             ", expected G + 1 = " + std::to_string(G + 1));
+  }
+  for (int i = 1; i <= G; ++i) {
+    if (E_boundary[i] >= E_boundary[i - 1]) {
+      throw std::runtime_error("energy.E_boundary must be strictly descending");
+    }
+  }
 
-void InputDeck::setMesh(Mesh new_mesh) {
-  mesh.emplace(std::move(new_mesh));
-  if (xs.has_value()) {
-    xs.reset();
-    LDCSD_LOG_INFO("cleared xs: mesh was replaced, so the existing cross-section expansion is no "
-                   "longer valid against it");
+  dE = E_boundary.head(G) - E_boundary.tail(G);
+  for (int i = 0; i < G; ++i) {
+    if (dE[i] <= 0.0) {
+      throw std::runtime_error("energy.dE[" + std::to_string(i) + "] must be positive");
+    }
   }
 }
 
-void InputDeck::setAngularQuadrature(AngularQuadrature new_angular_quadrature) {
-  angular_quadrature.emplace(std::move(new_angular_quadrature));
+void InputDeck::Angle::validate() {
+  if (M <= 0) {
+    throw std::runtime_error("angle.M must be positive");
+  }
+  if (mu.size() != M) {
+    throw std::runtime_error("angle.mu has size " + std::to_string(mu.size()) +
+                             ", expected M = " + std::to_string(M));
+  }
+  if (w.size() != M) {
+    throw std::runtime_error("angle.w has size " + std::to_string(w.size()) +
+                             ", expected M = " + std::to_string(M));
+  }
+  for (int m = 1; m < M; ++m) {
+    if (mu[m] <= mu[m - 1]) {
+      throw std::runtime_error("angle.mu must be strictly ascending");
+    }
+  }
+
+  const double sum = w.sum();
+  const double rel_diff = std::abs(sum - 2.0) / 2.0;
+  if (rel_diff > kAngleWeightRelTol) {
+    LDCSD_LOG_ERROR("angle.w sums to " + std::to_string(sum) + ", a relative difference of " +
+                    std::to_string(rel_diff) + " from 2 (exceeds tolerance " +
+                    std::to_string(kAngleWeightRelTol) + ")");
+    throw std::runtime_error("angle.w must sum to 2 within a relative tolerance of " +
+                             std::to_string(kAngleWeightRelTol));
+  }
+  if (rel_diff > 0.0) {
+    const double scale = 2.0 / sum;
+    LDCSD_LOG_WARN("angle.w summed to " + std::to_string(sum) + " (relative difference " +
+                   std::to_string(rel_diff) + "); normalizing by " + std::to_string(scale) +
+                   " to sum to 2");
+    w *= scale;
+  }
 }
 
-void InputDeck::setBoundaryConditions(BoundaryConditions new_boundary_conditions) {
-  boundary_conditions.emplace(std::move(new_boundary_conditions));
+void InputDeck::Xs::validate() const {
+  requireNonNegative(total, "xs.total");
+  requireNonNegative(scatter, "xs.scatter");
+  requireNonNegative(S, "xs.S");
+  requireNonNegative(S_bound, "xs.S_bound");
 }
 
-void InputDeck::setConvergence(ConvergenceCriteria new_convergence) {
-  convergence = new_convergence;
-}
+void InputDeck::BoundaryConditions::validate() const { requireNonNegative(values, "bc.values"); }
 
-void InputDeck::setSolverMethod(SolverMethod new_solver_method) {
-  solver_method = new_solver_method;
+void InputDeck::validate() {
+  mesh.validate();
+  energy.validate();
+  angle.validate();
+  xs.validate();
+  bc.validate();
+
+  if (xs.total.rows() != energy.G || xs.scatter.rows() != energy.G || xs.S.rows() != energy.G) {
+    throw std::runtime_error("xs.total/scatter/S must have energy.G = " + std::to_string(energy.G) +
+                             " rows");
+  }
+  if (xs.S_bound.rows() != energy.G + 1) {
+    throw std::runtime_error("xs.S_bound must have energy.G + 1 = " + std::to_string(energy.G + 1) +
+                             " rows");
+  }
+  if (xs.total.cols() != mesh.n_x || xs.scatter.cols() != mesh.n_x || xs.S.cols() != mesh.n_x ||
+      xs.S_bound.cols() != mesh.n_x) {
+    throw std::runtime_error(
+        "xs.total/scatter/S/S_bound must have mesh.n_x = " + std::to_string(mesh.n_x) + " columns");
+  }
+
+  if (bc.values.rows() != 2 * energy.G) {
+    throw std::runtime_error("bc.values must have 2 * energy.G = " + std::to_string(2 * energy.G) +
+                             " rows");
+  }
+  if (bc.values.cols() != angle.M) {
+    throw std::runtime_error("bc.values must have angle.M = " + std::to_string(angle.M) +
+                             " columns");
+  }
 }
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
@@ -267,72 +248,82 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
     LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
 
-    std::vector<double> x_boundary = requireNode(root, "spatial_mesh").as<std::vector<double>>();
-    std::vector<double> E_boundary = requireNode(root, "energy_mesh").as<std::vector<double>>();
-    setMesh(Mesh(std::move(x_boundary), std::move(E_boundary)));
+    const std::vector<double> x_boundary_raw =
+        requireNode(root, "spatial_mesh").as<std::vector<double>>();
+    mesh.x_boundary = toVector(x_boundary_raw);
+    mesh.n_x = static_cast<int>(x_boundary_raw.size()) - 1;
+
+    const std::vector<double> E_boundary_raw =
+        requireNode(root, "energy_mesh").as<std::vector<double>>();
+    energy.E_boundary = toVector(E_boundary_raw);
+    energy.G = static_cast<int>(E_boundary_raw.size()) - 1;
 
     const YAML::Node regions = requireNode(root, "regions");
-    region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
-    if (static_cast<int>(region_materials.size()) != mesh->n_x) {
+    const std::vector<std::string> region_materials =
+        requireNode(regions, "materials").as<std::vector<std::string>>();
+    if (static_cast<int>(region_materials.size()) != mesh.n_x) {
       throw std::runtime_error("regions.materials has size " +
                                std::to_string(region_materials.size()) + ", expected " +
-                               std::to_string(mesh->n_x) + " (one per spatial cell)");
+                               std::to_string(mesh.n_x) + " (one per spatial cell)");
     }
 
+    std::map<std::string, Material> materials;
     const YAML::Node materials_node = requireNode(root, "materials");
     for (const auto& entry : materials_node) {
       const std::string name = entry.first.as<std::string>();
-      materials[name] = parseMaterial(entry.second, name, static_cast<std::size_t>(mesh->G));
+      materials[name] = parseMaterial(entry.second, name, energy.G);
       LDCSD_LOG_DEBUG("parsed material '" + name + "'");
     }
-
     for (const std::string& name : region_materials) {
       if (!materials.contains(name)) {
         throw std::runtime_error("region references undefined material '" + name + "'");
       }
     }
 
-    const auto num_groups = static_cast<std::size_t>(mesh->G);
-    xs.emplace(*mesh,
-               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_t),
-               expandScatteringByRegion(region_materials, materials),
-               expandByRegion(region_materials, materials, num_groups,
-                              &MaterialData::stopping_power_average),
-               expandByRegion(region_materials, materials, num_groups + 1,
-                              &MaterialData::stopping_power_boundary),
-               region_materials);
+    xs.total = expandByRegion(region_materials, materials, energy.G, &Material::sigma_t);
+    xs.scatter = expandByRegion(region_materials, materials, energy.G, &Material::sigma_s);
+    xs.S = expandByRegion(region_materials, materials, energy.G, &Material::stopping_power_avg);
+    xs.S_bound =
+        expandByRegion(region_materials, materials, energy.G + 1, &Material::stopping_power_bnd);
 
     const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
-    std::vector<double> mu = requireNode(angular_quadrature_node, "mu").as<std::vector<double>>();
-    std::vector<double> w = requireNode(angular_quadrature_node, "w").as<std::vector<double>>();
-    setAngularQuadrature(AngularQuadrature(std::move(mu), std::move(w)));
+    const std::vector<double> mu_raw =
+        requireNode(angular_quadrature_node, "mu").as<std::vector<double>>();
+    angle.mu = toVector(mu_raw);
+    angle.w = toVector(requireNode(angular_quadrature_node, "w").as<std::vector<double>>());
+    angle.M = static_cast<int>(mu_raw.size());
 
-    const YAML::Node boundary_conditions_node = requireNode(root, "boundary_conditions");
-    std::vector<std::vector<DownUp>> left =
-        parseBoundarySide(requireNode(boundary_conditions_node, "left"));
-    std::vector<std::vector<DownUp>> right =
-        parseBoundarySide(requireNode(boundary_conditions_node, "right"));
-    setBoundaryConditions(BoundaryConditions(std::move(left), std::move(right),
-                                             static_cast<int>(angular_quadrature->mu.size()),
-                                             mesh->G));
+    const YAML::Node bc_node = requireNode(root, "boundary_conditions");
+    const std::vector<std::vector<double>> up =
+        requireNode(bc_node, "up").as<std::vector<std::vector<double>>>();
+    const std::vector<std::vector<double>> down =
+        requireNode(bc_node, "down").as<std::vector<std::vector<double>>>();
+    requireSize(static_cast<Eigen::Index>(down.size()), static_cast<Eigen::Index>(up.size()),
+                "boundary_conditions.down");
 
-    setSolverMethod(parseSolverMethod(requireNode(root, "method")));
+    const auto bc_G = static_cast<Eigen::Index>(up.size());
+    const auto bc_M = bc_G > 0 ? static_cast<Eigen::Index>(up[0].size()) : 0;
+    bc.values = Eigen::MatrixXd(2 * bc_G, bc_M);
+    for (Eigen::Index g = 0; g < bc_G; ++g) {
+      requireSize(static_cast<Eigen::Index>(up[g].size()), bc_M,
+                  "boundary_conditions.up row " + std::to_string(g));
+      requireSize(static_cast<Eigen::Index>(down[g].size()), bc_M,
+                  "boundary_conditions.down row " + std::to_string(g));
+      for (Eigen::Index m = 0; m < bc_M; ++m) {
+        bc.values(2 * g, m) = up[g][m];
+        bc.values(2 * g + 1, m) = down[g][m];
+      }
+    }
 
-    const YAML::Node convergence_node = requireNode(root, "convergence");
-    ConvergenceCriteria new_convergence;
-    new_convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
-    new_convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
-    setConvergence(new_convergence);
+    validate();
   } catch (const std::exception& e) {
     LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
                     "': " + e.what());
     return 1;
   }
 
-  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh->n_x) +
-                 " cells, " + std::to_string(mesh->G) + " groups, " +
-                 std::to_string(materials.size()) + " materials, " +
-                 std::to_string(angular_quadrature->mu.size()) +
-                 " ordinates, method: " + solverMethodName(*solver_method));
+  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh.n_x) +
+                 " cells, " + std::to_string(energy.G) + " groups, " + std::to_string(angle.M) +
+                 " ordinates");
   return 0;
 }
