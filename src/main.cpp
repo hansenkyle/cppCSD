@@ -28,25 +28,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Fixed: this project is specifically the linear-discontinuous method, not
-  // a variable-degree one, so spatial/energy degree aren't deck fields.
-  const FESpace fe_space(1, 1);
-
-  // No default: -Wswitch should flag it if a new SolverMethod enumerator
-  // ever goes unhandled here. read() already guarantees solver_method is
-  // set, so dereferencing it unconditionally is safe.
-  switch (*deck.solver_method) {
-  case SolverMethod::SourceIteration: {
-    const SourceIterationSolver solver(deck, fe_space);
-    LDCSD_LOG_INFO("constructed SourceIterationSolver");
-    break;
-  }
-  case SolverMethod::SecondMoment: {
-    const SecondMomentSolver solver(deck, fe_space);
-    LDCSD_LOG_INFO("constructed SecondMomentSolver");
-    break;
-  }
-  }
+  const Solver solver(deck);
+  LDCSD_LOG_INFO("constructed Solver");
 
   return 0;
 }
