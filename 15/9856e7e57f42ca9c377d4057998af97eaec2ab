@@ -1,0 +1,19 @@
+scripts/generate_xs.jl
+  s_bfd8f0deb81bf7::t_bb4af8325efb1b 13,36-41,50-54,59-60,92,94,98,100,111,123,128-129,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "159856e7e57f42ca9c377d4057998af97eaec2ab",
+  "prompts": {},
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
