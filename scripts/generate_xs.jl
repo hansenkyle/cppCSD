@@ -38,7 +38,7 @@ using Dates
 # eventually match the material names used in the deck's
 # `regions.materials` list once converted to YAML.
 materials_input = [
-    (name = "water", density = 1.0, elements = ["H", "O"], wfractions = [0.111894, 0.888106]),
+    (name = "aluminum", density = 2.7, elements = ["Al"], wfractions = [1.0]),
 ]
 
 Ng         = 20                    # number of energy groups (ignored if custom_energy_bounds is set below)
@@ -52,14 +52,14 @@ group_type = "log"                 # "log" or "linear" (ignored if custom_energy
 # or descending (Radiant accepts either). This OVERRIDES Ng/E_max/E_cut/
 # group_type above -- Ng is derived from this vector's length instead.
 # Leave this empty ([]) to keep using the log/linear structure above.
-custom_energy_bounds = Float64[]   # e.g. Float64[0.001, 0.01, 0.1, 1.0, 10.0]
+custom_energy_bounds = Float64[1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100]   # e.g. Float64[0.001, 0.01, 0.1, 1.0, 10.0]
 # -------------------------------------------------------------------------
 
-legendre_order = 1                 # Legendre truncation order used internally by
+legendre_order = 3                 # Legendre truncation order used internally by
                                     # Radiant's elastic-scattering decomposition;
                                     # only the l=0 moment is written out.
 
-output_name = "water_20g.csv"  # output filename, written under scripts/xs_data/
+output_name = "al_27gcc.csv"  # output filename, written under scripts/xs_data/
 # ----------------------------------------------------------------------
 
 output_dir = joinpath(@__DIR__, "xs_data")
@@ -142,6 +142,20 @@ open(outfile, "w") do io
         # Full l=0 scattering matrix for this material (Radiant already provides
         # data in descending group order: group 1 = highest energy).
         Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
+
+        # Physical constraint: sigma_t = total out-scatter + absorption, and
+        # absorption >= 0, so group f's total out-scatter can never exceed
+        # sigma_t[f]. A violation here almost always means Σs_moments's
+        # "from"/"to" group axes aren't indexed the same way as Σt's --
+        # fail loudly instead of silently writing inconsistent data.
+        for f in 1:Ng
+            out_scatter = sum(Σs_full[f, :])
+            if out_scatter > sigma_t[f] * (1 + 1e-6)
+                error("material '$(m.name)': group $f out-scatter ($out_scatter cm^-1) " *
+                      "exceeds sigma_t ($(sigma_t[f]) cm^-1) -- Σs_moments's group " *
+                      "ordering likely doesn't match Σt's")
+            end
+        end
 
         println(io, "#")
         println(io, "material,", m.name)
