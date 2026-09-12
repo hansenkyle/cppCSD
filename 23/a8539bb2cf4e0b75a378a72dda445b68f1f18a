@@ -1,0 +1,25 @@
+scripts/generate_xs.jl
+  s_bfd8f0deb81bf7::t_eb0d39821d36a2 146-159
+  h_250041054ad857 41,55,58,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23a8539bb2cf4e0b75a378a72dda445b68f1f18a",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
