@@ -7,203 +7,109 @@
 
 #include "input_deck.h"
 
+#include <cmath>
 #include <stdexcept>
-
-#include <yaml-cpp/yaml.h>
+#include <string>
 
 #include "logger.h"
 
 namespace {
+constexpr double kAngleWeightRelTol = 1e-4;
 
-YAML::Node requireNode(const YAML::Node& parent, const std::string& key) {
-  const YAML::Node node = parent[key];
-  if (!node) {
-    throw std::runtime_error("input file is missing required key '" + key + "'");
-  }
-  return node;
-}
-
-void requireSize(const std::vector<double>& values, std::size_t expected, const std::string& name) {
-  if (values.size() != expected) {
-    throw std::runtime_error(name + " has size " + std::to_string(values.size()) + ", expected " +
-                             std::to_string(expected));
+void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
+  if (values.size() > 0 && values.minCoeff() < 0.0) {
+    throw std::runtime_error(name + " must be non-negative");
   }
 }
-
-// Expands a per-material, per-group field (selected via `field`) into a
-// per-group, per-cell table by looking up each cell's material.
-std::vector<std::vector<double>>
-expandByRegion(const std::vector<std::string>& region_materials,
-               const std::map<std::string, MaterialData>& materials, std::size_t num_groups,
-               std::vector<double> MaterialData::* field) {
-  std::vector<std::vector<double>> table(num_groups, std::vector<double>(region_materials.size()));
-  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
-    const std::vector<double>& values = materials.at(region_materials[cell]).*field;
-    for (std::size_t g = 0; g < num_groups; ++g) {
-      table[g][cell] = values[g];
-    }
-  }
-  return table;
-}
-
-MaterialData parseMaterial(const YAML::Node& node, const std::string& name,
-                           std::size_t num_groups) {
-  MaterialData material;
-  material.sigma_t = requireNode(node, "sigma_t").as<std::vector<double>>();
-  material.sigma_s = requireNode(node, "sigma_s").as<std::vector<double>>();
-
-  const YAML::Node stopping_power = requireNode(node, "stopping_power");
-  material.stopping_power_average =
-      requireNode(stopping_power, "group_average").as<std::vector<double>>();
-  material.stopping_power_boundary =
-      requireNode(stopping_power, "group_boundary").as<std::vector<double>>();
-
-  requireSize(material.sigma_t, num_groups, "material '" + name + "' sigma_t");
-  requireSize(material.sigma_s, num_groups, "material '" + name + "' sigma_s");
-  requireSize(material.stopping_power_average, num_groups,
-              "material '" + name + "' stopping_power.group_average");
-  requireSize(material.stopping_power_boundary, num_groups + 1,
-              "material '" + name + "' stopping_power.group_boundary");
-
-  return material;
-}
-
-AngularQuadrature parseAngularQuadrature(const YAML::Node& node) {
-  AngularQuadrature quadrature;
-  quadrature.mu = requireNode(node, "mu").as<std::vector<double>>();
-  quadrature.w = requireNode(node, "w").as<std::vector<double>>();
-
-  requireSize(quadrature.w, quadrature.mu.size(), "angular_quadrature.w");
-
-  for (std::size_t m = 1; m < quadrature.mu.size(); ++m) {
-    if (quadrature.mu[m] <= quadrature.mu[m - 1]) {
-      throw std::runtime_error("angular_quadrature.mu must be strictly ascending");
-    }
-  }
-
-  double sum = 0.0;
-  for (double weight : quadrature.w) {
-    sum += weight;
-  }
-  if (sum <= 0.0) {
-    throw std::runtime_error("angular_quadrature.w must sum to a positive value");
-  }
-
-  const double scale = 2.0 / sum;
-  for (double& weight : quadrature.w) {
-    weight *= scale;
-  }
-  LDCSD_LOG_INFO("normalized angular_quadrature.w: sum was " + std::to_string(sum) +
-                 ", scaled by " + std::to_string(scale) + " to sum to 2");
-
-  return quadrature;
-}
-
-void requireShape2D(const std::vector<std::vector<double>>& table, std::size_t expected_rows,
-                    std::size_t expected_cols, const std::string& name) {
-  if (table.size() != expected_rows) {
-    throw std::runtime_error(name + " has " + std::to_string(table.size()) + " row(s), expected " +
-                             std::to_string(expected_rows));
-  }
-  for (const std::vector<double>& row : table) {
-    if (row.size() != expected_cols) {
-      throw std::runtime_error(name + " row has size " + std::to_string(row.size()) +
-                               ", expected " + std::to_string(expected_cols));
-    }
-  }
-}
-
-std::vector<std::vector<DownUp>> parseBoundarySide(const YAML::Node& side_node,
-                                                   std::size_t num_ordinates,
-                                                   std::size_t num_groups,
-                                                   const std::string& side_name) {
-  const std::vector<std::vector<double>> down =
-      requireNode(side_node, "down").as<std::vector<std::vector<double>>>();
-  const std::vector<std::vector<double>> up =
-      requireNode(side_node, "up").as<std::vector<std::vector<double>>>();
-
-  requireShape2D(down, num_ordinates, num_groups, "boundary_conditions." + side_name + ".down");
-  requireShape2D(up, num_ordinates, num_groups, "boundary_conditions." + side_name + ".up");
-
-  std::vector<std::vector<DownUp>> side(num_ordinates, std::vector<DownUp>(num_groups));
-  for (std::size_t m = 0; m < num_ordinates; ++m) {
-    for (std::size_t g = 0; g < num_groups; ++g) {
-      side[m][g] = DownUp{down[m][g], up[m][g]};
-    }
-  }
-  return side;
-}
-
-BoundaryConditions parseBoundaryConditions(const YAML::Node& node, std::size_t num_ordinates,
-                                           std::size_t num_groups) {
-  BoundaryConditions bc;
-  bc.left = parseBoundarySide(requireNode(node, "left"), num_ordinates, num_groups, "left");
-  bc.right = parseBoundarySide(requireNode(node, "right"), num_ordinates, num_groups, "right");
-  return bc;
-}
-
 } // namespace
 
-int InputDeck::read(const std::filesystem::path& path_to_yaml) {
-  try {
-    const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
-    LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
-
-    std::vector<double> x_boundary = requireNode(root, "spatial_mesh").as<std::vector<double>>();
-    std::vector<double> E_boundary = requireNode(root, "energy_mesh").as<std::vector<double>>();
-    mesh.emplace(std::move(x_boundary), std::move(E_boundary));
-
-    const YAML::Node regions = requireNode(root, "regions");
-    region_materials = requireNode(regions, "materials").as<std::vector<std::string>>();
-    if (static_cast<int>(region_materials.size()) != mesh->n_x) {
-      throw std::runtime_error("regions.materials has size " +
-                               std::to_string(region_materials.size()) + ", expected " +
-                               std::to_string(mesh->n_x) + " (one per spatial cell)");
+void InputDeck::Mesh::validate() {
+  if (n_x <= 0) {
+    throw std::runtime_error("mesh.n_x must be positive");
+  }
+  if (x_boundary.size() != n_x + 1) {
+    throw std::runtime_error("mesh.x_boundary has size " + std::to_string(x_boundary.size()) +
+                             ", expected n_x + 1 = " + std::to_string(n_x + 1));
+  }
+  for (int i = 1; i <= n_x; ++i) {
+    if (x_boundary[i] <= x_boundary[i - 1]) {
+      throw std::runtime_error("mesh.x_boundary must be strictly ascending");
     }
-
-    const YAML::Node materials_node = requireNode(root, "materials");
-    for (const auto& entry : materials_node) {
-      const std::string name = entry.first.as<std::string>();
-      materials[name] = parseMaterial(entry.second, name, static_cast<std::size_t>(mesh->G));
-      LDCSD_LOG_DEBUG("parsed material '" + name + "'");
-    }
-
-    for (const std::string& name : region_materials) {
-      if (!materials.contains(name)) {
-        throw std::runtime_error("region references undefined material '" + name + "'");
-      }
-    }
-
-    const auto num_groups = static_cast<std::size_t>(mesh->G);
-    xs.emplace(*mesh,
-               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_t),
-               expandByRegion(region_materials, materials, num_groups, &MaterialData::sigma_s),
-               expandByRegion(region_materials, materials, num_groups,
-                              &MaterialData::stopping_power_average),
-               expandByRegion(region_materials, materials, num_groups + 1,
-                              &MaterialData::stopping_power_boundary),
-               region_materials);
-
-    const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
-    angular_quadrature.emplace(parseAngularQuadrature(angular_quadrature_node));
-
-    const YAML::Node boundary_conditions_node = requireNode(root, "boundary_conditions");
-    boundary_conditions.emplace(parseBoundaryConditions(boundary_conditions_node,
-                                                        angular_quadrature->mu.size(),
-                                                        static_cast<std::size_t>(mesh->G)));
-
-    const YAML::Node convergence_node = requireNode(root, "convergence");
-    convergence.max_iters = requireNode(convergence_node, "max_iters").as<int>();
-    convergence.epsilon = requireNode(convergence_node, "epsilon").as<double>();
-  } catch (const std::exception& e) {
-    LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
-                    "': " + e.what());
-    return 1;
   }
 
-  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh->n_x) +
-                 " cells, " + std::to_string(mesh->G) + " groups, " +
-                 std::to_string(materials.size()) + " materials, " +
-                 std::to_string(angular_quadrature->mu.size()) + " ordinates");
+  dx = x_boundary.tail(n_x) - x_boundary.head(n_x);
+}
+
+void InputDeck::Energy::validate() {
+  if (G <= 0) {
+    throw std::runtime_error("energy.G must be positive");
+  }
+  if (E_boundary.size() != G + 1) {
+    throw std::runtime_error("energy.E_boundary has size " + std::to_string(E_boundary.size()) +
+                             ", expected G + 1 = " + std::to_string(G + 1));
+  }
+  for (int i = 1; i <= G; ++i) {
+    if (E_boundary[i] >= E_boundary[i - 1]) {
+      throw std::runtime_error("energy.E_boundary must be strictly descending");
+    }
+  }
+
+  dE = E_boundary.head(G) - E_boundary.tail(G);
+  for (int i = 0; i < G; ++i) {
+    if (dE[i] <= 0.0) {
+      throw std::runtime_error("energy.dE[" + std::to_string(i) + "] must be positive");
+    }
+  }
+}
+
+void InputDeck::Angle::validate() {
+  if (M <= 0) {
+    throw std::runtime_error("angle.M must be positive");
+  }
+  if (mu.size() != M) {
+    throw std::runtime_error("angle.mu has size " + std::to_string(mu.size()) +
+                             ", expected M = " + std::to_string(M));
+  }
+  if (w.size() != M) {
+    throw std::runtime_error("angle.w has size " + std::to_string(w.size()) +
+                             ", expected M = " + std::to_string(M));
+  }
+  for (int m = 1; m < M; ++m) {
+    if (mu[m] <= mu[m - 1]) {
+      throw std::runtime_error("angle.mu must be strictly ascending");
+    }
+  }
+
+  const double sum = w.sum();
+  const double rel_diff = std::abs(sum - 2.0) / 2.0;
+  if (rel_diff > kAngleWeightRelTol) {
+    LDCSD_LOG_ERROR("angle.w sums to " + std::to_string(sum) + ", a relative difference of " +
+                    std::to_string(rel_diff) + " from 2 (exceeds tolerance " +
+                    std::to_string(kAngleWeightRelTol) + ")");
+    throw std::runtime_error("angle.w must sum to 2 within a relative tolerance of " +
+                             std::to_string(kAngleWeightRelTol));
+  }
+  if (rel_diff > 0.0) {
+    const double scale = 2.0 / sum;
+    LDCSD_LOG_WARN("angle.w summed to " + std::to_string(sum) + " (relative difference " +
+                   std::to_string(rel_diff) + "); normalizing by " + std::to_string(scale) +
+                   " to sum to 2");
+    w *= scale;
+  }
+}
+
+void InputDeck::Xs::validate() const {
+  requireNonNegative(total, "xs.total");
+  requireNonNegative(scatter, "xs.scatter");
+  requireNonNegative(S, "xs.S");
+  requireNonNegative(S_bound, "xs.S_bound");
+}
+
+void InputDeck::BoundaryConditions::validate() const { requireNonNegative(values, "bc.values"); }
+
+void InputDeck::validate() {}
+
+int InputDeck::read(const std::filesystem::path& path_to_yaml) {
+  (void)path_to_yaml;
   return 0;
 }

@@ -75,10 +75,6 @@ the code says what a value *means*, not just its numeric shape.
 - Use Eigen types directly wherever code is actually doing linear algebra: local
   element matrix/vector assembly, the global system matrix/RHS, and the linear
   solve itself.
-- Domain quantities that are numerically vector-shaped but not being
-  algebraically manipulated where they're used (e.g. a cell's corner values of
-  scalar flux, current, etc.) should be their own small named type, not a bare
-  `Eigen::VectorXd`/`Vector4d` passed around by convention.
 - Compose, don't inherit — hold an Eigen fixed-size type (e.g. `Vector4d`) as a
   private member. This is free: fixed-size Eigen vectors are stack-allocated
   with no overhead versus a `std::array`, so wrapping costs nothing.
