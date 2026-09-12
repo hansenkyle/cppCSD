@@ -31,6 +31,101 @@ InputDeck makeValidDeck() {
 }
 } // namespace
 
+TEST_CASE("InputDeck::read parses the sample deck") {
+  InputDeck deck;
+
+  REQUIRE(deck.read(std::filesystem::path(TEST_DATA_DIR) / "sample_input.yaml") == 0);
+
+  CHECK(deck.mesh.n_x == 3);
+  CHECK(deck.mesh.x_boundary[3] == doctest::Approx(3.0));
+  CHECK(deck.mesh.dx[0] == doctest::Approx(1.0));
+
+  CHECK(deck.energy.G == 3);
+  CHECK(deck.energy.E_boundary[0] == doctest::Approx(5.0));
+  CHECK(deck.energy.dE[0] == doctest::Approx(4.0));
+
+  CHECK(deck.angle.M == 4);
+  CHECK(deck.angle.mu[0] == doctest::Approx(-0.9));
+  CHECK(deck.angle.w.sum() == doctest::Approx(2.0));
+
+  // Cell 0 and 1 are water, cell 2 is lead.
+  CHECK(deck.xs.total(0, 0) == doctest::Approx(1.2));
+  CHECK(deck.xs.total(0, 2) == doctest::Approx(3.2));
+  CHECK(deck.xs.scatter(1, 1) == doctest::Approx(0.9));
+  CHECK(deck.xs.S(2, 0) == doctest::Approx(1.5));
+  CHECK(deck.xs.S_bound(3, 2) == doctest::Approx(4.3));
+
+  // bc.values row 2*g is group g's up row, row 2*g + 1 is down; down[g][m] =
+  // 10*m + g, up = down + 0.5.
+  CHECK(deck.bc.values(0, 1) == doctest::Approx(10.5)); // group 0, up, m=1
+  CHECK(deck.bc.values(1, 1) == doctest::Approx(10.0)); // group 0, down, m=1
+  CHECK(deck.bc.values(4, 3) == doctest::Approx(32.5)); // group 2, up, m=3
+}
+
+TEST_CASE("InputDeck::read overrides an already-populated deck") {
+  InputDeck deck;
+  deck.mesh.n_x = 99;
+  deck.mesh.x_boundary = Eigen::VectorXd::LinSpaced(100, 0.0, 99.0);
+  deck.energy.G = 42;
+
+  REQUIRE(deck.read(std::filesystem::path(TEST_DATA_DIR) / "sample_input.yaml") == 0);
+
+  CHECK(deck.mesh.n_x == 3);
+  CHECK(deck.energy.G == 3);
+}
+
+TEST_CASE("InputDeck::read returns 1 and leaves no crash on a missing file") {
+  InputDeck deck;
+
+  CHECK(deck.read(std::filesystem::path(TEST_DATA_DIR) / "does_not_exist.yaml") == 1);
+}
+
+TEST_CASE("InputDeck::read returns 1 on a missing required key") {
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "ldcsd_missing_key.yaml";
+  {
+    std::ofstream out(path);
+    out << "spatial_mesh: [0.0, 1.0]\n";
+  }
+  InputDeck deck;
+
+  CHECK(deck.read(path) == 1);
+
+  std::filesystem::remove(path);
+}
+
+TEST_CASE("InputDeck::read returns 1 when a region references an undefined material") {
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "ldcsd_bad_region.yaml";
+  {
+    std::ofstream out(path);
+    out << R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [unobtainium]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    sigma_s: [0.5]
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  down: [[0.0, 0.0]]
+  up: [[0.0, 0.0]]
+)";
+  }
+  InputDeck deck;
+
+  CHECK(deck.read(path) == 1);
+
+  std::filesystem::remove(path);
+}
+
 TEST_CASE("InputDeck::validate accepts a consistent deck") {
   InputDeck deck = makeValidDeck();
 
