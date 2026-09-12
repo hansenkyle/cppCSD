@@ -1,0 +1,64 @@
+src/input_deck.h
+  s_bfd8f0deb81bf7::t_b5102f5b94a0c3 78-83,85,87,91-93,95-96
+  s_bfd8f0deb81bf7::t_4cfe425804c0cd 88-90
+  s_bfd8f0deb81bf7::t_9e80aae313dd38 94
+  s_22ad2b5895a01b::t_4514b5637af04c 110-115
+  s_22ad2b5895a01b::t_55a1fd2837c10a 13
+  s_22ad2b5895a01b::t_0fcff508a0154d 39-41,43-46
+  s_bfd8f0deb81bf7::t_054ef119c79d27 16-17
+  s_22ad2b5895a01b::t_c164df6c408c68 56-60
+  s_22ad2b5895a01b::t_c2a97a3073677f 52-54
+  s_22ad2b5895a01b::t_edfc25cf407cf4 27,35,37-38,42,47-51,55,61-63,66,71-77,84,86,97-98,103-105,108-109,116-121
+  s_bfd8f0deb81bf7::t_c5eaaa0be6c4f9 18-22
+  s_22ad2b5895a01b::t_62d28ca178fae8 26,28-30,32-34
+  s_22ad2b5895a01b::t_17e20cc3c5e7bc 15,23,64-65,67-70
+  s_bfd8f0deb81bf7::t_91012b24cfcc78 24-25
+test/unit/input_deck.test.cpp
+  s_22ad2b5895a01b::t_01af774581ee71 77-105,107-114
+  s_bfd8f0deb81bf7::t_df40fec76e02ec 46-52,54,62,64,71-72
+  s_22ad2b5895a01b::t_6c4c2a75b81a2b 156,159,161-166,172-173,178,181,186,189
+  s_bfd8f0deb81bf7::t_5f129249c40841 16
+  s_bfd8f0deb81bf7::t_9c4e10bf58bc89 53,55-61,63,65-70,73-76
+  s_bfd8f0deb81bf7::t_e5b5626d503689 14-15,17-45
+  s_22ad2b5895a01b::t_1866cfd26686f2 115-135,138-144,147-155,194-200
+  s_22ad2b5895a01b::t_35a6d57e69d94e 157-158,160,167-171,174-177,179-180,182-185,187-188,190-193
+src/input_deck.cpp
+  s_bfd8f0deb81bf7::t_34e5db0be1c898 19-21,24
+  s_22ad2b5895a01b::t_b23cb6d9a57d97 113
+  s_22ad2b5895a01b::t_23fd756c54371f 58-61
+  s_22ad2b5895a01b::t_111689c393eca9 27-28,33
+  s_22ad2b5895a01b::t_cb5640c098a551 10,12,17,65-71,73-79,83-97,110
+  s_bfd8f0deb81bf7::t_881d8dbf964358 101-105,108
+  s_22ad2b5895a01b::t_49e63ab710c887 43-45,47-49,51-54,57
+  s_22ad2b5895a01b::t_af59a6d041f18d 26,30-32,34-36,40
+  s_22ad2b5895a01b::t_d82ceda5f825c7 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd51c7126730f91db96b968cbec9533f67aba785",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_22ad2b5895a01b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38155a27-4943-4a3a-a510-fd07f0c2c492",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    },
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
