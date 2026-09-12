@@ -1,0 +1,33 @@
+test/unit/solver.test.cpp
+  h_250041054ad857 18,225-226,228-231,236,249-253,262,276-280,289
+src/fe_space.h
+  h_250041054ad857 15-25,28,31-34,41-44
+  h_250041054ad857 26
+src/solver.h
+  h_250041054ad857 32-36
+test/unit/fe_space.test.cpp
+  h_250041054ad857 10,16,19-22,26,29-32,36-37,40-43,45-48
+  h_250041054ad857 44
+src/solver.cpp
+  h_250041054ad857 16-20,110-115,119,126,128,191-194,272,281-284,294-297
+  h_250041054ad857 124
+src/fe_space.cpp
+  h_250041054ad857 12,15,17,19,24-26
+scripts/generate_xs.jl
+  h_250041054ad857 110-114,138-140,143-145
+src/output.h
+  h_250041054ad857 95
+src/residual.h
+  h_250041054ad857 25-28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e0f95bc6aad0ed52244000e919647104492bdf7",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
