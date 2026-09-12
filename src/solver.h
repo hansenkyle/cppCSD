@@ -4,36 +4,28 @@
 #include <Eigen/Sparse>
 
 #include "cross_section.h"
-#include "fe_space.h"
-#include "mesh.h"
 #include "input_deck.h"
-
-
-
-
-
+#include "mesh.h"
 
 class Solver {
-  public:
-    // constructor from input deck (copy)
-    Solver(InputDeck input_deck) : input_deck(input_deck){}
-    InputDeck input_deck;
-  protected:
-    class Kernel {
-      // contains mass matrices, etc.
-      // functions include:
-      // solveBLD()
-    };
+public:
+  // constructor from input deck (copy)
+  Solver(InputDeck input_deck) : input_deck(input_deck) {}
+  InputDeck input_deck;
 
-    Kernel kernel();
+protected:
+  class Kernel {
+    // contains mass matrices, etc.
+    // functions include:
+    // solveBLD()
+  };
+
+  Kernel kernel();
 };
 
 class SourceIterationSolver : public Solver {
-  public:
+public:
   using Solver::Solver;
 };
-
-
-
 
 #endif
