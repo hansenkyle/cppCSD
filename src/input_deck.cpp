@@ -107,7 +107,36 @@ void InputDeck::Xs::validate() const {
 
 void InputDeck::BoundaryConditions::validate() const { requireNonNegative(values, "bc.values"); }
 
-void InputDeck::validate() {}
+void InputDeck::validate() {
+  mesh.validate();
+  energy.validate();
+  angle.validate();
+  xs.validate();
+  bc.validate();
+
+  if (xs.total.rows() != energy.G || xs.scatter.rows() != energy.G || xs.S.rows() != energy.G) {
+    throw std::runtime_error("xs.total/scatter/S must have energy.G = " + std::to_string(energy.G) +
+                             " rows");
+  }
+  if (xs.S_bound.rows() != energy.G + 1) {
+    throw std::runtime_error("xs.S_bound must have energy.G + 1 = " + std::to_string(energy.G + 1) +
+                             " rows");
+  }
+  if (xs.total.cols() != mesh.n_x || xs.scatter.cols() != mesh.n_x || xs.S.cols() != mesh.n_x ||
+      xs.S_bound.cols() != mesh.n_x) {
+    throw std::runtime_error(
+        "xs.total/scatter/S/S_bound must have mesh.n_x = " + std::to_string(mesh.n_x) + " columns");
+  }
+
+  if (bc.values.rows() != 2 * energy.G) {
+    throw std::runtime_error("bc.values must have 2 * energy.G = " + std::to_string(2 * energy.G) +
+                             " rows");
+  }
+  if (bc.values.cols() != angle.M) {
+    throw std::runtime_error("bc.values must have angle.M = " + std::to_string(angle.M) +
+                             " columns");
+  }
+}
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   (void)path_to_yaml;

@@ -11,6 +11,67 @@
 
 #include <doctest.h>
 
+namespace {
+// A minimally-valid deck: n_x = 2 cells, G = 2 groups, M = 2 ordinates.
+InputDeck makeValidDeck() {
+  InputDeck deck;
+  deck.mesh.n_x = 2;
+  deck.mesh.x_boundary = Eigen::Vector3d(0.0, 1.0, 2.0);
+  deck.energy.G = 2;
+  deck.energy.E_boundary = Eigen::Vector3d(2.0, 1.0, 0.0);
+  deck.angle.M = 2;
+  deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
+  deck.angle.w = Eigen::Vector2d(1.0, 1.0);
+  deck.xs.total = Eigen::MatrixXd::Constant(2, 2, 1.0);
+  deck.xs.scatter = Eigen::MatrixXd::Constant(2, 2, 0.5);
+  deck.xs.S = Eigen::MatrixXd::Constant(2, 2, 1.0);
+  deck.xs.S_bound = Eigen::MatrixXd::Constant(3, 2, 1.0);
+  deck.bc.values = Eigen::MatrixXd::Constant(4, 2, 0.0);
+  return deck;
+}
+} // namespace
+
+TEST_CASE("InputDeck::validate accepts a consistent deck") {
+  InputDeck deck = makeValidDeck();
+
+  CHECK_NOTHROW(deck.validate());
+}
+
+TEST_CASE("InputDeck::validate rejects xs shaped against the wrong number of groups") {
+  InputDeck deck = makeValidDeck();
+  deck.xs.total = Eigen::MatrixXd::Constant(3, 2, 1.0);
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects xs shaped against the wrong number of cells") {
+  InputDeck deck = makeValidDeck();
+  deck.xs.scatter = Eigen::MatrixXd::Constant(2, 3, 0.5);
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects S_bound with the wrong number of rows") {
+  InputDeck deck = makeValidDeck();
+  deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 2, 1.0);
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects bc shaped against the wrong number of groups") {
+  InputDeck deck = makeValidDeck();
+  deck.bc.values = Eigen::MatrixXd::Constant(2, 2, 0.0);
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects bc shaped against the wrong number of ordinates") {
+  InputDeck deck = makeValidDeck();
+  deck.bc.values = Eigen::MatrixXd::Constant(4, 3, 0.0);
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
 TEST_CASE("InputDeck::Xs::validate accepts non-negative tables") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0); // G=2, n_x=3
