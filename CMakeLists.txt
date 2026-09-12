@@ -73,8 +73,6 @@ add_library(ldcsd_core STATIC
     src/input_deck.cpp
     src/output_manager.cpp
     src/logger.cpp
-    src/mesh.cpp
-    src/cross_section.cpp
     src/output.cpp
     src/solver.cpp
     src/residual.cpp
@@ -115,8 +113,6 @@ if(LDCSD_BUILD_TESTS)
         test/unit/input_deck.test.cpp
         test/unit/output_manager.test.cpp
         test/unit/logger.test.cpp
-        test/unit/mesh.test.cpp
-        test/unit/cross_section.test.cpp
         test/unit/output.test.cpp
         test/unit/solver.test.cpp
         test/unit/cli.test.cpp)

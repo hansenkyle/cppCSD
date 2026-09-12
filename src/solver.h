@@ -3,9 +3,7 @@
 
 #include <Eigen/Sparse>
 
-#include "cross_section.h"
 #include "input_deck.h"
-#include "mesh.h"
 
 class Solver {
 public:
