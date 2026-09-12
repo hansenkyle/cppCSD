@@ -1,6 +1,9 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include <filesystem>
+#include <vector>
+
 #include <Eigen/Sparse>
 
 #include "input_deck.h"
@@ -19,11 +22,6 @@ protected:
   };
 
   Kernel kernel();
-};
-
-class SourceIterationSolver : public Solver {
-public:
-  using Solver::Solver;
 };
 
 #endif

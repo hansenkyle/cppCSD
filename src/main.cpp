@@ -10,6 +10,7 @@
 #include "cli.h"
 #include "input_deck.h"
 #include "logger.h"
+#include "solver.h"
 
 int main(int argc, char** argv) {
   int exit_code = 0;
@@ -26,6 +27,9 @@ int main(int argc, char** argv) {
     // read() has already logged the specific failure.
     return 1;
   }
+
+  const Solver solver(deck);
+  LDCSD_LOG_INFO("constructed Solver");
 
   return 0;
 }

@@ -107,14 +107,13 @@ cs.build()
 
 # --- Pull data ---
 # Radiant numbers groups from the highest energy down to the lowest (group 1
-# = E_max), but Parser::read requires a strictly ascending energy_mesh, so
-# every per-group quantity below is reversed to match -- the scattering
-# matrix is reversed along both axes for the same reason.
-Eb = reverse(cs.get_energy_boundaries(particle))                 # MeV, size Ng+1, ascending
-Σt = cs.get_total(particle)                                      # [Ng, Nmat], cm^-1
+# = E_max). cppCSD's parser requires strictly descending energy boundaries
+# (highest → lowest, ending at 0), so we use the data directly without reversal.
+Eb = cs.get_energy_boundaries(particle)                 # MeV, size Ng+1, descending (E_max → E_cut)
+Σt = cs.get_total(particle)                             # [Ng, Nmat], cm^-1
 Σs_moments = cs.get_scattering(particle, particle, legendre_order) # [Nmat, Ng, Ng, legendre_order+1]
-S  = cs.get_stopping_powers(particle)                             # [Ng, Nmat], MeV/cm
-Sb = cs.get_boundary_stopping_powers(particle)                    # [Ng+1, Nmat], MeV/cm
+S  = cs.get_stopping_powers(particle)                   # [Ng, Nmat], MeV/cm
+Sb = cs.get_boundary_stopping_powers(particle)          # [Ng+1, Nmat], MeV/cm
 
 # --- Write CSV ---
 format_floatrow(v) = join([@sprintf "%.6e" x for x in v], ",")
@@ -135,14 +134,14 @@ open(outfile, "w") do io
     println(io, format_floatrow(Eb))
 
     for (imat, m) in enumerate(materials_input)
-        sigma_t = reverse(Σt[:, imat])
-        stopping_power_average = reverse(S[:, imat])
-        stopping_power_boundary = reverse(Sb[:, imat])
+        sigma_t = Σt[:, imat]
+        stopping_power_average = S[:, imat]
+        stopping_power_boundary = Sb[:, imat]
         wfractions_norm = m.wfractions ./ sum(m.wfractions)
 
-        # Full l=0 scattering matrix for this material, reversed along both
-        # axes to match the ascending group order used everywhere else.
-        Σs_full = [Σs_moments[imat, Ng + 1 - f, Ng + 1 - t, 1] for f in 1:Ng, t in 1:Ng]
+        # Full l=0 scattering matrix for this material (Radiant already provides
+        # data in descending group order: group 1 = highest energy).
+        Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
 
         println(io, "#")
         println(io, "material,", m.name)
