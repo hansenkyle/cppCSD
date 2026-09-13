@@ -1,0 +1,53 @@
+scripts/xs_csv_to_yaml.py
+  s_bfd8f0deb81bf7::t_72dc6ed3672cdb 121-122,125-126
+src/input_deck.h
+  s_bfd8f0deb81bf7::t_4292e732ccaeeb 12
+  s_bfd8f0deb81bf7::t_470f1d8e6de6f1 65-69,71-79,84-86
+  s_bfd8f0deb81bf7::t_7ed4e53a58e3e7 80
+test/unit/input_deck.test.cpp
+  s_bfd8f0deb81bf7::t_cf23d2032294d3 174-189,271
+  s_bfd8f0deb81bf7::t_328c7d773fdcae 155
+  s_bfd8f0deb81bf7::t_b87cd9dde05745 205
+  s_bfd8f0deb81bf7::t_3ed3ac4acac2a2 234,245,255,263-268
+  s_bfd8f0deb81bf7::t_d212671383f22b 26
+  s_bfd8f0deb81bf7::t_331d22498c0155 32-65
+  s_bfd8f0deb81bf7::t_c3b45bddd0ae9d 91-101
+  s_bfd8f0deb81bf7::t_d30acb2faa3c8f 102
+  s_bfd8f0deb81bf7::t_719a01ab7b89f9 269-270
+  s_bfd8f0deb81bf7::t_eb741fd64660b1 272
+src/input_deck.cpp
+  s_bfd8f0deb81bf7::t_6de30671484357 226-227,234-240
+  s_bfd8f0deb81bf7::t_01ba9b0175ddd3 58-64,67-85,89-91,99
+  s_bfd8f0deb81bf7::t_6824f4e6a96b88 50,65-66,92-95
+  s_bfd8f0deb81bf7::t_7ed4e53a58e3e7 52-55
+  s_bfd8f0deb81bf7::t_839b86b736c18e 86-88
+  s_bfd8f0deb81bf7::t_4da7a6d23ae9be 207-214
+  s_bfd8f0deb81bf7::t_b66bcbed9682b7 295-298
+  s_bfd8f0deb81bf7::t_5c2b0677e1d504 299
+test/unit/data/sample_input.yaml
+  s_bfd8f0deb81bf7::t_ca2704a495774d 13,15,26
+  s_bfd8f0deb81bf7::t_948ef8f4a9b469 14,16-20,27-31
+docs/input-deck.md
+  s_bfd8f0deb81bf7::t_847a018c336176 32,34-38,45-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bd65a7a19fb849a5df2e92382de201b67c5267f",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
