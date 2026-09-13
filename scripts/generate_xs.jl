@@ -53,6 +53,16 @@ materials_input = [
 # from this vector's length.
 energy_bounds = Float64[100, 10, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
 
+# Whether to include knock-on/delta-ray PRODUCTION (Moller's "P" interaction
+# type, i.e. the ejected secondary electron) in the electron-electron
+# scattering matrix, alongside the primary electron's own redirection ("S").
+# cppCSD's solver has no production/source-term mechanism yet -- Sigma_t
+# only ever counts "S" -- so turning this on without matching solver
+# support breaks particle conservation (a group's Sigma_s row sum can
+# exceed its Sigma_t). Leave false until delta-ray production is added to
+# the solver.
+include_knockon_production = false
+
 output_name = "al_27gcc.csv"  # output filename, written under scripts/xs_data/
 # ----------------------------------------------------------------------
 
@@ -64,10 +74,30 @@ outfile = joinpath(output_dir, output_name)
 
 particle = Radiant.Electron()
 
+# Radiant's native soft/catastrophic split (scattering_model = "BFP", the
+# default for every interaction below) already keeps particle conservation
+# for the "S" (scattering) type on its own: the catastrophic cutoff is
+# derived from the energy group structure itself, and only "S" feeds both
+# Sigma_t and Sigma_s. "P" (production) is the one type Radiant excludes
+# from Sigma_t by design (see include_knockon_production above), since it
+# describes a newly created particle rather than redirection of the one
+# being tracked.
+electron_electron_types = include_knockon_production ? ["S", "P"] : ["S"]
+inelastic_collision = Radiant.Inelastic_Collision()
+inelastic_collision.set_interaction_types(Dict(
+    (Radiant.Positron, Radiant.Positron) => ["S"],
+    (Radiant.Positron, Radiant.Electron) => ["P"],
+    (Radiant.Electron, Radiant.Electron) => electron_electron_types,
+    (Radiant.Proton, Radiant.Proton) => ["S"],
+    (Radiant.Proton, Radiant.Electron) => ["P"],
+    (Radiant.Alpha, Radiant.Alpha) => ["S"],
+    (Radiant.Alpha, Radiant.Electron) => ["P"],
+))
+
 interaction_list = [
-    Radiant.Inelastic_Collision(),  # Moller collisional energy loss + catastrophic delta rays
-    Radiant.Elastic_Collision(),    # Mott elastic scattering (large-angle part, AFP-decomposed)
-    Radiant.Bremsstrahlung(),       # radiative energy loss
+    inelastic_collision,          # Moller collisional energy loss (+ knock-on production if toggled on)
+    Radiant.Elastic_Collision(),  # Mott elastic scattering (large-angle part, AFP-decomposed)
+    Radiant.Bremsstrahlung(),     # radiative energy loss
 ]
 
 # --- Build materials ---
