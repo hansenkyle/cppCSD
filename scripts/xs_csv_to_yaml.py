@@ -18,6 +18,10 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+# All floats render as e-notation with 8 decimal digits (e.g. 1.23456789e+01),
+# matching the rest of the codebase's cross-section data.
+yaml.add_representer(float, lambda dumper, v: dumper.represent_scalar("tag:yaml.org,2002:float", f"{v:.8e}"))
+
 
 @dataclass
 class MaterialXS:
