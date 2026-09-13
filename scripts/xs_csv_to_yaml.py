@@ -115,7 +115,7 @@ def set_to_zero(xs: MaterialXS):
 
 if __name__ == "__main__":
 
-    eps = 1e-5
+    eps = 1e-8
 
     path = Path(sys.argv[1] if len(sys.argv) > 1 else "xs_data/al_27gcc.csv")
     energy_mesh, materials = load_csv(path)
