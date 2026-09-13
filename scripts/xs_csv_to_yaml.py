@@ -77,13 +77,68 @@ def load_csv(path: Path) -> tuple[np.ndarray, dict[str, MaterialXS]]:
     return energy_mesh, materials
 
 
+def scattering_cutoff(xs: MaterialXS, epsilon: float):
+    ng = len(xs.sigma_t)
+    for initial in range(0, ng):
+        cutoff = xs.sigma_t[initial]*eps
+        for final in range(0, ng):
+            if (xs.scattering[initial][final] < cutoff):
+                xs.scattering[initial][final] = 0
+                if (final >= initial):
+                    print(f"Setting scattering, {initial}->{final} to 0.")
+
+
+def set_to_zero(xs: MaterialXS):
+    ng = len(xs.sigma_t)
+    for g in range(0, ng):
+        if xs.sigma_t[g] < 0:
+            print(f"Set sigma_t[{g}] to 0 from {xs.sigma_t[g]}")
+            xs.sigma_t[g] = 0;
+        if xs.S[g] < 0:
+            print(f"Set S[{g}] to 0 from {xs.S[g]}")
+            xs.S[g] = 0;
+        if xs.S_bound[g] < 0:
+            print(f"Set S_bound[{g}] to 0 from {xs.S_bound[g]}")
+            xs.S_bound[g] = 0;
+        for gp in range(0, ng):
+            if xs.scattering[g][gp] < 0:
+                print(f"Set scattering[{g}][{gp}] to 0 from {xs.scattering[g][gp]}")
+                xs.scattering[g][gp] = 0
+    if xs.S_bound[-1] < 0:
+        print(f"Set S_bound[{ng}] to 0 from {xs.S_bound[-1]}")
+        xs.S_bound[-1] = 0
+
+
+
+
+
+
 if __name__ == "__main__":
+
+    eps = 1e-5
+
     path = Path(sys.argv[1] if len(sys.argv) > 1 else "xs_data/al_27gcc.csv")
     energy_mesh, materials = load_csv(path)
     print(f"energy_mesh_MeV: {energy_mesh}")
+    print("Before processing:")
     for name, mat in materials.items():
         print(f"\nmaterial '{name}': {len(mat.sigma_t)} groups")
         print(f"  sigma_t: {mat.sigma_t}")
         print(f"  S: {mat.S}")
         print(f"  S_bound: {mat.S_bound}")
         print(f"  scattering:\n{mat.scattering}")
+
+        print(f"Processing {name}")
+
+        scattering_cutoff(mat, eps)
+        set_to_zero(mat)
+
+    print("After processing:")
+    for name, mat in materials.items():
+        print(f"\nmaterial '{name}': {len(mat.sigma_t)} groups")
+        print(f"  sigma_t: {mat.sigma_t}")
+        print(f"  S: {mat.S}")
+        print(f"  S_bound: {mat.S_bound}")
+        print(f"  scattering:\n{mat.scattering}")
+
+    
