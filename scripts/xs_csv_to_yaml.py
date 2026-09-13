@@ -112,18 +112,23 @@ def set_to_zero(xs: MaterialXS):
 
 
 
-def to_yaml_nodes(energy_mesh: np.ndarray, materials: dict[str, MaterialXS]) -> dict:
-    """Builds the {energy_mesh, materials} fragment of an InputDeck YAML file.
+def scattering_entries(scattering: np.ndarray) -> list[dict]:
+    """Sparse {from, to, value} list of scattering's nonzero entries, per
+    docs/input-deck.md's scattering: format -- down/up-scatter included."""
+    froms, tos = np.nonzero(scattering)
+    return [
+        {"from": int(f), "to": int(t), "value": float(scattering[f, t])} for f, t in zip(froms, tos)
+    ]
 
-    sigma_s is the scattering matrix's diagonal (in-group only) -- InputDeck's
-    YAML schema has no field for the off-diagonal group-to-group entries.
-    """
+
+def to_yaml_nodes(energy_mesh: np.ndarray, materials: dict[str, MaterialXS]) -> dict:
+    """Builds the {energy_mesh, materials} fragment of an InputDeck YAML file."""
     return {
         "energy_mesh": energy_mesh.tolist(),
         "materials": {
             name: {
                 "sigma_t": mat.sigma_t.tolist(),
-                "sigma_s": np.diag(mat.scattering).tolist(),
+                "scattering": scattering_entries(mat.scattering),
                 "stopping_power": {
                     "group_average": mat.S.tolist(),
                     "group_boundary": mat.S_bound.tolist(),
