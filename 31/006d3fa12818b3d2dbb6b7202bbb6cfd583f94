@@ -1,0 +1,14 @@
+.gitignore
+  h_250041054ad857 73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31006d3fa12818b3d2dbb6b7202bbb6cfd583f94",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
