@@ -1,0 +1,14 @@
+scripts/xs_csv_to_yaml.py
+  h_250041054ad857 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9ddda16cc37f36c655ac4d5aea7250cfe9ea0bf",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
