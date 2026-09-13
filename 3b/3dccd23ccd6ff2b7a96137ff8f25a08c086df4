@@ -1,0 +1,24 @@
+scripts/xs_csv_to_yaml.py
+  s_bfd8f0deb81bf7::t_7f1606083a3885 115-122,124-125,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b3dccd23ccd6ff2b7a96137ff8f25a08c086df4",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
