@@ -9,6 +9,7 @@
 #define INPUT_DECK_H
 
 #include <filesystem>
+#include <vector>
 
 #include <Eigen/Dense>
 
@@ -61,17 +62,28 @@ public:
   };
 
   // Cross sections and stopping power, per energy group and spatial cell.
-  // Row g of a table is that group's space-dependent vector; (g, c) is the
-  // value for group g in cell c.
+  // Row g of total/S/S_bound is that group's space-dependent vector; (g, c)
+  // is the value for group g in cell c. scatter is per-cell instead: a
+  // material's scattering matrix is a sparse group-to-group list (down- and
+  // up-scatter both allowed), defined once per material, and every cell
+  // using that material just holds a copy of the same list.
   struct Xs {
-    Eigen::MatrixXd total;   // group total xs, rows=G, cols=n_x
-    Eigen::MatrixXd scatter; // group isotropic scattering xs, rows=G, cols=n_x
+    // One entry in a sparse group-to-group scattering matrix: group `from`
+    // scatters into group `to` with the given macroscopic cross section.
+    struct ScatterEntry {
+      int from;
+      int to;
+      double value;
+    };
+
+    Eigen::MatrixXd total;                          // group total xs, rows=G, cols=n_x
+    std::vector<std::vector<ScatterEntry>> scatter; // [cell], sparse group-to-group entries
     Eigen::MatrixXd S;       // group-average stopping power, rows=G, cols=n_x
     Eigen::MatrixXd S_bound; // stopping power at group boundaries, rows=G+1, cols=n_x
 
-    // Checks every table's values are non-negative. Shape against
-    // mesh.n_x/energy.G is a cross-struct concern, checked by
-    // InputDeck::validate() instead.
+    // Checks total/S/S_bound values are non-negative, and every scatter
+    // entry's value is non-negative. Shape against mesh.n_x/energy.G is a
+    // cross-struct concern, checked by InputDeck::validate() instead.
     void validate() const;
   };
 

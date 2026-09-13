@@ -29,24 +29,24 @@ materials:                             # one entry per name used in regions.mate
   water:
     sigma_t: [1.2, 1.0, 0.8]           # total macroscopic xs [num_groups floats]
     # Sparse group-to-group scattering matrix: only nonzero (from, to)
-    # entries need to appear. from/to in [0, num_groups).
+    # entries need to appear. from/to are 1-indexed, in [1, num_groups].
     scattering:
-      - {from: 0, to: 0, value: 1.1}
-      - {from: 0, to: 1, value: 0.05}
-      - {from: 1, to: 1, value: 0.9}
-      - {from: 1, to: 2, value: 0.03}
-      - {from: 2, to: 2, value: 0.7}
+      - {from: 1, to: 1, value: 1.1}
+      - {from: 1, to: 2, value: 0.05}
+      - {from: 2, to: 2, value: 0.9}
+      - {from: 2, to: 3, value: 0.03}
+      - {from: 3, to: 3, value: 0.7}
     stopping_power:
       group_average: [2.0, 1.8, 1.5]           # [num_groups floats]
       group_boundary: [2.2, 1.9, 1.6, 1.3]     # evaluated at group boundaries [num_groups + 1 floats]
   lead:
     sigma_t: [3.2, 3.0, 2.8]
     scattering:
-      - {from: 0, to: 0, value: 2.1}
-      - {from: 0, to: 1, value: 0.1}
-      - {from: 1, to: 1, value: 1.9}
-      - {from: 1, to: 2, value: 0.08}
-      - {from: 2, to: 2, value: 1.7}
+      - {from: 1, to: 1, value: 2.1}
+      - {from: 1, to: 2, value: 0.1}
+      - {from: 2, to: 2, value: 1.9}
+      - {from: 2, to: 3, value: 0.08}
+      - {from: 3, to: 3, value: 1.7}
     stopping_power:
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]

@@ -118,10 +118,12 @@ def set_to_zero(xs: MaterialXS):
 
 def scattering_entries(scattering: np.ndarray) -> list[dict]:
     """Sparse {from, to, value} list of scattering's nonzero entries, per
-    docs/input-deck.md's scattering: format -- down/up-scatter included."""
+    docs/input-deck.md's scattering: format (1-indexed groups) -- down/up-scatter
+    included."""
     froms, tos = np.nonzero(scattering)
     return [
-        {"from": int(f), "to": int(t), "value": float(scattering[f, t])} for f, t in zip(froms, tos)
+        {"from": int(f) + 1, "to": int(t) + 1, "value": float(scattering[f, t])}
+        for f, t in zip(froms, tos)
     ]
 
 

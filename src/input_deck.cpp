@@ -47,18 +47,56 @@ void requireSize(Eigen::Index actual, Eigen::Index expected, const std::string& 
 
 // Per-material cross sections and stopping power, indexed by energy group.
 // Parsing scratch only -- material names and this data are never retained
-// on the InputDeck, only the per-cell tables they expand into.
+// on the InputDeck, only the per-cell tables/lists they expand into.
 struct Material {
-  Eigen::VectorXd sigma_t;            // size G
-  Eigen::VectorXd sigma_s;            // size G
-  Eigen::VectorXd stopping_power_avg; // size G
-  Eigen::VectorXd stopping_power_bnd; // size G + 1
+  Eigen::VectorXd sigma_t;                             // size G
+  std::vector<InputDeck::Xs::ScatterEntry> scattering; // sparse group-to-group entries
+  Eigen::VectorXd stopping_power_avg;                  // size G
+  Eigen::VectorXd stopping_power_bnd;                  // size G + 1
 };
+
+// Group indices in the scattering: list are 1-indexed in YAML (matching how
+// a person would naturally refer to "group 1"); stored 0-indexed internally
+// like everything else. Checks from/to fall within [1, G] and that no
+// (from, to) pair repeats -- a duplicate is almost certainly a typo, so it's
+// rejected rather than summed.
+std::vector<InputDeck::Xs::ScatterEntry> parseScattering(const YAML::Node& node,
+                                                         const std::string& material_name, int G) {
+  std::vector<InputDeck::Xs::ScatterEntry> entries;
+  for (const auto& entry : node) {
+    const int from_1indexed = requireNode(entry, "from").as<int>();
+    const int to_1indexed = requireNode(entry, "to").as<int>();
+    const double value = requireNode(entry, "value").as<double>();
+
+    if (from_1indexed < 1 || from_1indexed > G) {
+      throw std::runtime_error("material '" + material_name + "' scattering 'from' group " +
+                               std::to_string(from_1indexed) + " is out of range [1, " +
+                               std::to_string(G) + "]");
+    }
+    if (to_1indexed < 1 || to_1indexed > G) {
+      throw std::runtime_error("material '" + material_name + "' scattering 'to' group " +
+                               std::to_string(to_1indexed) + " is out of range [1, " +
+                               std::to_string(G) + "]");
+    }
+
+    const int from = from_1indexed - 1;
+    const int to = to_1indexed - 1;
+    for (const InputDeck::Xs::ScatterEntry& existing : entries) {
+      if (existing.from == from && existing.to == to) {
+        throw std::runtime_error(
+            "material '" + material_name + "' has a duplicate scattering entry (from=" +
+            std::to_string(from_1indexed) + ", to=" + std::to_string(to_1indexed) + ")");
+      }
+    }
+    entries.push_back(InputDeck::Xs::ScatterEntry{from, to, value});
+  }
+  return entries;
+}
 
 Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
   Material material;
   material.sigma_t = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
-  material.sigma_s = toVector(requireNode(node, "sigma_s").as<std::vector<double>>());
+  material.scattering = parseScattering(requireNode(node, "scattering"), name, G);
 
   const YAML::Node stopping_power = requireNode(node, "stopping_power");
   material.stopping_power_avg =
@@ -67,7 +105,6 @@ Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
       toVector(requireNode(stopping_power, "group_boundary").as<std::vector<double>>());
 
   requireSize(material.sigma_t.size(), G, "material '" + name + "' sigma_t");
-  requireSize(material.sigma_s.size(), G, "material '" + name + "' sigma_s");
   requireSize(material.stopping_power_avg.size(), G,
               "material '" + name + "' stopping_power.group_average");
   requireSize(material.stopping_power_bnd.size(), G + 1,
@@ -165,9 +202,16 @@ void InputDeck::Angle::validate() {
 
 void InputDeck::Xs::validate() const {
   requireNonNegative(total, "xs.total");
-  requireNonNegative(scatter, "xs.scatter");
   requireNonNegative(S, "xs.S");
   requireNonNegative(S_bound, "xs.S_bound");
+
+  for (const std::vector<ScatterEntry>& cell_entries : scatter) {
+    for (const ScatterEntry& entry : cell_entries) {
+      if (entry.value < 0.0) {
+        throw std::runtime_error("xs.scatter value must be non-negative");
+      }
+    }
+  }
 }
 
 void InputDeck::BoundaryConditions::validate() const { requireNonNegative(values, "bc.values"); }
@@ -179,18 +223,21 @@ void InputDeck::validate() {
   xs.validate();
   bc.validate();
 
-  if (xs.total.rows() != energy.G || xs.scatter.rows() != energy.G || xs.S.rows() != energy.G) {
-    throw std::runtime_error("xs.total/scatter/S must have energy.G = " + std::to_string(energy.G) +
+  if (xs.total.rows() != energy.G || xs.S.rows() != energy.G) {
+    throw std::runtime_error("xs.total/S must have energy.G = " + std::to_string(energy.G) +
                              " rows");
   }
   if (xs.S_bound.rows() != energy.G + 1) {
     throw std::runtime_error("xs.S_bound must have energy.G + 1 = " + std::to_string(energy.G + 1) +
                              " rows");
   }
-  if (xs.total.cols() != mesh.n_x || xs.scatter.cols() != mesh.n_x || xs.S.cols() != mesh.n_x ||
-      xs.S_bound.cols() != mesh.n_x) {
-    throw std::runtime_error(
-        "xs.total/scatter/S/S_bound must have mesh.n_x = " + std::to_string(mesh.n_x) + " columns");
+  if (xs.total.cols() != mesh.n_x || xs.S.cols() != mesh.n_x || xs.S_bound.cols() != mesh.n_x) {
+    throw std::runtime_error("xs.total/S/S_bound must have mesh.n_x = " + std::to_string(mesh.n_x) +
+                             " columns");
+  }
+  if (static_cast<int>(xs.scatter.size()) != mesh.n_x) {
+    throw std::runtime_error("xs.scatter must have mesh.n_x = " + std::to_string(mesh.n_x) +
+                             " cells");
   }
 
   if (bc.values.rows() != 2 * energy.G) {
@@ -241,10 +288,14 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     }
 
     xs.total = expandByRegion(region_materials, materials, energy.G, &Material::sigma_t);
-    xs.scatter = expandByRegion(region_materials, materials, energy.G, &Material::sigma_s);
     xs.S = expandByRegion(region_materials, materials, energy.G, &Material::stopping_power_avg);
     xs.S_bound =
         expandByRegion(region_materials, materials, energy.G + 1, &Material::stopping_power_bnd);
+
+    xs.scatter.resize(region_materials.size());
+    for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
+      xs.scatter[cell] = materials.at(region_materials[cell]).scattering;
+    }
 
     const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
     const std::vector<double> mu_raw =

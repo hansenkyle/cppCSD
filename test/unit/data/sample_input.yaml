@@ -10,13 +10,25 @@ energy_mesh: [5.0, 1.0, 0.5, 0.0] # MeV, descending group boundaries, ending at 
 materials:
   water:
     sigma_t: [1.2, 1.0, 0.8]
-    sigma_s: [1.1, 0.9, 0.7]
+    # Sparse group-to-group scattering matrix: only nonzero (from, to)
+    # entries need to appear. Group indices are 1-indexed.
+    scattering:
+      - {from: 1, to: 1, value: 1.1}
+      - {from: 1, to: 2, value: 0.05}
+      - {from: 2, to: 2, value: 0.9}
+      - {from: 2, to: 3, value: 0.03}
+      - {from: 3, to: 3, value: 0.7}
     stopping_power:
       group_average: [2.0, 1.8, 1.5]
       group_boundary: [2.2, 1.9, 1.6, 1.3]
   lead:
     sigma_t: [3.2, 3.0, 2.8]
-    sigma_s: [2.1, 1.9, 1.7]
+    scattering:
+      - {from: 1, to: 1, value: 2.1}
+      - {from: 1, to: 2, value: 0.1}
+      - {from: 2, to: 2, value: 1.9}
+      - {from: 2, to: 3, value: 0.08}
+      - {from: 3, to: 3, value: 1.7}
     stopping_power:
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]

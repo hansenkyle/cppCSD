@@ -23,11 +23,45 @@ InputDeck makeValidDeck() {
   deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
   deck.angle.w = Eigen::Vector2d(1.0, 1.0);
   deck.xs.total = Eigen::MatrixXd::Constant(2, 2, 1.0);
-  deck.xs.scatter = Eigen::MatrixXd::Constant(2, 2, 0.5);
+  deck.xs.scatter = {{{0, 0, 0.5}}, {{0, 0, 0.5}}}; // one in-group entry per cell
   deck.xs.S = Eigen::MatrixXd::Constant(2, 2, 1.0);
   deck.xs.S_bound = Eigen::MatrixXd::Constant(3, 2, 1.0);
   deck.bc.values = Eigen::MatrixXd::Constant(4, 2, 0.0);
   return deck;
+}
+
+// Writes a minimal one-cell, one-group deck YAML with the given
+// `scattering:` list substituted in, and reads it back.
+int readWithScattering(const std::string& scattering_yaml) {
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "ldcsd_scattering_test.yaml";
+  {
+    std::ofstream out(path);
+    out << R"(
+spatial_mesh: [0.0, 1.0]
+regions:
+  materials: [water]
+energy_mesh: [1.0, 0.0]
+materials:
+  water:
+    sigma_t: [1.0]
+    scattering: )"
+        << scattering_yaml << R"(
+    stopping_power:
+      group_average: [1.0]
+      group_boundary: [1.0, 1.0]
+angular_quadrature:
+  mu: [-0.5, 0.5]
+  w: [1.0, 1.0]
+boundary_conditions:
+  down: [[0.0, 0.0]]
+  up: [[0.0, 0.0]]
+)";
+  }
+  InputDeck deck;
+  const int result = deck.read(path);
+  std::filesystem::remove(path);
+  return result;
 }
 } // namespace
 
@@ -51,9 +85,20 @@ TEST_CASE("InputDeck::read parses the sample deck") {
   // Cell 0 and 1 are water, cell 2 is lead.
   CHECK(deck.xs.total(0, 0) == doctest::Approx(1.2));
   CHECK(deck.xs.total(0, 2) == doctest::Approx(3.2));
-  CHECK(deck.xs.scatter(1, 1) == doctest::Approx(0.9));
   CHECK(deck.xs.S(2, 0) == doctest::Approx(1.5));
   CHECK(deck.xs.S_bound(3, 2) == doctest::Approx(4.3));
+
+  // Every cell using a material gets a copy of that material's sparse
+  // scattering entries, in file order; entry 3 is the 1->2 downscatter term.
+  REQUIRE(deck.xs.scatter[1].size() == 5); // water
+  CHECK(deck.xs.scatter[1][3].from == 1);
+  CHECK(deck.xs.scatter[1][3].to == 2);
+  CHECK(deck.xs.scatter[1][3].value == doctest::Approx(0.03));
+
+  REQUIRE(deck.xs.scatter[2].size() == 5); // lead
+  CHECK(deck.xs.scatter[2][3].from == 1);
+  CHECK(deck.xs.scatter[2][3].to == 2);
+  CHECK(deck.xs.scatter[2][3].value == doctest::Approx(0.08));
 
   // bc.values row 2*g is group g's up row, row 2*g + 1 is down; down[g][m] =
   // 10*m + g, up = down + 0.5.
@@ -107,7 +152,7 @@ energy_mesh: [1.0, 0.0]
 materials:
   water:
     sigma_t: [1.0]
-    sigma_s: [0.5]
+    scattering: [{from: 1, to: 1, value: 0.5}]
     stopping_power:
       group_average: [1.0]
       group_boundary: [1.0, 1.0]
@@ -126,6 +171,22 @@ boundary_conditions:
   std::filesystem::remove(path);
 }
 
+TEST_CASE("InputDeck::read accepts 1-indexed scattering group indices") {
+  CHECK(readWithScattering("[{from: 1, to: 1, value: 0.5}]") == 0);
+}
+
+TEST_CASE("InputDeck::read returns 1 when scattering 'from' is 0 (not 1-indexed)") {
+  CHECK(readWithScattering("[{from: 0, to: 1, value: 0.5}]") == 1);
+}
+
+TEST_CASE("InputDeck::read returns 1 when scattering 'to' exceeds num_groups") {
+  CHECK(readWithScattering("[{from: 1, to: 2, value: 0.5}]") == 1); // G = 1
+}
+
+TEST_CASE("InputDeck::read returns 1 on a duplicate scattering (from, to) pair") {
+  CHECK(readWithScattering("[{from: 1, to: 1, value: 0.5}, {from: 1, to: 1, value: 0.1}]") == 1);
+}
+
 TEST_CASE("InputDeck::validate accepts a consistent deck") {
   InputDeck deck = makeValidDeck();
 
@@ -141,7 +202,7 @@ TEST_CASE("InputDeck::validate rejects xs shaped against the wrong number of gro
 
 TEST_CASE("InputDeck::validate rejects xs shaped against the wrong number of cells") {
   InputDeck deck = makeValidDeck();
-  deck.xs.scatter = Eigen::MatrixXd::Constant(2, 3, 0.5);
+  deck.xs.scatter.resize(3); // mesh.n_x is 2
 
   CHECK_THROWS_AS(deck.validate(), std::runtime_error);
 }
@@ -170,7 +231,7 @@ TEST_CASE("InputDeck::validate rejects bc shaped against the wrong number of ord
 TEST_CASE("InputDeck::Xs::validate accepts non-negative tables") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0); // G=2, n_x=3
-  xs.scatter = Eigen::MatrixXd::Constant(2, 3, 0.0);
+  xs.scatter = {{{0, 1, 0.2}}, {}, {{1, 0, 0.1}}};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0); // G+1=3
 
@@ -181,7 +242,7 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative total entry") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.total(0, 0) = -1.0;
-  xs.scatter = Eigen::MatrixXd::Constant(2, 3, 0.0);
+  xs.scatter = {{}, {}, {}};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
 
@@ -191,10 +252,20 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative total entry") {
 TEST_CASE("InputDeck::Xs::validate rejects a negative S_bound entry") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
-  xs.scatter = Eigen::MatrixXd::Constant(2, 3, 0.0);
+  xs.scatter = {{}, {}, {}};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
   xs.S_bound(2, 1) = -1.0;
+
+  CHECK_THROWS_AS(xs.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::Xs::validate rejects a negative scatter entry") {
+  InputDeck::Xs xs;
+  xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
+  xs.scatter = {{{0, 1, -0.2}}, {}, {}};
+  xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
+  xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
 
   CHECK_THROWS_AS(xs.validate(), std::runtime_error);
 }
