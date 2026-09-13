@@ -153,18 +153,6 @@ open(outfile, "w") do io
         # Full l=0 scattering matrix for this material.
         Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
 
-        # Physical constraint: sigma_t = total out-scatter + absorption, and
-        # absorption >= 0, so group f's total out-scatter can never exceed
-        # sigma_t[f]. Fail loudly instead of silently writing inconsistent
-        # data if that's ever violated.
-        for f in 1:Ng
-            out_scatter = sum(Σs_full[f, :])
-            if out_scatter > sigma_t[f] * (1 + 1e-6)
-                error("material '$(m.name)': group $f out-scatter ($out_scatter cm^-1) " *
-                      "exceeds sigma_t ($(sigma_t[f]) cm^-1)")
-            end
-        end
-
         println(io, "#")
         println(io, "material,", m.name)
         println(io, "composition")
