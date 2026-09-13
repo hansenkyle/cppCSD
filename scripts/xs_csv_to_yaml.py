@@ -6,10 +6,8 @@
 # Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 # or without modification are permitted provided that the terms of the license are met.
 
-"""Loads the CSV cross-section format written by scripts/generate_xs.jl.
-
-YAML conversion isn't implemented yet -- this only parses the CSV into
-Python objects (see load_csv()).
+"""Loads the CSV cross-section format written by scripts/generate_xs.jl and
+converts it to InputDeck's YAML node format (see load_csv(), to_yaml_nodes()).
 """
 
 import csv
@@ -18,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 
 @dataclass
@@ -113,6 +112,28 @@ def set_to_zero(xs: MaterialXS):
 
 
 
+def to_yaml_nodes(energy_mesh: np.ndarray, materials: dict[str, MaterialXS]) -> dict:
+    """Builds the {energy_mesh, materials} fragment of an InputDeck YAML file.
+
+    sigma_s is the scattering matrix's diagonal (in-group only) -- InputDeck's
+    YAML schema has no field for the off-diagonal group-to-group entries.
+    """
+    return {
+        "energy_mesh": energy_mesh.tolist(),
+        "materials": {
+            name: {
+                "sigma_t": mat.sigma_t.tolist(),
+                "sigma_s": np.diag(mat.scattering).tolist(),
+                "stopping_power": {
+                    "group_average": mat.S.tolist(),
+                    "group_boundary": mat.S_bound.tolist(),
+                },
+            }
+            for name, mat in materials.items()
+        },
+    }
+
+
 if __name__ == "__main__":
 
     eps = 1e-8
@@ -133,12 +154,5 @@ if __name__ == "__main__":
         scattering_cutoff(mat, eps)
         set_to_zero(mat)
 
-    print("After processing:")
-    for name, mat in materials.items():
-        print(f"\nmaterial '{name}': {len(mat.sigma_t)} groups")
-        print(f"  sigma_t: {mat.sigma_t}")
-        print(f"  S: {mat.S}")
-        print(f"  S_bound: {mat.S_bound}")
-        print(f"  scattering:\n{mat.scattering}")
-
-    
+    print("\nFinished processing. YAML nodes:\n")
+    print(yaml.dump(to_yaml_nodes(energy_mesh, materials), default_flow_style=None, sort_keys=False))
