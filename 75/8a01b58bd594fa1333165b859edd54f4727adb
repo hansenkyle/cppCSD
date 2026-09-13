@@ -1,0 +1,22 @@
+test/method/al_slab/description.md
+  h_250041054ad857 1-26
+test/method/al_slab/al_6061_12g.csv
+  h_250041054ad857 1-44
+test/method/al_slab/al_6061_12g_no_knockon.csv
+  h_250041054ad857 1-44
+test/method/al_slab/al_6061_60g.csv
+  h_250041054ad857 1-140
+test/method/al_slab/al_6061_60g_no_knockon.csv
+  h_250041054ad857 1-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "758a01b58bd594fa1333165b859edd54f4727adb",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
