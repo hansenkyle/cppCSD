@@ -1,0 +1,14 @@
+test/method/al_slab/description.md
+  h_250041054ad857 27-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cecf7c98b5a1bb1c0bb8345a830cf75c2fc61a16",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
