@@ -55,13 +55,44 @@ struct Material {
   Eigen::VectorXd stopping_power_bnd;                  // size G + 1
 };
 
+// Dense form: scattering is a list of G rows, each a list of G columns --
+// row = from group, column = to group. Zero entries are dropped so the
+// result is the same sparse entry list a from/to reader would have produced.
+std::vector<InputDeck::Xs::ScatterEntry>
+parseDenseScattering(const YAML::Node& node, const std::string& material_name, int G) {
+  std::vector<InputDeck::Xs::ScatterEntry> entries;
+  requireSize(static_cast<Eigen::Index>(node.size()), G,
+              "material '" + material_name + "' scattering row count");
+  for (int from = 0; from < G; ++from) {
+    const YAML::Node row = node[from];
+    requireSize(static_cast<Eigen::Index>(row.size()), G,
+                "material '" + material_name + "' scattering row " + std::to_string(from + 1));
+    for (int to = 0; to < G; ++to) {
+      const double value = row[to].as<double>();
+      if (value != 0.0) {
+        entries.push_back(InputDeck::Xs::ScatterEntry{from, to, value});
+      }
+    }
+  }
+  return entries;
+}
+
 // Group indices in the scattering: list are 1-indexed in YAML (matching how
 // a person would naturally refer to "group 1"); stored 0-indexed internally
 // like everything else. Checks from/to fall within [1, G] and that no
 // (from, to) pair repeats -- a duplicate is almost certainly a typo, so it's
 // rejected rather than summed.
+//
+// Accepts two forms: sparse, a list of {from, to, value} maps for a matrix
+// that's mostly zero; or dense (see parseDenseScattering), a list of G rows
+// of G values each, for a matrix with few zeros. The two are told apart by
+// the type of the list's first element (map vs. sequence).
 std::vector<InputDeck::Xs::ScatterEntry> parseScattering(const YAML::Node& node,
                                                          const std::string& material_name, int G) {
+  if (node.size() > 0 && node[0].IsSequence()) {
+    return parseDenseScattering(node, material_name, G);
+  }
+
   std::vector<InputDeck::Xs::ScatterEntry> entries;
   for (const auto& entry : node) {
     const int from_1indexed = requireNode(entry, "from").as<int>();

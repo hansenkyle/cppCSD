@@ -187,6 +187,18 @@ TEST_CASE("InputDeck::read returns 1 on a duplicate scattering (from, to) pair")
   CHECK(readWithScattering("[{from: 1, to: 1, value: 0.5}, {from: 1, to: 1, value: 0.1}]") == 1);
 }
 
+TEST_CASE("InputDeck::read accepts a dense scattering matrix") {
+  CHECK(readWithScattering("[[0.5]]") == 0);
+}
+
+TEST_CASE("InputDeck::read returns 1 when a dense scattering matrix has the wrong row count") {
+  CHECK(readWithScattering("[[0.5], [0.1]]") == 1); // G = 1, but two rows given
+}
+
+TEST_CASE("InputDeck::read returns 1 when a dense scattering matrix row has the wrong length") {
+  CHECK(readWithScattering("[[0.5, 0.1]]") == 1); // G = 1, but row has two columns
+}
+
 TEST_CASE("InputDeck::validate accepts a consistent deck") {
   InputDeck deck = makeValidDeck();
 

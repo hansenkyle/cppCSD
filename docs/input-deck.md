@@ -41,12 +41,12 @@ materials:                             # one entry per name used in regions.mate
       group_boundary: [2.2, 1.9, 1.6, 1.3]     # evaluated at group boundaries [num_groups + 1 floats]
   lead:
     sigma_t: [3.2, 3.0, 2.8]
+    # Dense form: [num_groups][num_groups] floats, row = from, column = to.
+    # Equivalent to the sparse form above, zeros written out instead of omitted.
     scattering:
-      - {from: 1, to: 1, value: 2.1}
-      - {from: 1, to: 2, value: 0.1}
-      - {from: 2, to: 2, value: 1.9}
-      - {from: 2, to: 3, value: 0.08}
-      - {from: 3, to: 3, value: 1.7}
+      - [2.1, 0.1, 0.0]
+      - [0.0, 1.9, 0.08]
+      - [0.0, 0.0, 1.7]
     stopping_power:
       group_average: [5.0, 4.8, 4.5]
       group_boundary: [5.2, 4.9, 4.6, 4.3]
@@ -86,10 +86,17 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 - Group index 0 is the highest energy group. `stopping_power.group_boundary`
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
-- A material's `scattering` entries are validated against `num_groups`
-  (`from`/`to` in range, non-negative `value`, no duplicate `(from, to)`
-  pair) and against each other -- a duplicate entry is almost certainly a
-  typo, so it's rejected rather than summed. `CrossSection::scattering` (see
+- A material's `scattering` matrix may be written sparse (a list of
+  `{from, to, value}` entries, only nonzero pairs needed) or dense (a list
+  of `num_groups` rows of `num_groups` values each, row = from group,
+  column = to group) -- whichever is more compact for that material. The
+  two forms are told apart by the type of the list's first element (a map
+  vs. a nested list) and produce the same in-memory sparse entry list
+  either way. Sparse entries are validated against `num_groups` (`from`/`to`
+  in range, non-negative `value`, no duplicate `(from, to)` pair) and
+  against each other -- a duplicate entry is almost certainly a typo, so
+  it's rejected rather than summed; dense rows/columns are validated to be
+  exactly `num_groups` long. `CrossSection::scattering` (see
   [../src/cross_section.h](../src/cross_section.h)) is indexed `[cell]`
   rather than `[group][cell]`, since each cell just gets a copy of its
   material's sparse entry list.

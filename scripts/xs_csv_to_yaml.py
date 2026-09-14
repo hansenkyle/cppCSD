@@ -116,10 +116,13 @@ def set_to_zero(xs: MaterialXS):
 
 
 
-def scattering_entries(scattering: np.ndarray) -> list[dict]:
-    """Sparse {from, to, value} list of scattering's nonzero entries, per
-    docs/input-deck.md's scattering: format (1-indexed groups) -- down/up-scatter
-    included."""
+def scattering_entries(scattering: np.ndarray, dense: bool = False) -> list[dict] | list[list[float]]:
+    """scattering's group-to-group entries in InputDeck's scattering: format
+    (1-indexed groups, down/up-scatter included), per docs/input-deck.md.
+    dense=True emits the full [from][to] matrix; otherwise a sparse
+    {from, to, value} list of just the nonzero entries."""
+    if dense:
+        return scattering.tolist()
     froms, tos = np.nonzero(scattering)
     return [
         {"from": int(f) + 1, "to": int(t) + 1, "value": float(scattering[f, t])}
@@ -127,14 +130,15 @@ def scattering_entries(scattering: np.ndarray) -> list[dict]:
     ]
 
 
-def to_yaml_nodes(energy_mesh: np.ndarray, materials: dict[str, MaterialXS]) -> dict:
-    """Builds the {energy_mesh, materials} fragment of an InputDeck YAML file."""
+def to_yaml_nodes(energy_mesh: np.ndarray, materials: dict[str, MaterialXS], dense: bool = False) -> dict:
+    """Builds the {energy_mesh, materials} fragment of an InputDeck YAML file.
+    dense=True writes each material's scattering matrix in dense form."""
     return {
         "energy_mesh": energy_mesh.tolist(),
         "materials": {
             name: {
                 "sigma_t": mat.sigma_t.tolist(),
-                "scattering": scattering_entries(mat.scattering),
+                "scattering": scattering_entries(mat.scattering, dense),
                 "stopping_power": {
                     "group_average": mat.S.tolist(),
                     "group_boundary": mat.S_bound.tolist(),

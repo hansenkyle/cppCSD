@@ -66,7 +66,9 @@ public:
   // is the value for group g in cell c. scatter is per-cell instead: a
   // material's scattering matrix is a sparse group-to-group list (down- and
   // up-scatter both allowed), defined once per material, and every cell
-  // using that material just holds a copy of the same list.
+  // using that material just holds a copy of the same list. YAML may spell
+  // this sparsely (from/to/value entries) or densely (a full G x G list of
+  // lists); either way it's stored here as the same sparse entry list.
   struct Xs {
     // One entry in a sparse group-to-group scattering matrix: group `from`
     // scatters into group `to` with the given macroscopic cross section.
