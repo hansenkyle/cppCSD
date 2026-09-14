@@ -1,0 +1,27 @@
+test/unit/input_deck.test.cpp
+  s_bfd8f0deb81bf7::t_fedaa622f2d740 14-74
+src/input_deck.cpp
+  s_bfd8f0deb81bf7::t_4323deb59d443a 118-119,122-123,127-128,132-133
+  s_bfd8f0deb81bf7::t_a53fe195efa2be 110-117,120-121,124-126,129-131,134-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2d6db84bb7b0f90956b0afe92d7ab61981dfae2",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}

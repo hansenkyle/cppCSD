@@ -1,0 +1,14 @@
+src/solver.h
+  h_250041054ad857 53,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "886cfda56437e6a07fe0b300eeed156593e3bd1d",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}

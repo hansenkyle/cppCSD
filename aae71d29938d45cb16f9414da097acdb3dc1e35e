@@ -1,0 +1,28 @@
+src/output.cpp
+  s_bfd8f0deb81bf7::t_44dd0314acf343 21,24,27,30,37-52,55-56,61,72-73,75,79,85,88-92,97,101,106,113,115,119,136
+src/output.h
+  s_bfd8f0deb81bf7::t_ca8cbead0f570a 8-9,14-19,30-35,37-40,42-44,46,55,58-60,62,69,72,80
+test/unit/output.test.cpp
+  s_bfd8f0deb81bf7::t_a7afe60da0d47e 14,16-17,21,24,29-31,37,41-43,49,53-54,62,66,68-70,75,79-81,86,90-93,95,100-101,103-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aae71d29938d45cb16f9414da097acdb3dc1e35e",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}

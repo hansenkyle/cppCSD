@@ -1,0 +1,26 @@
+src/input_deck.cpp
+  s_bfd8f0deb81bf7::t_e413c9be0282c2 11,14-16,28-80,83-88
+  s_bfd8f0deb81bf7::t_f1cc1101df6d39 207-285
+  s_bfd8f0deb81bf7::t_0f65a572002e61 81-82,286-287
+test/unit/input_deck.test.cpp
+  s_bfd8f0deb81bf7::t_837bbce3482d54 34-83,86-128
+  s_bfd8f0deb81bf7::t_0f65a572002e61 84-85
+test/unit/data/sample_input.yaml
+  s_bfd8f0deb81bf7::t_7337d346909ea2 28-30,32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87c3e1c9294b125ff900614d1f5bb876dfe00a68",
+  "prompts": {},
+  "sessions": {
+    "s_bfd8f0deb81bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd887f0f-d717-46e5-b63d-2a5c888da1db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
