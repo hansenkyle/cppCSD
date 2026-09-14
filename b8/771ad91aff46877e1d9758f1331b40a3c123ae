@@ -1,0 +1,29 @@
+test/unit/data/sample_input.yaml
+  s_79ff4bf15a3e45::t_655780c56830b1 26-28,30-32
+docs/input-deck.md
+  s_79ff4bf15a3e45::t_808becb18c292d 89-99
+  s_79ff4bf15a3e45::t_c5a3fd5e0dd84a 44-45,47-49
+test/unit/input_deck.test.cpp
+  s_79ff4bf15a3e45::t_e6962396d7bce2 190-201
+src/input_deck.h
+  s_79ff4bf15a3e45::t_e75ffce6df3329 69-71
+src/input_deck.cpp
+  s_79ff4bf15a3e45::t_582cc8c3b573be 61-62
+  s_79ff4bf15a3e45::t_9c064f082eaf37 58-60,63-79,85-89,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8771ad91aff46877e1d9758f1331b40a3c123ae",
+  "prompts": {},
+  "sessions": {
+    "s_79ff4bf15a3e45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90e90cbb-3165-467f-8d1b-72f3e6f1c614",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
