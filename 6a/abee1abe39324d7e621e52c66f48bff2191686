@@ -1,0 +1,19 @@
+scripts/xs_csv_to_yaml.py
+  s_79ff4bf15a3e45::t_3b42839f787961 119-125,133-135,141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6aabee1abe39324d7e621e52c66f48bff2191686",
+  "prompts": {},
+  "sessions": {
+    "s_79ff4bf15a3e45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90e90cbb-3165-467f-8d1b-72f3e6f1c614",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
