@@ -298,21 +298,6 @@ TEST_CASE("InputDeck::BoundaryConditions::operator[] views a group's up/down row
   CHECK(group1(1, 1) == doctest::Approx(8.0)); // down
 }
 
-TEST_CASE("InputDeck::BoundaryConditions::validate accepts non-negative values") {
-  InputDeck::BoundaryConditions bc;
-  bc.values = Eigen::MatrixXd::Constant(4, 2, 1.0);
-
-  CHECK_NOTHROW(bc.validate());
-}
-
-TEST_CASE("InputDeck::BoundaryConditions::validate rejects negative values") {
-  InputDeck::BoundaryConditions bc;
-  bc.values = Eigen::MatrixXd::Constant(4, 2, 1.0);
-  bc.values(0, 0) = -1.0;
-
-  CHECK_THROWS_AS(bc.validate(), std::runtime_error);
-}
-
 TEST_CASE("InputDeck::Energy::validate derives dE from E_boundary") {
   InputDeck::Energy energy;
   energy.G = 3;

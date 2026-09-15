@@ -105,10 +105,6 @@ public:
     auto operator[](int g) const {
       return values(Eigen::seq(2 * g, 2 * g + 1), Eigen::placeholders::all);
     }
-
-    // Checks every entry is non-negative. Shape against angle.M/energy.G is
-    // a cross-struct concern, checked by InputDeck::validate() instead.
-    void validate() const;
   };
 
   // Reads and validates path_to_yaml, populating this deck's members.

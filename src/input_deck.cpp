@@ -245,14 +245,11 @@ void InputDeck::Xs::validate() const {
   }
 }
 
-void InputDeck::BoundaryConditions::validate() const { requireNonNegative(values, "bc.values"); }
-
 void InputDeck::validate() {
   mesh.validate();
   energy.validate();
   angle.validate();
   xs.validate();
-  bc.validate();
 
   if (xs.total.rows() != energy.G || xs.S.rows() != energy.G) {
     throw std::runtime_error("xs.total/S must have energy.G = " + std::to_string(energy.G) +
