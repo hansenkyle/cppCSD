@@ -1,0 +1,33 @@
+scripts/double_gauss_legendre.py
+  s_4c1104253c999b::t_384ba81f8b9a6c 1-37,42-44
+  s_ba27771e6745d8::t_d647d4aabc2cde 38-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a56382a672532a00bda43d4c63c93fdb2a1e5f5c",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4c1104253c999b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d1232b3-21fe-4faa-ba1f-da8e6e11bc31",
+        "model": "unknown"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    },
+    "s_ba27771e6745d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83982896-b23b-4cc9-91a2-fa855813275a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
