@@ -81,6 +81,9 @@ add_library(ldcsd_core STATIC
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
 target_link_libraries(ldcsd_core PRIVATE CLI11::CLI11)
+target_compile_options(ldcsd_core PRIVATE
+    $<$<CONFIG:Release>:-O3 -march=native>
+)
 if(LDCSD_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(ldcsd_core PUBLIC LDCSD_ENABLE_DEBUG_LOGGING)
 endif()
