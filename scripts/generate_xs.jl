@@ -10,7 +10,7 @@
 #   # metadata comment lines (generator, timestamp, particle,
 #   # group structure, material list)
 #   energy_mesh_MeV
-#   <Ng+1 ascending group boundary values>
+#   <Ng+1 descending group boundary values>
 #   material,<name>
 #   composition
 #   <element>,<weight fraction>
@@ -33,34 +33,40 @@ using Radiant
 using Printf
 using Dates
 
+# Legendre truncation order Radiant uses internally to decompose elastic
+# scattering; only the l=0 (isotropic/total) moment is ever written out,
+# but a higher internal order improves that moment's accuracy. Not a user
+# knob -- there's no reason to trade accuracy for speed here.
+const RADIANT_LEGENDRE_ORDER = 7
+
 # --------------------------- USER INPUT -----------------------------
 # One entry per material. `name` becomes the CSV material key and must
 # eventually match the material names used in the deck's
 # `regions.materials` list once converted to YAML.
 materials_input = [
-    (name = "water", density = 1.0, elements = ["H", "O"], wfractions = [0.111894, 0.888106]),
+    (name = "aluminum", density = 2.7, elements = ["Al"], wfractions = [1.0]),
 ]
 
-Ng         = 20                    # number of energy groups (ignored if custom_energy_bounds is set below)
-E_max      = 10.0                  # midpoint energy of highest group [MeV] (ignored if custom_energy_bounds is set)
-E_cut      = 0.001                 # cutoff energy [MeV] (ignored if custom_energy_bounds is set)
-group_type = "log"                 # "log" or "linear" (ignored if custom_energy_bounds is set)
+# Energy group boundaries [MeV], strictly descending (highest energy
+# first, ending at the cutoff) -- cppCSD's parser requires this same
+# descending order, so no reversal is ever needed below. Ng is derived
+# from this vector's length.
+energy_bounds = Float64[100, 10, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
 
-# --- Custom energy group boundaries (optional) -------------------------
-# To use group boundaries that aren't a plain log/linear sweep, list them
-# here explicitly instead: Ng+1 boundary energies [MeV], either ascending
-# or descending (Radiant accepts either). This OVERRIDES Ng/E_max/E_cut/
-# group_type above -- Ng is derived from this vector's length instead.
-# Leave this empty ([]) to keep using the log/linear structure above.
-custom_energy_bounds = Float64[]   # e.g. Float64[0.001, 0.01, 0.1, 1.0, 10.0]
-# -------------------------------------------------------------------------
+# Whether to include knock-on/delta-ray PRODUCTION (Moller's "P" interaction
+# type, i.e. the ejected secondary electron) in the electron-electron
+# scattering matrix, alongside the primary electron's own redirection ("S").
+# cppCSD's solver has no production/source-term mechanism yet -- Sigma_t
+# only ever counts "S" -- so turning this on without matching solver
+# support breaks particle conservation (a group's Sigma_s row sum can
+# exceed its Sigma_t). Leave false until delta-ray production is added to
+# the solver.
+include_knockon_production = false
 
-legendre_order = 1                 # Legendre truncation order used internally by
-                                    # Radiant's elastic-scattering decomposition;
-                                    # only the l=0 moment is written out.
-
-output_name = "water_20g.csv"  # output filename, written under scripts/xs_data/
+output_name = "al_27gcc.csv"  # output filename, written under scripts/xs_data/
 # ----------------------------------------------------------------------
+
+Ng = length(energy_bounds) - 1
 
 output_dir = joinpath(@__DIR__, "xs_data")
 mkpath(output_dir)
@@ -68,10 +74,30 @@ outfile = joinpath(output_dir, output_name)
 
 particle = Radiant.Electron()
 
+# Radiant's native soft/catastrophic split (scattering_model = "BFP", the
+# default for every interaction below) already keeps particle conservation
+# for the "S" (scattering) type on its own: the catastrophic cutoff is
+# derived from the energy group structure itself, and only "S" feeds both
+# Sigma_t and Sigma_s. "P" (production) is the one type Radiant excludes
+# from Sigma_t by design (see include_knockon_production above), since it
+# describes a newly created particle rather than redirection of the one
+# being tracked.
+electron_electron_types = include_knockon_production ? ["S", "P"] : ["S"]
+inelastic_collision = Radiant.Inelastic_Collision()
+inelastic_collision.set_interaction_types(Dict(
+    (Radiant.Positron, Radiant.Positron) => ["S"],
+    (Radiant.Positron, Radiant.Electron) => ["P"],
+    (Radiant.Electron, Radiant.Electron) => electron_electron_types,
+    (Radiant.Proton, Radiant.Proton) => ["S"],
+    (Radiant.Proton, Radiant.Electron) => ["P"],
+    (Radiant.Alpha, Radiant.Alpha) => ["S"],
+    (Radiant.Alpha, Radiant.Electron) => ["P"],
+))
+
 interaction_list = [
-    Radiant.Inelastic_Collision(),  # Moller collisional energy loss + catastrophic delta rays
-    Radiant.Elastic_Collision(),    # Mott elastic scattering (large-angle part, AFP-decomposed)
-    Radiant.Bremsstrahlung(),       # radiative energy loss
+    inelastic_collision,          # Moller collisional energy loss (+ knock-on production if toggled on)
+    Radiant.Elastic_Collision(),  # Mott elastic scattering (large-angle part, AFP-decomposed)
+    Radiant.Bremsstrahlung(),     # radiative energy loss
 ]
 
 # --- Build materials ---
@@ -89,29 +115,19 @@ for m in materials_input
 end
 
 # --- Build cross sections ---
-using_custom_bounds = !isempty(custom_energy_bounds)
-
 cs = Radiant.Cross_Sections()
 cs.set_source("physics-models")
 cs.set_materials(material_list)
 cs.set_particles([particle])
-if using_custom_bounds
-    cs.set_group_structure(custom_energy_bounds)
-    Ng = length(custom_energy_bounds) - 1
-else
-    cs.set_group_structure(group_type, Ng, E_max, E_cut)
-end
+cs.set_group_structure(energy_bounds)
 cs.set_interactions(interaction_list)
-cs.set_legendre_order(legendre_order)
+cs.set_legendre_order(RADIANT_LEGENDRE_ORDER)
 cs.build()
 
 # --- Pull data ---
-# Radiant numbers groups from the highest energy down to the lowest (group 1
-# = E_max). cppCSD's parser requires strictly descending energy boundaries
-# (highest → lowest, ending at 0), so we use the data directly without reversal.
-Eb = cs.get_energy_boundaries(particle)                 # MeV, size Ng+1, descending (E_max → E_cut)
+Eb = cs.get_energy_boundaries(particle)                 # MeV, size Ng+1, descending
 Σt = cs.get_total(particle)                             # [Ng, Nmat], cm^-1
-Σs_moments = cs.get_scattering(particle, particle, legendre_order) # [Nmat, Ng, Ng, legendre_order+1]
+Σs_moments = cs.get_scattering(particle, particle, RADIANT_LEGENDRE_ORDER) # [Nmat, Ng, Ng, RADIANT_LEGENDRE_ORDER+1]
 S  = cs.get_stopping_powers(particle)                   # [Ng, Nmat], MeV/cm
 Sb = cs.get_boundary_stopping_powers(particle)          # [Ng+1, Nmat], MeV/cm
 
@@ -122,12 +138,7 @@ open(outfile, "w") do io
     println(io, "# Generated by scripts/generate_xs.jl (Radiant.jl)")
     println(io, "# Generated: ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
     println(io, "# Particle: electron")
-    if using_custom_bounds
-        println(io, "# Group structure: custom boundaries, Ng=", Ng)
-    else
-        println(io, "# Group structure: ", group_type, ", Ng=", Ng,
-                     ", E_max=", E_max, " MeV, E_cut=", E_cut, " MeV")
-    end
+    println(io, "# Group structure: custom boundaries, Ng=", Ng)
     println(io, "# Materials: ", join([m.name for m in materials_input], ", "))
     println(io, "#")
     println(io, "energy_mesh_MeV")
@@ -139,8 +150,7 @@ open(outfile, "w") do io
         stopping_power_boundary = Sb[:, imat]
         wfractions_norm = m.wfractions ./ sum(m.wfractions)
 
-        # Full l=0 scattering matrix for this material (Radiant already provides
-        # data in descending group order: group 1 = highest energy).
+        # Full l=0 scattering matrix for this material.
         Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
 
         println(io, "#")

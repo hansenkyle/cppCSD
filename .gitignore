@@ -70,3 +70,6 @@ Testing/
 
 # generated cross-section data
 scripts/xs_data/
+
+# Python stuff
+__pycache__/
