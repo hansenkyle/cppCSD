@@ -40,17 +40,17 @@ def group_corners(psi, E_boundary: np.ndarray, n_quad: int) -> tuple[np.ndarray,
     """LD reconstruction of psi(E) on each group [E_boundary[g+1], E_boundary[g]].
     Returns (down, up): the low- and high-energy corner values, length G each.
     """
-    xi, w = np.polynomial.legendre.leggauss(n_quad)
     down = np.empty(len(E_boundary) - 1)
     up = np.empty(len(E_boundary) - 1)
     for g in range(len(E_boundary) - 1):
         E_hi, E_lo = E_boundary[g], E_boundary[g + 1]
-        E = 0.5 * (E_hi - E_lo) * xi + 0.5 * (E_hi + E_lo)
+        E = np.linspace(E_lo, E_hi, 201)
         psi_vals = psi(E)
-        average = 0.5 * np.sum(w * psi_vals)
-        slope = 1.5 * np.sum(w * psi_vals * xi)
-        down[g] = average - slope
-        up[g] = average + slope
+        average = np.trapezoid(psi_vals, E)/(E_hi - E_lo)
+        grad = np.gradient(psi_vals[1:], (E[1:]+E[:-1])/2)
+        slope = np.trapezoid(grad, (E[1:]+E[:-1])/2)/(E_hi - E_lo)
+        down[g] = average - 0.5*slope*(E_hi - E_lo)
+        up[g] = average + 0.5*slope*(E_hi - E_lo)
     return down, up
 
 
@@ -96,3 +96,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
