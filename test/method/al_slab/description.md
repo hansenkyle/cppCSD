@@ -9,8 +9,8 @@ Spatial mesh:
 - 100 cells
 
 Energy mesh:
-- 1 eV - 1 MeV
-- 60 log-spaced groups
+- 0.01 eV - 1 MeV
+- 36 log-spaced groups
 
 Cross sections:
 - Generated using RADIANT.jl, with reactions:
@@ -24,9 +24,3 @@ Boundary conditions:
 - Isotropic incoming flux on one side
 - Energy spectrum from from "Van Allen Probes show that the inner radiation zone contains no MeV electrons: ECT/MagEIS data" (Fennel, Claudepierre, et al. 2015), figure 2 is approximately used:
     - psi = 1.5e+5 exp(-0.01 E[keV]) 1/(cm2 s ster keV), E<1000 keV. 0, E>1000 keV.
-
-Variants:
-- 60_g: original, with knock-on production
-- 60_g_no_knockon: no knock-on production
-- 12_g: includes knock-on production, 12 log-spaced energy groups
-- 12_g_no_knockon: 12 log-spaced energy groups, no knock_on production
