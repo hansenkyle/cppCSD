@@ -16,9 +16,16 @@ public:
 
 protected:
   class Kernel {
+    Kernel();
     // contains mass matrices, etc.
     // functions include:
     // solveBLD()
+    Eigen::Matrix2d M;
+    Eigen::Matrix2d L;
+    Eigen::Matrix2d Lb;
+
+    Eigen::Matrix4d A;
+    Eigen::Vector4d b;
   };
 
   Kernel kernel();
