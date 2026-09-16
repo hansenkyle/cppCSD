@@ -1,0 +1,14 @@
+CMakeLists.txt
+  h_c6d403188ce57a 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a16c4a7d5b1a7f9c51b45b80221c1dc708561e63",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
