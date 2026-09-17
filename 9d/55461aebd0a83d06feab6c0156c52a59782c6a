@@ -1,0 +1,69 @@
+src/solver.cpp
+  s_9adf614efb89bc::t_29d78fa2250945 5,9,11-13,18,20-21,23,26-27,30-31,35,39
+  s_4539c967b180ee::t_bc64d583e5a235 10,14-17,19,22,24-25,28-29,32-34,36-38
+src/solver_formatter.cpp
+  s_4539c967b180ee::t_07ce27b896e76c 1-40,43-104,107-111
+  s_4539c967b180ee::t_133a1943d226b9 41-42,105-106
+src/solver_formatter.h
+  s_4539c967b180ee::t_0118611965d267 1-41
+src/input_deck.cpp
+  s_9adf614efb89bc::t_fe06191c0dea2e 343-344,356-360
+  s_9adf614efb89bc::t_9d572aec899be9 305-315,321-326,334-342,345-355,361-401
+  s_9adf614efb89bc::t_85164dcca82a5c 12
+  s_9adf614efb89bc::t_c2a442a0b95677 316-320,327-333
+  s_9adf614efb89bc::t_158a2b8f7d28b7 20,24-45
+test/unit/input_deck.test.cpp
+  s_9adf614efb89bc::t_c2a442a0b95677 434-442
+  s_9adf614efb89bc::t_02d6666b838a55 426-433,443-468
+test/unit/solver.test.cpp
+  s_4539c967b180ee::t_51fc3b2c5c2934 10,37-43,45,47-49,52-67,70-71,74-75,77-78,80-81,83-84,86-87,90-91,93-94,96-97,99,102-104,106-107,109-111,113-114,116-117,119-120,123-142
+  s_9adf614efb89bc::t_f6437d305b151c 3-5,7-9,11-36,44,46,50-51,68-69,72-73,76,79,82,85,88-89,92,95,98,100-101,105,108,112,115,118,121-122,143-144
+src/output.h
+  s_9adf614efb89bc::t_438a33395d10f1 14-27,30-32,39-42,44-45,48-51,53-55,63,68,74-76
+  s_9adf614efb89bc::t_71b597c018ad0c 70-71
+  s_9adf614efb89bc::t_c9676ec44dbe18 69
+src/output.cpp
+  s_9adf614efb89bc::t_e0ca7ab0ef3419 39-42,47-52,55,57,60-73,108,111-113,117-118,124-132,134,136-139,143-151,153,155,161-176,181,185,190
+  s_9adf614efb89bc::t_96d0e74dd1bb43 74-75,80,94,98,107,109-110,114-116,119-123,133,135,140-142,152,154
+  s_9adf614efb89bc::t_5c7e8ff48198b1 156
+test/unit/solver_formatter.test.cpp
+  s_4539c967b180ee::t_38c7f4151df0ce 1-88
+src/solver.h
+  s_4539c967b180ee::t_fecb9751e95b45 28-50
+  s_9adf614efb89bc::t_f0606ee1fa3a37 7,18-27
+  s_4539c967b180ee::t_a89b148f214c4e 51
+CMakeLists.txt
+  s_4539c967b180ee::t_48a57ee1b8be4b 78
+  s_4539c967b180ee::t_9d8a88b93b8bd2 119
+src/input_deck.h
+  s_9adf614efb89bc::t_10d5418f054433 128-136
+  s_9adf614efb89bc::t_a8217154c85ccb 12
+test/unit/output.test.cpp
+  s_9adf614efb89bc::t_fff4c56996eeb2 64-68,70-75,77-80,82-100,103-116
+  s_9adf614efb89bc::t_e78b7df5fb679f 69,76,81
+  s_9adf614efb89bc::t_5d332ae25a9b4c 101-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d55461aebd0a83d06feab6c0156c52a59782c6a",
+  "prompts": {},
+  "sessions": {
+    "s_4539c967b180ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a46eddcc-6c82-4658-bafa-91d76b15b266",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    },
+    "s_9adf614efb89bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59f77204-1696-4de9-9450-f58d09098e1c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
