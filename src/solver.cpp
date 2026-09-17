@@ -90,5 +90,13 @@ Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE,
   // External source
   b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
 
+  Eigen::Vector4d x = A.partialPivLu().solve(b);
+
+  if (cosine < 0) {
+    return x({1, 0, 3, 2});
+  }
+
+  return x;
+
   return Eigen::Vector4d::Zero();
 }
