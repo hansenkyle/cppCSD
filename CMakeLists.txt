@@ -75,6 +75,7 @@ add_library(ldcsd_core STATIC
     src/logger.cpp
     src/output.cpp
     src/solver.cpp
+    src/solver_formatter.cpp
     src/residual.cpp
     src/cli.cpp
 )
@@ -115,6 +116,7 @@ if(LDCSD_BUILD_TESTS)
         test/unit/logger.test.cpp
         test/unit/output.test.cpp
         test/unit/solver.test.cpp
+        test/unit/solver_formatter.test.cpp
         test/unit/cli.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE

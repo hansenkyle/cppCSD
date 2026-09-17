@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <map>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -16,9 +17,32 @@
 #include <yaml-cpp/yaml.h>
 
 #include "logger.h"
+#include "output.h"
 
 namespace {
 constexpr double kAngleWeightRelTol = 1e-4;
+constexpr int kEchoPrecision = 6;
+constexpr OutputTable::Format kSci{OutputTable::Notation::Scientific, kEchoPrecision};
+constexpr OutputTable::Format kInt{OutputTable::Notation::Integer, 0};
+
+std::vector<double> indexRange(int n) {
+  std::vector<double> values(n);
+  for (int i = 0; i < n; ++i) {
+    values[i] = i;
+  }
+  return values;
+}
+
+// sigma_s for the within-group (from == to == g) entry in cell c's
+// scattering list, or 0 if that cell has none.
+double withinGroupScatter(const std::vector<InputDeck::Xs::ScatterEntry>& cell_entries, int g) {
+  for (const InputDeck::Xs::ScatterEntry& entry : cell_entries) {
+    if (entry.from == g && entry.to == g) {
+      return entry.value;
+    }
+  }
+  return 0.0;
+}
 
 void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
   if (values.size() > 0 && values.minCoeff() < 0.0) {
@@ -276,6 +300,103 @@ void InputDeck::validate() {
     throw std::runtime_error("bc.values must have angle.M = " + std::to_string(angle.M) +
                              " columns");
   }
+}
+
+std::string InputDeck::echo() const {
+  std::ostringstream out;
+
+  OutputMetadata size("Problem Size");
+  size.addEntry("Spatial cells", std::to_string(mesh.n_x));
+  size.addEntry("Energy groups", std::to_string(energy.G));
+  size.addEntry("Angular ordinates", std::to_string(angle.M));
+  out << size.txt();
+
+  OutputTable spatial("Spatial Discretization", mesh.n_x);
+  spatial.addColumn("cell", kInt, indexRange(mesh.n_x));
+  spatial.addColumn("x_left", kSci,
+                    std::vector<double>(mesh.x_boundary.data(), mesh.x_boundary.data() + mesh.n_x));
+  spatial.addColumn(
+      "x_right", kSci,
+      std::vector<double>(mesh.x_boundary.data() + 1, mesh.x_boundary.data() + 1 + mesh.n_x));
+  spatial.addColumn("dx", kSci, std::vector<double>(mesh.dx.data(), mesh.dx.data() + mesh.n_x));
+  out << spatial.txt();
+
+  OutputTable energy_table("Energy Discretization", energy.G);
+  energy_table.addColumn("group", kInt, indexRange(energy.G));
+  energy_table.addColumn(
+      "E_upper", kSci,
+      std::vector<double>(energy.E_boundary.data(), energy.E_boundary.data() + energy.G));
+  energy_table.addColumn(
+      "E_lower", kSci,
+      std::vector<double>(energy.E_boundary.data() + 1, energy.E_boundary.data() + 1 + energy.G));
+  energy_table.addColumn("dE", kSci,
+                         std::vector<double>(energy.dE.data(), energy.dE.data() + energy.G));
+  out << energy_table.txt();
+
+  OutputTable quadrature("Angular Quadrature", angle.M);
+  quadrature.addColumn("ordinate", kInt, indexRange(angle.M));
+  quadrature.addColumn("mu", kSci, std::vector<double>(angle.mu.data(), angle.mu.data() + angle.M));
+  quadrature.addColumn("w", kSci, std::vector<double>(angle.w.data(), angle.w.data() + angle.M));
+  out << quadrature.txt();
+
+  for (int g = 0; g < energy.G; ++g) {
+    // Row-major: one column per spatial cell (numbered in the header), one
+    // row per variable.
+    OutputTable group_xs("Cross Sections - Group " + std::to_string(g), mesh.n_x);
+
+    std::vector<double> sigma_t(mesh.n_x), S(mesh.n_x), S_up(mesh.n_x), S_down(mesh.n_x),
+        sigma_s(mesh.n_x);
+    for (int c = 0; c < mesh.n_x; ++c) {
+      sigma_t[c] = xs.total(g, c);
+      S[c] = xs.S(g, c);
+      S_up[c] = xs.S_bound(g, c);
+      S_down[c] = xs.S_bound(g + 1, c);
+      sigma_s[c] = withinGroupScatter(xs.scatter[c], g);
+    }
+    group_xs.addRow("sigma_t", kSci, sigma_t);
+    group_xs.addRow("S", kSci, S);
+    group_xs.addRow("S_up", kSci, S_up);
+    group_xs.addRow("S_down", kSci, S_down);
+    group_xs.addRow("sigma_s_within_group", kSci, sigma_s);
+    out << group_xs.txt();
+  }
+
+  for (int c = 0; c < mesh.n_x; ++c) {
+    OutputTable scatter_matrix("Scattering Matrix - Cell " + std::to_string(c), energy.G);
+    scatter_matrix.addColumn("from", kInt, indexRange(energy.G));
+
+    std::vector<std::vector<double>> dense(energy.G, std::vector<double>(energy.G, 0.0));
+    for (const Xs::ScatterEntry& entry : xs.scatter[c]) {
+      dense[entry.from][entry.to] = entry.value;
+    }
+    for (int to = 0; to < energy.G; ++to) {
+      std::vector<double> column(energy.G);
+      for (int from = 0; from < energy.G; ++from) {
+        column[from] = dense[from][to];
+      }
+      scatter_matrix.addColumn("to_" + std::to_string(to), kSci, column);
+    }
+    out << scatter_matrix.txt();
+  }
+
+  OutputTable bc_table("Boundary Conditions", 2 * energy.G);
+  std::vector<double> group_col(2 * energy.G), direction_col(2 * energy.G);
+  for (int row = 0; row < 2 * energy.G; ++row) {
+    group_col[row] = row / 2;
+    direction_col[row] = row % 2; // 0 = up, 1 = down
+  }
+  bc_table.addColumn("group", kInt, group_col);
+  bc_table.addColumn("direction (0=up,1=down)", kInt, direction_col);
+  for (int m = 0; m < angle.M; ++m) {
+    std::vector<double> column(2 * energy.G);
+    for (int row = 0; row < 2 * energy.G; ++row) {
+      column[row] = bc.values(row, m);
+    }
+    bc_table.addColumn("ord_" + std::to_string(m), kSci, column);
+  }
+  out << bc_table.txt();
+
+  return out.str();
 }
 
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
