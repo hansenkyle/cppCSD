@@ -18,6 +18,59 @@ Solver::Kernel::Kernel() {
   b = Eigen::Vector4d::Zero();
 }
 
+std::vector<Eigen::VectorXd> Solver::transportSweep(int g){
+
+  // Compute angular flux in a single energy group given a known source (and known scalar flux in all groups).
+  
+  // references: delete these
+  // M = input_deck.angle.M
+  // mu = input_deck.angle.mu
+  // sigma_total = input_deck.xs.total // Eigen matrix(G, x)
+  // boundary = input_deck.bc[group](up/down, m)
+  // dx = input_deck.mesh.dx / .mesh.n_x   // Eigen::VectorXd
+  // dE = input_deck.energy.dE  // Eigen::VectorXd
+
+
+
+  // initialize guess
+  std::vector<Eigen::VectorXd> psi(input_deck.angle.M, Eigen::VectorXd::Zero(4*input_deck.mesh.n_x));
+
+  // prepare data (dE*sigma_s)
+  auto& dx = input_deck.mesh.dx;
+  Eigen::VectorXd& sigma_t = input_deck.xs.total(g, Eigen::placeholds::all);
+  Eigen::
+  double dE = input_deck.energy.dE(g);
+
+
+  for (int m=0; m<input_deck.angle.M; m++){
+    auto mu = input_deck.angle.mu[m];
+    switch (mu > 0) {
+      case true: // left-to-right
+      // solve leftmost cell using boundary conditions
+      auto dx = input_deck.mesh.dx(0);
+      auto dE = input_deck.energy.dE(g);
+      
+      psi[m]({0,1,2,3}) = kernel.solveDirect(mu,)
+      // loop through all other cells
+      break;
+      case false: // right-to-left
+      // solve rightmost cell using boundary conditions
+
+      // loop through all other cells
+      break;
+    }
+    // switch (mu > 0)
+    // case true
+    // case false
+  }
+
+
+
+
+  // return
+  return psi;
+}
+
 Eigen::Vector4d Solver::Kernel::solveDirect(
     double cosine, double dx, double dE, double xs, double S, double S_up, double S_down,
     Eigen::Vector2d psi_in_E, double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,

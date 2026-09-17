@@ -15,6 +15,8 @@ public:
   Solver(InputDeck input_deck) : input_deck(input_deck) {}
   InputDeck input_deck;
 
+  std::vector<Eigen::VectorXd> transportSweep();
+
   // TODO: this is needed by 'writeResults'. Change 'write' function signatures to accept standalone
   // values.
   struct Results {
