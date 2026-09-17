@@ -108,6 +108,19 @@ public:
     }
   };
 
+  // External source, per angular ordinate. values[m] holds ordinate m's
+  // source: one column per energy group, and 4 * mesh.n_x rows -- rows
+  // 4*c .. 4*c+3 are cell c's (up_left, up_right, down_left, down_right),
+  // the same corner layout Kernel::solveDirect uses for a single cell's
+  // q_up/q_down (L then R).
+  struct Source {
+    std::vector<Eigen::MatrixXd> values; // size M, each 4 * mesh.n_x rows x energy.G cols
+
+    // Checks every entry is non-negative. Shape against angle.M/mesh.n_x/energy.G is a
+    // cross-struct concern, checked by InputDeck::validate() instead.
+    void validate() const;
+  };
+
   // Reads and validates path_to_yaml, populating this deck's members.
   // Returns 0 if the file is valid; returns 1 early on the first error
   // found in the file (missing/malformed keys, undefined material
@@ -139,6 +152,7 @@ public:
   Angle angle;
   Xs xs;
   BoundaryConditions bc;
+  Source source;
 };
 
 #endif

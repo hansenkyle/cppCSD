@@ -114,6 +114,7 @@ InputDeck makeDeck() {
   deck.xs.S = Eigen::MatrixXd::Constant(1, 1, 1.0);
   deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 1, 1.0);
   deck.bc.values = Eigen::MatrixXd::Constant(2, 1, 0.0);
+  deck.source.values = {Eigen::MatrixXd::Constant(4, 1, 0.0)};
   deck.validate();
   return deck;
 }

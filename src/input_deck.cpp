@@ -178,6 +178,28 @@ Eigen::MatrixXd expandByRegion(const std::vector<std::string>& region_materials,
   }
   return table;
 }
+// Parses one ordinate's `source` entry: a list of G group entries, each a
+// list of n_x per-cell {up_left, up_right, down_left, down_right} maps.
+// Returned as a (4 * n_x) x G matrix, rows 4*c..4*c+3 = that cell's four
+// corner values, matching Kernel::solveDirect's per-cell q_up/q_down layout.
+Eigen::MatrixXd parseSourceOrdinate(const YAML::Node& ordinate_node, const std::string& name, int G,
+                                    int n_x) {
+  requireSize(static_cast<Eigen::Index>(ordinate_node.size()), G, name + " group count");
+  Eigen::MatrixXd values(4 * n_x, G);
+  for (int g = 0; g < G; ++g) {
+    const YAML::Node group_node = ordinate_node[g];
+    const std::string group_name = name + " group " + std::to_string(g + 1);
+    requireSize(static_cast<Eigen::Index>(group_node.size()), n_x, group_name + " cell count");
+    for (int c = 0; c < n_x; ++c) {
+      const YAML::Node cell_node = group_node[c];
+      values(4 * c, g) = requireNode(cell_node, "up_left").as<double>();
+      values(4 * c + 1, g) = requireNode(cell_node, "up_right").as<double>();
+      values(4 * c + 2, g) = requireNode(cell_node, "down_left").as<double>();
+      values(4 * c + 3, g) = requireNode(cell_node, "down_right").as<double>();
+    }
+  }
+  return values;
+}
 } // namespace
 
 void InputDeck::Mesh::validate() {
@@ -269,11 +291,18 @@ void InputDeck::Xs::validate() const {
   }
 }
 
+void InputDeck::Source::validate() const {
+  for (const Eigen::MatrixXd& ordinate : values) {
+    requireNonNegative(ordinate, "source");
+  }
+}
+
 void InputDeck::validate() {
   mesh.validate();
   energy.validate();
   angle.validate();
   xs.validate();
+  source.validate();
 
   if (xs.total.rows() != energy.G || xs.S.rows() != energy.G) {
     throw std::runtime_error("xs.total/S must have energy.G = " + std::to_string(energy.G) +
@@ -299,6 +328,18 @@ void InputDeck::validate() {
   if (bc.values.cols() != angle.M) {
     throw std::runtime_error("bc.values must have angle.M = " + std::to_string(angle.M) +
                              " columns");
+  }
+
+  if (static_cast<int>(source.values.size()) != angle.M) {
+    throw std::runtime_error("source must have angle.M = " + std::to_string(angle.M) +
+                             " ordinates");
+  }
+  for (int m = 0; m < angle.M; ++m) {
+    if (source.values[m].rows() != 4 * mesh.n_x || source.values[m].cols() != energy.G) {
+      throw std::runtime_error("source ordinate " + std::to_string(m) +
+                               " must be shaped 4 * mesh.n_x = " + std::to_string(4 * mesh.n_x) +
+                               " rows x energy.G = " + std::to_string(energy.G) + " columns");
+    }
   }
 }
 
@@ -396,6 +437,28 @@ std::string InputDeck::echo() const {
   }
   out << bc_table.txt();
 
+  for (int g = 0; g < energy.G; ++g) {
+    for (int m = 0; m < angle.M; ++m) {
+      OutputTable source_table("External Source - Group " + std::to_string(g) + ", Ordinate " +
+                                   std::to_string(m),
+                               mesh.n_x);
+      std::vector<double> up_left(mesh.n_x), up_right(mesh.n_x), down_left(mesh.n_x),
+          down_right(mesh.n_x);
+      const Eigen::MatrixXd& ordinate = source.values[m];
+      for (int c = 0; c < mesh.n_x; ++c) {
+        up_left[c] = ordinate(4 * c, g);
+        up_right[c] = ordinate(4 * c + 1, g);
+        down_left[c] = ordinate(4 * c + 2, g);
+        down_right[c] = ordinate(4 * c + 3, g);
+      }
+      source_table.addRow("up_left", kSci, up_left);
+      source_table.addRow("up_right", kSci, up_right);
+      source_table.addRow("down_left", kSci, down_left);
+      source_table.addRow("down_right", kSci, down_right);
+      out << source_table.txt();
+    }
+  }
+
   return out.str();
 }
 
@@ -473,6 +536,14 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
         bc.values(2 * g, m) = up[g][m];
         bc.values(2 * g + 1, m) = down[g][m];
       }
+    }
+
+    const YAML::Node source_node = requireNode(root, "source");
+    requireSize(static_cast<Eigen::Index>(source_node.size()), angle.M, "source ordinate count");
+    source.values.resize(angle.M);
+    for (int m = 0; m < angle.M; ++m) {
+      source.values[m] = parseSourceOrdinate(
+          source_node[m], "source ordinate " + std::to_string(m + 1), energy.G, mesh.n_x);
     }
 
     validate();

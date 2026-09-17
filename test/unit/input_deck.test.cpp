@@ -27,6 +27,7 @@ InputDeck makeValidDeck() {
   deck.xs.S = Eigen::MatrixXd::Constant(2, 2, 1.0);
   deck.xs.S_bound = Eigen::MatrixXd::Constant(3, 2, 1.0);
   deck.bc.values = Eigen::MatrixXd::Constant(4, 2, 0.0);
+  deck.source.values = {Eigen::MatrixXd::Constant(8, 2, 0.0), Eigen::MatrixXd::Constant(8, 2, 0.0)};
   return deck;
 }
 
@@ -56,6 +57,9 @@ angular_quadrature:
 boundary_conditions:
   down: [[0.0, 0.0]]
   up: [[0.0, 0.0]]
+source:
+  - [[{up_left: 0.0, up_right: 0.0, down_left: 0.0, down_right: 0.0}]]
+  - [[{up_left: 0.0, up_right: 0.0, down_left: 0.0, down_right: 0.0}]]
 )";
   }
   InputDeck deck;
@@ -105,6 +109,18 @@ TEST_CASE("InputDeck::read parses the sample deck") {
   CHECK(deck.bc.values(0, 1) == doctest::Approx(10.5)); // group 0, up, m=1
   CHECK(deck.bc.values(1, 1) == doctest::Approx(10.0)); // group 0, down, m=1
   CHECK(deck.bc.values(4, 3) == doctest::Approx(32.5)); // group 2, up, m=3
+
+  // source.values[m](4*c + corner, g) = 100*m + 10*g + c + corner offset
+  // (0.1/0.2/0.3/0.4 for up_left/up_right/down_left/down_right).
+  REQUIRE(deck.source.values.size() == 4);
+  CHECK(deck.source.values[0].rows() == 4 * 3);                         // 4 * n_x
+  CHECK(deck.source.values[0].cols() == 3);                             // G
+  CHECK(deck.source.values[0](0, 0) == doctest::Approx(0.1));           // m=0, g=0, c=0, up_left
+  CHECK(deck.source.values[0](1, 0) == doctest::Approx(0.2));           // m=0, g=0, c=0, up_right
+  CHECK(deck.source.values[0](2, 0) == doctest::Approx(0.3));           // m=0, g=0, c=0, down_left
+  CHECK(deck.source.values[0](3, 0) == doctest::Approx(0.4));           // m=0, g=0, c=0, down_right
+  CHECK(deck.source.values[2](4 * 1, 1) == doctest::Approx(211.1));     // m=2, g=1, c=1, up_left
+  CHECK(deck.source.values[3](4 * 2 + 3, 2) == doctest::Approx(322.4)); // m=3, g=2, c=2, down_right
 }
 
 TEST_CASE("InputDeck::read overrides an already-populated deck") {
@@ -238,6 +254,44 @@ TEST_CASE("InputDeck::validate rejects bc shaped against the wrong number of ord
   deck.bc.values = Eigen::MatrixXd::Constant(4, 3, 0.0);
 
   CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects source with the wrong number of ordinates") {
+  InputDeck deck = makeValidDeck();
+  deck.source.values = {Eigen::MatrixXd::Constant(8, 2, 0.0)}; // angle.M is 2
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects a source ordinate shaped against the wrong number of "
+          "cells") {
+  InputDeck deck = makeValidDeck();
+  deck.source.values[0] = Eigen::MatrixXd::Constant(4, 2, 0.0); // mesh.n_x is 2, expects 8 rows
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::validate rejects a source ordinate shaped against the wrong number of "
+          "groups") {
+  InputDeck deck = makeValidDeck();
+  deck.source.values[0] = Eigen::MatrixXd::Constant(8, 3, 0.0); // energy.G is 2
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::Source::validate accepts non-negative values") {
+  InputDeck::Source source;
+  source.values = {Eigen::MatrixXd::Constant(4, 2, 1.0)};
+
+  CHECK_NOTHROW(source.validate());
+}
+
+TEST_CASE("InputDeck::Source::validate rejects a negative entry") {
+  InputDeck::Source source;
+  source.values = {Eigen::MatrixXd::Constant(4, 2, 1.0)};
+  source.values[0](0, 0) = -1.0;
+
+  CHECK_THROWS_AS(source.validate(), std::runtime_error);
 }
 
 TEST_CASE("InputDeck::Xs::validate accepts non-negative tables") {
@@ -439,7 +493,11 @@ TEST_SUITE("InputDeck::echo") {
                                                        "Cross Sections - Group 1",
                                                        "Scattering Matrix - Cell 0",
                                                        "Scattering Matrix - Cell 1",
-                                                       "Boundary Conditions"};
+                                                       "Boundary Conditions",
+                                                       "External Source - Group 0, Ordinate 0",
+                                                       "External Source - Group 0, Ordinate 1",
+                                                       "External Source - Group 1, Ordinate 0",
+                                                       "External Source - Group 1, Ordinate 1"};
 
     std::size_t last_pos = 0;
     for (const std::string& header : expected_headers) {
@@ -464,5 +522,19 @@ TEST_SUITE("InputDeck::echo") {
     CHECK(result.find("Spatial cells") != std::string::npos);
     CHECK(result.find("1.000000e+00") != std::string::npos); // xs.total / xs.S entries
     CHECK(result.find("5.000000e-01") != std::string::npos); // within-group scatter, 0.5
+  }
+
+  TEST_CASE("renders external source corner values") {
+    InputDeck deck = makeValidDeck();
+    deck.source.values[1](4, 0) = 7.5; // ordinate 1, cell 1, up_left, group 0
+    deck.validate();
+
+    const std::string result = deck.echo();
+
+    CHECK(result.find("up_left") != std::string::npos);
+    CHECK(result.find("up_right") != std::string::npos);
+    CHECK(result.find("down_left") != std::string::npos);
+    CHECK(result.find("down_right") != std::string::npos);
+    CHECK(result.find("7.500000e+00") != std::string::npos);
   }
 }
