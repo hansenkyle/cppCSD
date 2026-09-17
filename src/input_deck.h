@@ -108,13 +108,14 @@ public:
     }
   };
 
-  // External source, per angular ordinate. values[m] holds ordinate m's
-  // source: one column per energy group, and 4 * mesh.n_x rows -- rows
+  // External source, per energy group. values[g] holds group g's source:
+  // one column per angular ordinate, and 4 * mesh.n_x rows -- rows
   // 4*c .. 4*c+3 are cell c's (up_left, up_right, down_left, down_right),
   // the same corner layout Kernel::solveDirect uses for a single cell's
-  // q_up/q_down (L then R).
+  // q_up/q_down (L then R). Indexed by group rather than ordinate since
+  // few solver operations cross energy groups.
   struct Source {
-    std::vector<Eigen::MatrixXd> values; // size M, each 4 * mesh.n_x rows x energy.G cols
+    std::vector<Eigen::MatrixXd> values; // size G, each 4 * mesh.n_x rows x angle.M cols
 
     // Checks every entry is non-negative. Shape against angle.M/mesh.n_x/energy.G is a
     // cross-struct concern, checked by InputDeck::validate() instead.

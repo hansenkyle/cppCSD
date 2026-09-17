@@ -178,24 +178,25 @@ Eigen::MatrixXd expandByRegion(const std::vector<std::string>& region_materials,
   }
   return table;
 }
-// Parses one ordinate's `source` entry: a list of G group entries, each a
+// Parses one group's `source` entry: a list of M ordinate entries, each a
 // list of n_x per-cell {up_left, up_right, down_left, down_right} maps.
-// Returned as a (4 * n_x) x G matrix, rows 4*c..4*c+3 = that cell's four
+// Returned as a (4 * n_x) x M matrix, rows 4*c..4*c+3 = that cell's four
 // corner values, matching Kernel::solveDirect's per-cell q_up/q_down layout.
-Eigen::MatrixXd parseSourceOrdinate(const YAML::Node& ordinate_node, const std::string& name, int G,
-                                    int n_x) {
-  requireSize(static_cast<Eigen::Index>(ordinate_node.size()), G, name + " group count");
-  Eigen::MatrixXd values(4 * n_x, G);
-  for (int g = 0; g < G; ++g) {
-    const YAML::Node group_node = ordinate_node[g];
-    const std::string group_name = name + " group " + std::to_string(g + 1);
-    requireSize(static_cast<Eigen::Index>(group_node.size()), n_x, group_name + " cell count");
+Eigen::MatrixXd parseSourceGroup(const YAML::Node& group_node, const std::string& name, int M,
+                                 int n_x) {
+  requireSize(static_cast<Eigen::Index>(group_node.size()), M, name + " ordinate count");
+  Eigen::MatrixXd values(4 * n_x, M);
+  for (int m = 0; m < M; ++m) {
+    const YAML::Node ordinate_node = group_node[m];
+    const std::string ordinate_name = name + " ordinate " + std::to_string(m + 1);
+    requireSize(static_cast<Eigen::Index>(ordinate_node.size()), n_x,
+                ordinate_name + " cell count");
     for (int c = 0; c < n_x; ++c) {
-      const YAML::Node cell_node = group_node[c];
-      values(4 * c, g) = requireNode(cell_node, "up_left").as<double>();
-      values(4 * c + 1, g) = requireNode(cell_node, "up_right").as<double>();
-      values(4 * c + 2, g) = requireNode(cell_node, "down_left").as<double>();
-      values(4 * c + 3, g) = requireNode(cell_node, "down_right").as<double>();
+      const YAML::Node cell_node = ordinate_node[c];
+      values(4 * c, m) = requireNode(cell_node, "up_left").as<double>();
+      values(4 * c + 1, m) = requireNode(cell_node, "up_right").as<double>();
+      values(4 * c + 2, m) = requireNode(cell_node, "down_left").as<double>();
+      values(4 * c + 3, m) = requireNode(cell_node, "down_right").as<double>();
     }
   }
   return values;
@@ -330,15 +331,14 @@ void InputDeck::validate() {
                              " columns");
   }
 
-  if (static_cast<int>(source.values.size()) != angle.M) {
-    throw std::runtime_error("source must have angle.M = " + std::to_string(angle.M) +
-                             " ordinates");
+  if (static_cast<int>(source.values.size()) != energy.G) {
+    throw std::runtime_error("source must have energy.G = " + std::to_string(energy.G) + " groups");
   }
-  for (int m = 0; m < angle.M; ++m) {
-    if (source.values[m].rows() != 4 * mesh.n_x || source.values[m].cols() != energy.G) {
-      throw std::runtime_error("source ordinate " + std::to_string(m) +
+  for (int g = 0; g < energy.G; ++g) {
+    if (source.values[g].rows() != 4 * mesh.n_x || source.values[g].cols() != angle.M) {
+      throw std::runtime_error("source group " + std::to_string(g) +
                                " must be shaped 4 * mesh.n_x = " + std::to_string(4 * mesh.n_x) +
-                               " rows x energy.G = " + std::to_string(energy.G) + " columns");
+                               " rows x angle.M = " + std::to_string(angle.M) + " columns");
     }
   }
 }
@@ -444,12 +444,12 @@ std::string InputDeck::echo() const {
                                mesh.n_x);
       std::vector<double> up_left(mesh.n_x), up_right(mesh.n_x), down_left(mesh.n_x),
           down_right(mesh.n_x);
-      const Eigen::MatrixXd& ordinate = source.values[m];
+      const Eigen::MatrixXd& group = source.values[g];
       for (int c = 0; c < mesh.n_x; ++c) {
-        up_left[c] = ordinate(4 * c, g);
-        up_right[c] = ordinate(4 * c + 1, g);
-        down_left[c] = ordinate(4 * c + 2, g);
-        down_right[c] = ordinate(4 * c + 3, g);
+        up_left[c] = group(4 * c, m);
+        up_right[c] = group(4 * c + 1, m);
+        down_left[c] = group(4 * c + 2, m);
+        down_right[c] = group(4 * c + 3, m);
       }
       source_table.addRow("up_left", kSci, up_left);
       source_table.addRow("up_right", kSci, up_right);
@@ -539,11 +539,11 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
     }
 
     const YAML::Node source_node = requireNode(root, "source");
-    requireSize(static_cast<Eigen::Index>(source_node.size()), angle.M, "source ordinate count");
-    source.values.resize(angle.M);
-    for (int m = 0; m < angle.M; ++m) {
-      source.values[m] = parseSourceOrdinate(
-          source_node[m], "source ordinate " + std::to_string(m + 1), energy.G, mesh.n_x);
+    requireSize(static_cast<Eigen::Index>(source_node.size()), energy.G, "source group count");
+    source.values.resize(energy.G);
+    for (int g = 0; g < energy.G; ++g) {
+      source.values[g] = parseSourceGroup(source_node[g], "source group " + std::to_string(g + 1),
+                                          angle.M, mesh.n_x);
     }
 
     validate();
