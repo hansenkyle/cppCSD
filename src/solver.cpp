@@ -59,7 +59,7 @@ std::vector<Eigen::VectorXd> Solver::transportSweep(int g){
       // loop through all other cells
       break;
     }
-    // switch (mu > 0)
+
     // case true
     // case false
   }
@@ -185,8 +185,9 @@ void Solver::writeInputDeckEcho(const std::filesystem::path& file_path) const {
   appendToFile(file_path, input_deck.echo());
 }
 
-void Solver::writeResults(const std::filesystem::path& file_path, const Results& results) const {
-  appendToFile(file_path, SolverFormatter::formatResults(results, input_deck));
+void Solver::writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
+                          const std::vector<Eigen::MatrixXd>& angular_flux) const {
+  appendToFile(file_path, SolverFormatter::formatResults(scalar_flux, angular_flux, input_deck));
 }
 
 void Solver::writeResiduals(const std::filesystem::path& file_path,

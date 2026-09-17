@@ -14,7 +14,6 @@
 #include <Eigen/Dense>
 
 #include "input_deck.h"
-#include "solver.h"
 
 // Renders Solver's output blocks (run metadata, results, residuals) to
 // text. Pure formatting: takes the data it needs as arguments, returns a
@@ -29,11 +28,14 @@ namespace SolverFormatter {
 // exposes them.
 std::string formatRunMetadata();
 
-// "Scalar Flux" block, followed by one "Angular Flux - Ordinate N" block
-// per entry in results.angular_flux.
-std::string formatResults(const Solver::Results& results, const InputDeck& deck);
+// "Scalar Flux" block, followed by one "Angular Flux - Group N" block per
+// entry in angular_flux (indexed like InputDeck::Source: one entry per
+// group, one ordinate per column).
+std::string formatResults(const Eigen::MatrixXd& scalar_flux,
+                          const std::vector<Eigen::MatrixXd>& angular_flux, const InputDeck& deck);
 
-// One "Angular Residual - Ordinate N" block per entry in residuals.
+// One "Angular Residual - Group N" block per entry in residuals (indexed
+// like InputDeck::Source).
 std::string formatResiduals(const std::vector<Eigen::MatrixXd>& residuals, const InputDeck& deck);
 
 } // namespace SolverFormatter

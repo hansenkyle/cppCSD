@@ -43,11 +43,10 @@ TEST_SUITE("SolverFormatter") {
   }
 
   TEST_CASE("formatResults renders scalar flux as a 2x2 corner cluster per cell") {
-    Solver::Results results;
-    results.scalar_flux = Eigen::MatrixXd(4, 1);
-    results.scalar_flux << 1.0, 2.0, 3.0, 4.0; // up_left, up_right, down_left, down_right
+    Eigen::MatrixXd scalar_flux(4, 1);
+    scalar_flux << 1.0, 2.0, 3.0, 4.0; // up_left, up_right, down_left, down_right
 
-    const std::string result = SolverFormatter::formatResults(results, makeDeck());
+    const std::string result = SolverFormatter::formatResults(scalar_flux, {}, makeDeck());
 
     CHECK(result.find("Scalar Flux") != std::string::npos);
     CHECK(result.find("1.000000e+00") != std::string::npos);
@@ -56,29 +55,28 @@ TEST_SUITE("SolverFormatter") {
     CHECK(result.find("4.000000e+00") != std::string::npos);
   }
 
-  TEST_CASE("formatResults renders one angular flux table per ordinate, with its mu and weight") {
-    Solver::Results results;
-    results.scalar_flux = Eigen::MatrixXd::Zero(4, 1);
-    Eigen::MatrixXd ordinate_flux(4, 1);
-    ordinate_flux << 5.0, 6.0, 7.0, 8.0;
-    results.angular_flux = {ordinate_flux};
+  TEST_CASE("formatResults renders one angular flux table per group, with each ordinate's mu and "
+            "weight") {
+    Eigen::MatrixXd group_flux(4, 1); // 1 ordinate
+    group_flux << 5.0, 6.0, 7.0, 8.0;
 
-    const std::string result = SolverFormatter::formatResults(results, makeDeck());
+    const std::string result =
+        SolverFormatter::formatResults(Eigen::MatrixXd::Zero(4, 1), {group_flux}, makeDeck());
 
-    CHECK(result.find("Angular Flux - Ordinate 0") != std::string::npos);
+    CHECK(result.find("Angular Flux - Group 0") != std::string::npos);
     CHECK(result.find("mu=5.000000e-01") != std::string::npos);
     CHECK(result.find("w=2.000000e+00") != std::string::npos);
     CHECK(result.find("5.000000e+00") != std::string::npos);
     CHECK(result.find("8.000000e+00") != std::string::npos);
   }
 
-  TEST_CASE("formatResiduals renders one table per ordinate") {
+  TEST_CASE("formatResiduals renders one table per group") {
     Eigen::MatrixXd residual(4, 1);
     residual << 0.1, 0.2, 0.3, 0.4;
 
     const std::string result = SolverFormatter::formatResiduals({residual}, makeDeck());
 
-    CHECK(result.find("Angular Residual - Ordinate 0") != std::string::npos);
+    CHECK(result.find("Angular Residual - Group 0") != std::string::npos);
     CHECK(result.find("1.000000e-01") != std::string::npos);
     CHECK(result.find("4.000000e-01") != std::string::npos);
   }

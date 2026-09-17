@@ -183,7 +183,7 @@ TEST_SUITE("Solver") {
     solver.writeMetadata(path);
     const std::string before = readFile(path);
 
-    solver.writeResults(path, Solver::Results{Eigen::MatrixXd::Zero(4, 1), {}});
+    solver.writeResults(path, Eigen::MatrixXd::Zero(4, 1), {});
     const std::string after = readFile(path);
 
     CHECK(after.substr(0, before.size()) == before);
@@ -196,7 +196,7 @@ TEST_SUITE("Solver") {
     const std::filesystem::path path = freshPath("ldcsd_solver_test_residuals_append.txt");
     Solver solver(makeDeck());
 
-    solver.writeResults(path, Solver::Results{Eigen::MatrixXd::Zero(4, 1), {}});
+    solver.writeResults(path, Eigen::MatrixXd::Zero(4, 1), {});
     const std::string before = readFile(path);
 
     Eigen::MatrixXd residual = Eigen::MatrixXd::Constant(4, 1, 1e-8);
@@ -204,7 +204,7 @@ TEST_SUITE("Solver") {
     const std::string after = readFile(path);
 
     CHECK(after.substr(0, before.size()) == before);
-    CHECK(after.find("Angular Residual - Ordinate 0") != std::string::npos);
+    CHECK(after.find("Angular Residual - Group 0") != std::string::npos);
 
     std::filesystem::remove(path);
   }
@@ -215,7 +215,7 @@ TEST_SUITE("Solver") {
 
     solver.writeMetadata(path);
     solver.writeInputDeckEcho(path);
-    solver.writeResults(path, Solver::Results{Eigen::MatrixXd::Zero(4, 1), {}});
+    solver.writeResults(path, Eigen::MatrixXd::Zero(4, 1), {});
     solver.writeResiduals(path, {Eigen::MatrixXd::Zero(4, 1)});
 
     const std::string result = readFile(path);
