@@ -1,0 +1,38 @@
+src/input_deck.cpp
+  s_a8e9e0b16f916a::t_f5cfa2d1c71ac9 435
+  s_a8e9e0b16f916a::t_fb7c22d68b27af 61-84,90,98-100,110,127-128,133,152,159,167-168
+  s_a8e9e0b16f916a::t_5ebbd6ca14bd1d 300-305
+  s_a8e9e0b16f916a::t_684936b805ea05 340-346
+  s_a8e9e0b16f916a::t_d6cde249044758 89,91-92
+  s_a8e9e0b16f916a::t_ad2baa105650c9 418
+test/unit/solver.test.cpp
+  s_a8e9e0b16f916a::t_a99f37a4fd29e8 113
+src/input_deck.h
+  s_a8e9e0b16f916a::t_60ab7dcd624d90 16
+  s_a8e9e0b16f916a::t_d6cde249044758 79-80
+  s_a8e9e0b16f916a::t_41fb4fafc4c8ab 69-77,85
+test/unit/input_deck.test.cpp
+  s_a8e9e0b16f916a::t_8552ed8bbc5e5f 15-22,34-35
+  s_a8e9e0b16f916a::t_d6cde249044758 244,313-314
+  s_a8e9e0b16f916a::t_201760da173f22 325,335,346
+  s_a8e9e0b16f916a::t_22338c655dac6c 105-107,109-110
+  s_a8e9e0b16f916a::t_2f171231fe8370 243,245-250
+test/unit/solver_formatter.test.cpp
+  s_a8e9e0b16f916a::t_a99f37a4fd29e8 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d7edaf56531ac8ea8ecedac4c0cb65856a8977d",
+  "prompts": {},
+  "sessions": {
+    "s_a8e9e0b16f916a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bfbcc072-949d-441a-b02e-a2bad14e53d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
