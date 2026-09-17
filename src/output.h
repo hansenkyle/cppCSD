@@ -11,32 +11,48 @@
 #include <string>
 #include <vector>
 
-// A titled table of named, formatted columns, one row per index -- for
-// solver output files (e.g. solution.txt / solution.csv), not run metadata;
-// see docs/output-layout.md and OutputMetadata for that. txt()/csv() render
-// the table to a self-contained string that the caller appends to whatever
-// file they're assembling; OutputTable never touches the filesystem itself.
+// A titled table of named, formatted values -- for solver output files
+// (e.g. solution.txt / solution.csv), not run metadata; see
+// docs/output-layout.md and OutputMetadata for that. txt()/csv() render the
+// table to a self-contained string that the caller appends to whatever file
+// they're assembling; OutputTable never touches the filesystem itself.
+//
+// A table is either column-major (addColumn: a named column of values, one
+// per row; rows are numbered 0..n_entries-1 implicitly) or row-major
+// (addRow: a named row of values, one per column; columns are numbered
+// 0..n_entries-1 in the header, each row prefixed with its name) --
+// row-major suits a "one row per variable, one column per index" layout
+// (e.g. cross sections tabulated one column per spatial cell). Orientation
+// is decided by whichever of addColumn()/addRow() is called first; mixing
+// the two on one table is an error.
 class OutputTable {
 public:
-  // How a column's values are rendered: as an integer, fixed-point, or
-  // scientific notation with `precision` digits after the decimal point
-  // (ignored for Integer).
+  // How a value is rendered: as an integer, fixed-point, or scientific
+  // notation with `precision` digits after the decimal point (ignored for
+  // Integer).
   enum class Notation { Integer, Fixed, Scientific };
   struct Format {
     Notation notation;
     int precision;
   };
 
-  // Constructs a table with `n_rows` rows. n_rows must be positive; every
-  // column added afterward must have exactly n_rows values.
-  OutputTable(std::string title, int n_rows);
+  // Constructs a table with `n_entries` values along its indexed axis --
+  // rows for a column-major table, columns for a row-major one. n_entries
+  // must be positive.
+  OutputTable(std::string title, int n_entries);
 
-  // Appends a named column. `values` must have exactly n_rows entries.
+  // Appends a named column of n_entries values, one per row. Column-major;
+  // cannot be mixed with addRow() on the same table.
   void addColumn(std::string name, Format format, std::vector<double> values);
 
+  // Appends a named row of n_entries values, one per column. Row-major;
+  // cannot be mixed with addColumn() on the same table.
+  void addRow(std::string name, Format format, std::vector<double> values);
+
   // Renders as human-readable, whitespace-aligned text: a title line, then
-  // a right-justified header row and data rows. Column widths are computed
-  // from content, not hard-coded.
+  // a right-justified header row and data rows (column-major), or a header
+  // row of numbered columns and left-labeled data rows (row-major). Column
+  // widths are computed from content, not hard-coded.
   std::string txt() const;
 
   // Renders as CSV: the title as a plain (uncommented) row, then
@@ -44,15 +60,20 @@ public:
   std::string csv() const;
 
 private:
-  struct Column {
+  struct Entry {
     std::string name;
     Format format;
     std::vector<double> values;
   };
+  enum class Orientation { Unset, ColumnMajor, RowMajor };
+
+  std::string txtColumnMajor() const;
+  std::string txtRowMajor() const;
 
   std::string title_;
-  int n_rows_;
-  std::vector<Column> columns_;
+  int n_entries_;
+  Orientation orientation_ = Orientation::Unset;
+  std::vector<Entry> entries_;
 };
 
 // A titled list of key-value pairs (e.g. an output file header), in
