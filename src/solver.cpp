@@ -20,12 +20,23 @@ Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE,
                                             double S, double S_up, double S_down,
                                             Eigen::Vector2d psi_in_E, double psi_in_x_down,
                                             double psi_in_x_up, Eigen::Vector2d q_up,
-                                            Eigen::Vector2d q_down, Eigen::VectorXd sigma_sdEprime, Eigen::MatrixXd phi_gprime_up,
+                                            Eigen::Vector2d q_down, Eigen::VectorXd sigma_sdEprime,
+                                            Eigen::MatrixXd phi_gprime_up,
                                             Eigen::MatrixXd phi_gprime_down) {
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
 
   double mu = std::abs(cosine);
+
+  // The element matrices below are built assuming flow travels L->R; for
+  // cosine < 0 the L/R labeling of every spatially-structured input must be
+  // swapped to match before assembly (scalar psi_in_x_up/down are already
+  // direction-relative "upwind" values, so they're left alone).
+  if (cosine < 0) {
+    psi_in_E.reverseInPlace();
+    q_up.reverseInPlace();
+    q_down.reverseInPlace();
+  }
 
   /*
   matrix/vector are energy-major, space-minor:
@@ -67,7 +78,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE,
   // CSD source
   b({0, 1}) += (dx / dE) * S_up * M * psi_in_E;
   // Scattering source
-  b({0, 1}) += (0.125) *M * (phi_gprime_down + phi_gprime_up)*sigma_sdEprime;
+  b({0, 1}) += (0.125) * M * (phi_gprime_down + phi_gprime_up) * sigma_sdEprime;
   // External source
   b({0, 1}) += (dx / 6) * M * (2 * q_up + q_down);
 
@@ -86,7 +97,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE,
   // streaming source
   b(2) += (mu / 6) * (psi_in_x_up + 2 * psi_in_x_down);
   // Scattering source
-  b({2,3}) += (0.125) *M * (phi_gprime_down + phi_gprime_up)*sigma_sdEprime;
+  b({2, 3}) += (0.125) * M * (phi_gprime_down + phi_gprime_up) * sigma_sdEprime;
   // External source
   b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
 

@@ -122,6 +122,11 @@ if(LDCSD_BUILD_TESTS)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
+    # Must match ldcsd_core's ISA flags: Eigen fixed-size types (e.g. Kernel's Matrix4d) get
+    # different vectorization alignment depending on -march, and calling across an alignment
+    # mismatch between this target and ldcsd_core.a segfaults intermittently.
+    target_compile_options(unit_test PRIVATE
+        $<$<CONFIG:Release>:-O3 -march=native>)
 
     # Coverage instrumentation
     option(LDCSD_ENABLE_COVERAGE "Build unit_test with coverage instrumentation" OFF)
