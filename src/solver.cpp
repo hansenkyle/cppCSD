@@ -114,7 +114,6 @@ Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE,
   return Eigen::Vector4d::Zero();
 }
 
-
 namespace {
 
 void appendToFile(const std::filesystem::path& file_path, const std::string& text) {
