@@ -15,7 +15,7 @@ public:
   Solver(InputDeck input_deck) : input_deck(input_deck) {}
   InputDeck input_deck;
 
-  std::vector<Eigen::VectorXd> transportSweep();
+  Eigen::VectorXd transportSweep(int g, Eigen::MatrixXd psi_in_E, Eigen::MatrixXd scalar_flux);
 
   // Appends the run metadata block.
   void writeMetadata(const std::filesystem::path& file_path) const;
@@ -55,7 +55,7 @@ public:
   };
 
 protected:
-  Kernel kernel();
+  Kernel kernel;
 };
 
 #endif

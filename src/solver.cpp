@@ -18,55 +18,104 @@ Solver::Kernel::Kernel() {
   b = Eigen::Vector4d::Zero();
 }
 
-std::vector<Eigen::VectorXd> Solver::transportSweep(int g){
+Eigen::VectorXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
+                                       Eigen::MatrixXd scalar_flux) {
+  // Compute angular flux in a single energy group given a known source (and known scalar flux in
+  // all groups).
 
-  // Compute angular flux in a single energy group given a known source (and known scalar flux in all groups).
-  
-  // references: delete these
-  // M = input_deck.angle.M
-  // mu = input_deck.angle.mu
-  // sigma_total = input_deck.xs.total // Eigen matrix(G, x)
-  // boundary = input_deck.bc[group](up/down, m)
-  // dx = input_deck.mesh.dx / .mesh.n_x   // Eigen::VectorXd
-  // dE = input_deck.energy.dE  // Eigen::VectorXd
+  // Parameters:
+  //   g                  : energy group. Needed for indexing xs and dE.
+  //   psi_in_E           : angular flux at higher energy group  : [4nx x M]
+  //   scalar_flux        : scalar flux, all energy groups       : [4nx x G]
 
-
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
 
   // initialize guess
-  std::vector<Eigen::VectorXd> psi(input_deck.angle.M, Eigen::VectorXd::Zero(4*input_deck.mesh.n_x));
+  Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
 
   // prepare data (dE*sigma_s)
-  auto& dx = input_deck.mesh.dx;
-  Eigen::VectorXd& sigma_t = input_deck.xs.total(g, Eigen::placeholds::all);
-  Eigen::
   double dE = input_deck.energy.dE(g);
+  auto dx = input_deck.mesh.dx;
+  auto sigma_t = input_deck.xs.total(g, all);
+  auto S = input_deck.xs.S(g, all);
+  auto S_up = input_deck.xs.S_bound(g + 1, all);
+  auto S_down = input_deck.xs.S_bound(g, all);
+  double bc_up, bc_down;
+  Eigen::Vector2d q_up, q_down;
+  Eigen::VectorXd sigmaSdEprime;
+  Eigen::MatrixXd phi;
 
-
-  for (int m=0; m<input_deck.angle.M; m++){
+  // loop over all angles
+  for (int m = 0; m < input_deck.angle.M; m++) {
     auto mu = input_deck.angle.mu[m];
+    auto q = input_deck.source.values[g](all, m);
+
+    int i = 0;
+
     switch (mu > 0) {
-      case true: // left-to-right
+
+    case true: // left-to-right
       // solve leftmost cell using boundary conditions
-      auto dx = input_deck.mesh.dx(0);
-      auto dE = input_deck.energy.dE(g);
-      
-      psi[m]({0,1,2,3}) = kernel.solveDirect(mu,)
+      i = 0;
+      // slice data
+      q_up = q(seqN(i * 4, 2));
+      q_down = q(seqN(i * 4 + 2, 2));
+      phi = scalar_flux(seqN(i * 4, 4), all);
+      sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+      bc_up = input_deck.bc[g](0, m);
+      bc_down = input_deck.bc[g](1, m);
+
+      psi(seqN(i * 4, 4), m) = kernel.solveDirect(
+          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
+          q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       // loop through all other cells
-      break;
-      case false: // right-to-left
+      for (i = 1; i < input_deck.mesh.n_x; i++) {
+        // slice data
+        q_up = q(seqN(i * 4, 2));
+        q_down = q(seqN(i * 4 + 2, 2));
+        phi = scalar_flux(seqN(i * 4, 4), all);
+        sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+        bc_up = psi((i - 1) * 4 + 1, m);
+        bc_down = psi((i - 1) * 4 + 3, m);
+
+        psi(seqN(i * 4, 4), m) = kernel.solveDirect(
+            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
+            q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+      }
+      break;    // left-to-right
+    case false: // right-to-left
       // solve rightmost cell using boundary conditions
 
+      i = input_deck.mesh.n_x - 1;
+      // slice data
+      q_up = q(seqN(i * 4, 2));
+      q_down = q(seqN(i * 4 + 2, 2));
+      phi = scalar_flux(seqN(i * 4, 4), all);
+      sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+      bc_up = input_deck.bc[g](0, m);
+      bc_down = input_deck.bc[g](1, m);
+      psi(seqN(i * 4, 4), m) = kernel.solveDirect(
+          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
+          q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+
       // loop through all other cells
+      for (i = input_deck.mesh.n_x - 2; i > -1; i--) {
+        // slice data
+        q_up = q(seqN(i * 4, 2));
+        q_down = q(seqN(i * 4 + 2, 2));
+        phi = scalar_flux(seqN(i * 4, 4), all);
+        sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+        bc_up = psi((i + 1) * 4 + 1, m);
+        bc_down = psi((i + 1) * 4 + 3, m);
+
+        psi(seqN(i * 4, 4), m) = kernel.solveDirect(
+            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
+            q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+      }
       break;
     }
-
-    // case true
-    // case false
   }
-
-
-
-
   // return
   return psi;
 }
@@ -185,7 +234,8 @@ void Solver::writeInputDeckEcho(const std::filesystem::path& file_path) const {
   appendToFile(file_path, input_deck.echo());
 }
 
-void Solver::writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
+void Solver::writeResults(const std::filesystem::path& file_path,
+                          const Eigen::MatrixXd& scalar_flux,
                           const std::vector<Eigen::MatrixXd>& angular_flux) const {
   appendToFile(file_path, SolverFormatter::formatResults(scalar_flux, angular_flux, input_deck));
 }
