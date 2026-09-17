@@ -1,0 +1,40 @@
+CMakeLists.txt
+  h_c6d403188ce57a 78,122
+badges/coverage.svg
+  h_c6d403188ce57a 1
+src/input_deck.cpp
+  h_c6d403188ce57a 12,20,24-45,305-401
+src/input_deck.h
+  h_c6d403188ce57a 12,128-136
+src/output.cpp
+  h_c6d403188ce57a 39-42,47-52,55,57,60-75,80,94,98,107-156,161-176,181,185,190
+src/output.h
+  h_c6d403188ce57a 14-27,30-32,39-42,44-45,48-51,53-55,63,68-71,74-76
+src/solver.cpp
+  h_c6d403188ce57a 2,6,115-146
+src/solver.h
+  h_c6d403188ce57a 7,18-52
+src/solver_formatter.cpp
+  h_c6d403188ce57a 1-111
+src/solver_formatter.h
+  h_c6d403188ce57a 1-41
+test/unit/input_deck.test.cpp
+  h_c6d403188ce57a 426-468
+test/unit/output.test.cpp
+  h_c6d403188ce57a 64-116
+test/unit/solver.test.cpp
+  h_c6d403188ce57a 10-12,97-230
+test/unit/solver_formatter.test.cpp
+  h_c6d403188ce57a 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1671c1674219548c0b7dce0b80f1a19c91231d57",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
