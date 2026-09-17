@@ -1,0 +1,41 @@
+src/input_deck.h
+  s_629629873f3673::t_094bf15bc5c33a 111-123
+  s_629629873f3673::t_1f0e3b4aa845f4 155
+src/input_deck.cpp
+  s_629629873f3673::t_8e2547bbfdbfc3 181-184,187-202
+  s_629629873f3673::t_748c91618682ce 294-299,305
+  s_629629873f3673::t_6be42d238b61a4 185-186,442-444,545-546
+  s_629629873f3673::t_2aad90333b7e5d 440-441,445-461
+  s_629629873f3673::t_1dd13d5179c31f 541-544,547-548
+  s_629629873f3673::t_a795fb937caa6f 332-343
+test/unit/input_deck.test.cpp
+  s_629629873f3673::t_b921c2d0cc143e 496-500
+  s_629629873f3673::t_f4ff2bff9de0b5 30
+  s_629629873f3673::t_31db0f2d367e8f 112-115,123
+  s_629629873f3673::t_abcdeaa3e9f4b8 526-539
+  s_629629873f3673::t_788e7f51812114 60-62
+  s_629629873f3673::t_6be42d238b61a4 116-122,267,275
+  s_629629873f3673::t_c56f5fba8c99b6 259-266,268-274,276-296
+test/unit/solver_formatter.test.cpp
+  s_629629873f3673::t_8eae76ae7c03e5 30
+test/unit/solver.test.cpp
+  s_629629873f3673::t_aaa91a4e968b14 117
+test/unit/data/sample_input.yaml
+  s_629629873f3673::t_8529167f009340 47-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6aaab8f30c95370aee0ebe99e8c6fe82a48c02bb",
+  "prompts": {},
+  "sessions": {
+    "s_629629873f3673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "120c09b2-b328-4ffb-9a1b-73fccf45e3ca",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
