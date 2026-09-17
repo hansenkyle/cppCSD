@@ -423,3 +423,46 @@ TEST_CASE("InputDeck::Angle::validate rejects mismatched sizes") {
 
   CHECK_THROWS_AS(angle.validate(), std::runtime_error);
 }
+
+TEST_SUITE("InputDeck::echo") {
+  TEST_CASE("renders every section in order, with no material-wise section") {
+    InputDeck deck = makeValidDeck();
+    deck.validate(); // populates dx/dE, which echo() reads
+
+    const std::string result = deck.echo();
+
+    const std::vector<std::string> expected_headers = {"Problem Size",
+                                                       "Spatial Discretization",
+                                                       "Energy Discretization",
+                                                       "Angular Quadrature",
+                                                       "Cross Sections - Group 0",
+                                                       "Cross Sections - Group 1",
+                                                       "Scattering Matrix - Cell 0",
+                                                       "Scattering Matrix - Cell 1",
+                                                       "Boundary Conditions"};
+
+    std::size_t last_pos = 0;
+    for (const std::string& header : expected_headers) {
+      const std::size_t pos = result.find(header);
+      CHECK(pos != std::string::npos);
+      CHECK(pos >= last_pos);
+      last_pos = pos;
+    }
+
+    // InputDeck doesn't retain material names/grouping, so there's nothing
+    // to echo a material-wise section from.
+    CHECK(result.find("material") == std::string::npos);
+    CHECK(result.find("Material") == std::string::npos);
+  }
+
+  TEST_CASE("reports problem size and formats cross sections at 6-digit scientific precision") {
+    InputDeck deck = makeValidDeck();
+    deck.validate();
+
+    const std::string result = deck.echo();
+
+    CHECK(result.find("Spatial cells") != std::string::npos);
+    CHECK(result.find("1.000000e+00") != std::string::npos); // xs.total / xs.S entries
+    CHECK(result.find("5.000000e-01") != std::string::npos); // within-group scatter, 0.5
+  }
+}

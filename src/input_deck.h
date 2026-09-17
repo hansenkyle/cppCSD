@@ -9,6 +9,7 @@
 #define INPUT_DECK_H
 
 #include <filesystem>
+#include <string>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -123,6 +124,15 @@ public:
   // trusted (read() calls it already; Solver's constructor should call it
   // too).
   void validate();
+
+  // Renders this deck's discretization and cross sections as a
+  // fixed-width text report: problem size, spatial/energy/angular
+  // discretization tables, per-group cell-wise cross sections, each
+  // cell's scattering matrix, and boundary conditions. Material names
+  // aren't retained on InputDeck (see the class comment above) -- only
+  // the per-cell tables actually stored here are echoed, so there is no
+  // material-wise section.
+  std::string echo() const;
 
   Mesh mesh;
   Energy energy;

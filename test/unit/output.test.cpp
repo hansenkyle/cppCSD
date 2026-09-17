@@ -61,6 +61,59 @@ TEST_SUITE("OutputTable") {
                                  "  -2.00e+01\n";
     CHECK(table.txt() == expected);
   }
+
+  TEST_CASE("addRow rejects a row with the wrong number of values") {
+    OutputTable table("TEST", 2);
+
+    CHECK_THROWS_AS(table.addRow("x", {OutputTable::Notation::Fixed, 4}, std::vector<double>{1.0}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("addColumn and addRow cannot be mixed on the same table") {
+    OutputTable column_first("TEST", 2);
+    column_first.addColumn("x", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5});
+    CHECK_THROWS_AS(column_first.addRow("y", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5}),
+                    std::invalid_argument);
+
+    OutputTable row_first("TEST", 2);
+    row_first.addRow("x", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5});
+    CHECK_THROWS_AS(row_first.addColumn("y", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5}),
+                    std::invalid_argument);
+  }
+
+  TEST_CASE("row-major txt() numbers columns in the header and labels each row") {
+    OutputTable table("TEST", 2);
+    table.addRow("x", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5});
+    table.addRow("y", {OutputTable::Notation::Integer, 0}, {2.0, 3.0});
+
+    const std::string expected = "--- TEST ---\n"
+                                 "       0    1\n"
+                                 "x    0.5  1.5\n"
+                                 "y      2    3\n";
+    CHECK(table.txt() == expected);
+  }
+
+  TEST_CASE("row-major column width grows to fit the widest value in that column") {
+    OutputTable table("TEST", 2);
+    table.addRow("phi", {OutputTable::Notation::Scientific, 2}, {1.0, -20.0});
+
+    const std::string expected = "--- TEST ---\n"
+                                 "              0          1\n"
+                                 "phi    1.00e+00  -2.00e+01\n";
+    CHECK(table.txt() == expected);
+  }
+
+  TEST_CASE("row-major csv() renders a blank corner, numbered header, and labeled rows") {
+    OutputTable table("TEST", 2);
+    table.addRow("x", {OutputTable::Notation::Fixed, 1}, {0.5, 1.5});
+    table.addRow("y", {OutputTable::Notation::Integer, 0}, {2.0, 3.0});
+
+    const std::string expected = "TEST\n"
+                                 ",0,1\n"
+                                 "x,0.5,1.5\n"
+                                 "y,2,3\n";
+    CHECK(table.csv() == expected);
+  }
 }
 
 TEST_SUITE("OutputMetadata") {
