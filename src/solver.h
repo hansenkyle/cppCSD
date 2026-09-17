@@ -51,8 +51,9 @@ public:
     Eigen::Vector4d solveDirect(double cosine, double dx, double dE, double xs, double S,
                                 double S_up, double S_down, Eigen::Vector2d psi_in_E,
                                 double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
-                                Eigen::Vector2d q_down, Eigen::VectorXd sigma_sdEprime,
-                                Eigen::MatrixXd phi_gprime_up, Eigen::MatrixXd phi_gprime_down);
+                                Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
+                                const Eigen::MatrixXd& phi_gprime_up,
+                                const Eigen::MatrixXd& phi_gprime_down);
   };
 
 protected:

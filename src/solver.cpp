@@ -18,13 +18,11 @@ Solver::Kernel::Kernel() {
   b = Eigen::Vector4d::Zero();
 }
 
-Eigen::Vector4d Solver::Kernel::solveDirect(double cosine, double dx, double dE, double xs,
-                                            double S, double S_up, double S_down,
-                                            Eigen::Vector2d psi_in_E, double psi_in_x_down,
-                                            double psi_in_x_up, Eigen::Vector2d q_up,
-                                            Eigen::Vector2d q_down, Eigen::VectorXd sigma_sdEprime,
-                                            Eigen::MatrixXd phi_gprime_up,
-                                            Eigen::MatrixXd phi_gprime_down) {
+Eigen::Vector4d Solver::Kernel::solveDirect(
+    double cosine, double dx, double dE, double xs, double S, double S_up, double S_down,
+    Eigen::Vector2d psi_in_E, double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
+    Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
+    const Eigen::MatrixXd& phi_gprime_up, const Eigen::MatrixXd& phi_gprime_down) {
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
 
@@ -142,4 +140,3 @@ void Solver::writeResiduals(const std::filesystem::path& file_path,
                             const std::vector<Eigen::MatrixXd>& residuals) const {
   appendToFile(file_path, SolverFormatter::formatResiduals(residuals, input_deck));
 }
->>>>>>> origin/main
