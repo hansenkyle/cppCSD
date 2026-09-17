@@ -12,6 +12,14 @@
 #include <doctest.h>
 
 namespace {
+// A G x G sparse matrix from (from, to, value) triplets, 0-indexed.
+Eigen::SparseMatrix<double> scatterMatrix(int G,
+                                          const std::vector<Eigen::Triplet<double>>& entries) {
+  Eigen::SparseMatrix<double> matrix(G, G);
+  matrix.setFromTriplets(entries.begin(), entries.end());
+  return matrix;
+}
+
 // A minimally-valid deck: n_x = 2 cells, G = 2 groups, M = 2 ordinates.
 InputDeck makeValidDeck() {
   InputDeck deck;
@@ -23,7 +31,8 @@ InputDeck makeValidDeck() {
   deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
   deck.angle.w = Eigen::Vector2d(1.0, 1.0);
   deck.xs.total = Eigen::MatrixXd::Constant(2, 2, 1.0);
-  deck.xs.scatter = {{{0, 0, 0.5}}, {{0, 0, 0.5}}}; // one in-group entry per cell
+  // one in-group entry per cell
+  deck.xs.scatter = {scatterMatrix(2, {{0, 0, 0.5}}), scatterMatrix(2, {{0, 0, 0.5}})};
   deck.xs.S = Eigen::MatrixXd::Constant(2, 2, 1.0);
   deck.xs.S_bound = Eigen::MatrixXd::Constant(3, 2, 1.0);
   deck.bc.values = Eigen::MatrixXd::Constant(4, 2, 0.0);
@@ -93,16 +102,12 @@ TEST_CASE("InputDeck::read parses the sample deck") {
   CHECK(deck.xs.S_bound(3, 2) == doctest::Approx(4.3));
 
   // Every cell using a material gets a copy of that material's sparse
-  // scattering entries, in file order; entry 3 is the 1->2 downscatter term.
-  REQUIRE(deck.xs.scatter[1].size() == 5); // water
-  CHECK(deck.xs.scatter[1][3].from == 1);
-  CHECK(deck.xs.scatter[1][3].to == 2);
-  CHECK(deck.xs.scatter[1][3].value == doctest::Approx(0.03));
+  // scattering matrix; (1, 2) is the 1->2 downscatter term.
+  REQUIRE(deck.xs.scatter[1].nonZeros() == 5); // water
+  CHECK(deck.xs.scatter[1].coeff(1, 2) == doctest::Approx(0.03));
 
-  REQUIRE(deck.xs.scatter[2].size() == 5); // lead
-  CHECK(deck.xs.scatter[2][3].from == 1);
-  CHECK(deck.xs.scatter[2][3].to == 2);
-  CHECK(deck.xs.scatter[2][3].value == doctest::Approx(0.08));
+  REQUIRE(deck.xs.scatter[2].nonZeros() == 5); // lead
+  CHECK(deck.xs.scatter[2].coeff(1, 2) == doctest::Approx(0.08));
 
   // bc.values row 2*g is group g's up row, row 2*g + 1 is down; down[g][m] =
   // 10*m + g, up = down + 0.5.
@@ -235,6 +240,14 @@ TEST_CASE("InputDeck::validate rejects xs shaped against the wrong number of cel
   CHECK_THROWS_AS(deck.validate(), std::runtime_error);
 }
 
+TEST_CASE("InputDeck::validate rejects a scatter matrix shaped against the wrong number of "
+          "groups") {
+  InputDeck deck = makeValidDeck();
+  deck.xs.scatter[0] = scatterMatrix(3, {}); // energy.G is 2
+
+  CHECK_THROWS_AS(deck.validate(), std::runtime_error);
+}
+
 TEST_CASE("InputDeck::validate rejects S_bound with the wrong number of rows") {
   InputDeck deck = makeValidDeck();
   deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 2, 1.0);
@@ -297,7 +310,8 @@ TEST_CASE("InputDeck::Source::validate rejects a negative entry") {
 TEST_CASE("InputDeck::Xs::validate accepts non-negative tables") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0); // G=2, n_x=3
-  xs.scatter = {{{0, 1, 0.2}}, {}, {{1, 0, 0.1}}};
+  xs.scatter = {scatterMatrix(2, {{0, 1, 0.2}}), scatterMatrix(2, {}),
+                scatterMatrix(2, {{1, 0, 0.1}})};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0); // G+1=3
 
@@ -308,7 +322,7 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative total entry") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.total(0, 0) = -1.0;
-  xs.scatter = {{}, {}, {}};
+  xs.scatter = {scatterMatrix(2, {}), scatterMatrix(2, {}), scatterMatrix(2, {})};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
 
@@ -318,7 +332,7 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative total entry") {
 TEST_CASE("InputDeck::Xs::validate rejects a negative S_bound entry") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
-  xs.scatter = {{}, {}, {}};
+  xs.scatter = {scatterMatrix(2, {}), scatterMatrix(2, {}), scatterMatrix(2, {})};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
   xs.S_bound(2, 1) = -1.0;
@@ -329,7 +343,7 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative S_bound entry") {
 TEST_CASE("InputDeck::Xs::validate rejects a negative scatter entry") {
   InputDeck::Xs xs;
   xs.total = Eigen::MatrixXd::Constant(2, 3, 1.0);
-  xs.scatter = {{{0, 1, -0.2}}, {}, {}};
+  xs.scatter = {scatterMatrix(2, {{0, 1, -0.2}}), scatterMatrix(2, {}), scatterMatrix(2, {})};
   xs.S = Eigen::MatrixXd::Constant(2, 3, 1.0);
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
 

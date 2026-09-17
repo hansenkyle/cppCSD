@@ -23,7 +23,7 @@ InputDeck makeDeck() {
   deck.angle.mu = Eigen::VectorXd::Constant(1, 0.5);
   deck.angle.w = Eigen::VectorXd::Constant(1, 2.0);
   deck.xs.total = Eigen::MatrixXd::Constant(1, 1, 1.0);
-  deck.xs.scatter = {{}};
+  deck.xs.scatter = {Eigen::SparseMatrix<double>(1, 1)};
   deck.xs.S = Eigen::MatrixXd::Constant(1, 1, 1.0);
   deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 1, 1.0);
   deck.bc.values = Eigen::MatrixXd::Constant(2, 1, 0.0);

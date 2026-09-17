@@ -33,17 +33,6 @@ std::vector<double> indexRange(int n) {
   return values;
 }
 
-// sigma_s for the within-group (from == to == g) entry in cell c's
-// scattering list, or 0 if that cell has none.
-double withinGroupScatter(const std::vector<InputDeck::Xs::ScatterEntry>& cell_entries, int g) {
-  for (const InputDeck::Xs::ScatterEntry& entry : cell_entries) {
-    if (entry.from == g && entry.to == g) {
-      return entry.value;
-    }
-  }
-  return 0.0;
-}
-
 void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
   if (values.size() > 0 && values.minCoeff() < 0.0) {
     throw std::runtime_error(name + " must be non-negative");
@@ -69,22 +58,46 @@ void requireSize(Eigen::Index actual, Eigen::Index expected, const std::string& 
   }
 }
 
+// One entry in a sparse group-to-group scattering matrix: group `from`
+// scatters into group `to` with the given macroscopic cross section.
+// Parsing scratch only -- collected into an Eigen::SparseMatrix (via
+// buildScatterMatrix) before being stored anywhere.
+struct ScatterEntry {
+  int from;
+  int to;
+  double value;
+};
+
+// Builds a G x G sparse matrix from a flat entry list, entry (from, to) ->
+// value.
+Eigen::SparseMatrix<double> buildScatterMatrix(const std::vector<ScatterEntry>& entries, int G) {
+  std::vector<Eigen::Triplet<double>> triplets;
+  triplets.reserve(entries.size());
+  for (const ScatterEntry& entry : entries) {
+    triplets.emplace_back(entry.from, entry.to, entry.value);
+  }
+  Eigen::SparseMatrix<double> matrix(G, G);
+  matrix.setFromTriplets(triplets.begin(), triplets.end());
+  matrix.makeCompressed();
+  return matrix;
+}
+
 // Per-material cross sections and stopping power, indexed by energy group.
 // Parsing scratch only -- material names and this data are never retained
 // on the InputDeck, only the per-cell tables/lists they expand into.
 struct Material {
-  Eigen::VectorXd sigma_t;                             // size G
-  std::vector<InputDeck::Xs::ScatterEntry> scattering; // sparse group-to-group entries
-  Eigen::VectorXd stopping_power_avg;                  // size G
-  Eigen::VectorXd stopping_power_bnd;                  // size G + 1
+  Eigen::VectorXd sigma_t;                // size G
+  Eigen::SparseMatrix<double> scattering; // G x G, group-to-group
+  Eigen::VectorXd stopping_power_avg;     // size G
+  Eigen::VectorXd stopping_power_bnd;     // size G + 1
 };
 
 // Dense form: scattering is a list of G rows, each a list of G columns --
 // row = from group, column = to group. Zero entries are dropped so the
 // result is the same sparse entry list a from/to reader would have produced.
-std::vector<InputDeck::Xs::ScatterEntry>
-parseDenseScattering(const YAML::Node& node, const std::string& material_name, int G) {
-  std::vector<InputDeck::Xs::ScatterEntry> entries;
+std::vector<ScatterEntry> parseDenseScattering(const YAML::Node& node,
+                                               const std::string& material_name, int G) {
+  std::vector<ScatterEntry> entries;
   requireSize(static_cast<Eigen::Index>(node.size()), G,
               "material '" + material_name + "' scattering row count");
   for (int from = 0; from < G; ++from) {
@@ -94,7 +107,7 @@ parseDenseScattering(const YAML::Node& node, const std::string& material_name, i
     for (int to = 0; to < G; ++to) {
       const double value = row[to].as<double>();
       if (value != 0.0) {
-        entries.push_back(InputDeck::Xs::ScatterEntry{from, to, value});
+        entries.push_back(ScatterEntry{from, to, value});
       }
     }
   }
@@ -111,13 +124,13 @@ parseDenseScattering(const YAML::Node& node, const std::string& material_name, i
 // that's mostly zero; or dense (see parseDenseScattering), a list of G rows
 // of G values each, for a matrix with few zeros. The two are told apart by
 // the type of the list's first element (map vs. sequence).
-std::vector<InputDeck::Xs::ScatterEntry> parseScattering(const YAML::Node& node,
-                                                         const std::string& material_name, int G) {
+std::vector<ScatterEntry> parseScattering(const YAML::Node& node, const std::string& material_name,
+                                          int G) {
   if (node.size() > 0 && node[0].IsSequence()) {
     return parseDenseScattering(node, material_name, G);
   }
 
-  std::vector<InputDeck::Xs::ScatterEntry> entries;
+  std::vector<ScatterEntry> entries;
   for (const auto& entry : node) {
     const int from_1indexed = requireNode(entry, "from").as<int>();
     const int to_1indexed = requireNode(entry, "to").as<int>();
@@ -136,14 +149,14 @@ std::vector<InputDeck::Xs::ScatterEntry> parseScattering(const YAML::Node& node,
 
     const int from = from_1indexed - 1;
     const int to = to_1indexed - 1;
-    for (const InputDeck::Xs::ScatterEntry& existing : entries) {
+    for (const ScatterEntry& existing : entries) {
       if (existing.from == from && existing.to == to) {
         throw std::runtime_error(
             "material '" + material_name + "' has a duplicate scattering entry (from=" +
             std::to_string(from_1indexed) + ", to=" + std::to_string(to_1indexed) + ")");
       }
     }
-    entries.push_back(InputDeck::Xs::ScatterEntry{from, to, value});
+    entries.push_back(ScatterEntry{from, to, value});
   }
   return entries;
 }
@@ -151,7 +164,8 @@ std::vector<InputDeck::Xs::ScatterEntry> parseScattering(const YAML::Node& node,
 Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
   Material material;
   material.sigma_t = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
-  material.scattering = parseScattering(requireNode(node, "scattering"), name, G);
+  material.scattering =
+      buildScatterMatrix(parseScattering(requireNode(node, "scattering"), name, G), G);
 
   const YAML::Node stopping_power = requireNode(node, "stopping_power");
   material.stopping_power_avg =
@@ -283,10 +297,12 @@ void InputDeck::Xs::validate() const {
   requireNonNegative(S, "xs.S");
   requireNonNegative(S_bound, "xs.S_bound");
 
-  for (const std::vector<ScatterEntry>& cell_entries : scatter) {
-    for (const ScatterEntry& entry : cell_entries) {
-      if (entry.value < 0.0) {
-        throw std::runtime_error("xs.scatter value must be non-negative");
+  for (const Eigen::SparseMatrix<double>& cell_scatter : scatter) {
+    for (int col = 0; col < cell_scatter.outerSize(); ++col) {
+      for (Eigen::SparseMatrix<double>::InnerIterator it(cell_scatter, col); it; ++it) {
+        if (it.value() < 0.0) {
+          throw std::runtime_error("xs.scatter value must be non-negative");
+        }
       }
     }
   }
@@ -320,6 +336,13 @@ void InputDeck::validate() {
   if (static_cast<int>(xs.scatter.size()) != mesh.n_x) {
     throw std::runtime_error("xs.scatter must have mesh.n_x = " + std::to_string(mesh.n_x) +
                              " cells");
+  }
+  for (int c = 0; c < mesh.n_x; ++c) {
+    if (xs.scatter[c].rows() != energy.G || xs.scatter[c].cols() != energy.G) {
+      throw std::runtime_error("xs.scatter[" + std::to_string(c) +
+                               "] must be energy.G x energy.G = " + std::to_string(energy.G) +
+                               " x " + std::to_string(energy.G));
+    }
   }
 
   if (bc.values.rows() != 2 * energy.G) {
@@ -392,7 +415,7 @@ std::string InputDeck::echo() const {
       S[c] = xs.S(g, c);
       S_up[c] = xs.S_bound(g, c);
       S_down[c] = xs.S_bound(g + 1, c);
-      sigma_s[c] = withinGroupScatter(xs.scatter[c], g);
+      sigma_s[c] = xs.scatter[c].coeff(g, g);
     }
     group_xs.addRow("sigma_t", kSci, sigma_t);
     group_xs.addRow("S", kSci, S);
@@ -406,14 +429,10 @@ std::string InputDeck::echo() const {
     OutputTable scatter_matrix("Scattering Matrix - Cell " + std::to_string(c), energy.G);
     scatter_matrix.addColumn("from", kInt, indexRange(energy.G));
 
-    std::vector<std::vector<double>> dense(energy.G, std::vector<double>(energy.G, 0.0));
-    for (const Xs::ScatterEntry& entry : xs.scatter[c]) {
-      dense[entry.from][entry.to] = entry.value;
-    }
     for (int to = 0; to < energy.G; ++to) {
       std::vector<double> column(energy.G);
       for (int from = 0; from < energy.G; ++from) {
-        column[from] = dense[from][to];
+        column[from] = xs.scatter[c].coeff(from, to);
       }
       scatter_matrix.addColumn("to_" + std::to_string(to), kSci, column);
     }
