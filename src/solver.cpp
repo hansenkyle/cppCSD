@@ -14,7 +14,7 @@ Solver::Kernel::Kernel() {
   M << 2.0, 1.0, 1.0, 2.0;
   M *= (1.0 / 6);
   L << 0.5, 0.5, -0.5, -0.5;
-  Lb << -1, 0, 0, -1;
+  Lb << -1, 0, 0, 1;
 
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
@@ -166,6 +166,177 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
     psi_up = psi;
   }
   return phi;
+}
+Eigen::Vector<HighPrecision, 4>
+Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_bar, double S_Eg,
+                     double S_Egm1, const Eigen::Vector2d& psi_gm1_d,
+                     const Eigen::Vector2d& psi_b_u, const Eigen::Vector2d& psi_b_d,
+                     const Eigen::Vector2d& q_u, const Eigen::Vector2d& q_d,
+                     const Eigen::VectorXd& sigma_sdEprime, const Eigen::MatrixXd& phi_gprime_u,
+                     const Eigen::MatrixXd& phi_gprime_d, const Eigen::Vector2d& psi_up,
+                     const Eigen::Vector2d& psi_down) const {
+  using Matrix2hp = Eigen::Matrix<HighPrecision, 2, 2>;
+  using Vector2hp = Eigen::Vector<HighPrecision, 2>;
+  using Vector4hp = Eigen::Vector<HighPrecision, 4>;
+  using VectorXhp = Eigen::Matrix<HighPrecision, Eigen::Dynamic, 1>;
+  using MatrixXhp = Eigen::Matrix<HighPrecision, Eigen::Dynamic, Eigen::Dynamic>;
+
+  // M, L, Lb exactly as written in the method derivation -- re-derived
+  // independently of Kernel's (double-precision) copies; see the
+  // class-declaration comment for why.
+  Matrix2hp M_hp;
+  M_hp << 2, 1, 1, 2;
+  M_hp *= HighPrecision(1) / 6;
+
+  Matrix2hp L_hp;
+  L_hp << 1, 1, -1, -1;
+  L_hp *= HighPrecision(1) / 2;
+
+  Matrix2hp Lb_hp;
+  Lb_hp << -1, 0, 0, 1;
+
+  // Promote every scalar input. mu keeps its sign (see the declaration
+  // comment) -- no std::abs, no L/R swap.
+  const HighPrecision mu_hp = mu;
+  const HighPrecision dx_hp = dx;
+  const HighPrecision dE_hp = dE;
+  const HighPrecision sigma_t_hp = sigma_t;
+  const HighPrecision S_bar_hp = S_bar;
+  const HighPrecision S_Eg_hp = S_Eg;
+  const HighPrecision S_Egm1_hp = S_Egm1;
+
+  // Promote every vector/matrix input.
+  const Vector2hp psi_gm1_d_hp = psi_gm1_d.cast<HighPrecision>();
+  const Vector2hp psi_b_u_hp = psi_b_u.cast<HighPrecision>();
+  const Vector2hp psi_b_d_hp = psi_b_d.cast<HighPrecision>();
+  const Vector2hp q_u_hp = q_u.cast<HighPrecision>();
+  const Vector2hp q_d_hp = q_d.cast<HighPrecision>();
+  const VectorXhp sigma_sdEprime_hp = sigma_sdEprime.cast<HighPrecision>();
+  const MatrixXhp phi_gprime_u_hp = phi_gprime_u.cast<HighPrecision>();
+  const MatrixXhp phi_gprime_d_hp = phi_gprime_d.cast<HighPrecision>();
+
+  // candidate is laid out like everywhere else in Solver: [up_left,
+  // up_right, down_left, down_right] = [Psi_u,L Psi_u,R Psi_d,L Psi_d,R].
+  const Vector2hp Psi_u_hp = psi_up.cast<HighPrecision>();
+  const Vector2hp Psi_d_hp = psi_down({2, 3}).cast<HighPrecision>();
+
+  // Scattering source is the same expression in both equations, just with
+  // opposite external-source weighting below -- computed once.
+  const Vector2hp scatter_source =
+      (dx_hp / 8) * (M_hp * ((phi_gprime_d_hp + phi_gprime_u_hp) * sigma_sdEprime_hp));
+
+  // ---- eq. 41a ("u" edge; candidate rows 0,1) ----
+  // No dx on the streaming term (writeup typo).
+  const Vector2hp streaming_u =
+      (mu_hp / 6) * (Lb_hp * (psi_b_d_hp + 2 * psi_b_u_hp) + L_hp * (Psi_d_hp + 2 * Psi_u_hp));
+  const Vector2hp absorption_csd_loss_u =
+      dx_hp * (sigma_t_hp / 6 + S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_d_hp) +
+      dx_hp * (sigma_t_hp / 3 + S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_u_hp);
+  const Vector2hp csd_source_u = (dx_hp / dE_hp) * S_Egm1_hp * (M_hp * psi_gm1_d_hp);
+  const Vector2hp external_source_u = (dx_hp / 6) * (M_hp * (q_d_hp + 2 * q_u_hp));
+
+  const Vector2hp residual_u =
+      streaming_u + absorption_csd_loss_u - csd_source_u - scatter_source - external_source_u;
+
+  // ---- eq. 41b ("d" edge; candidate rows 2,3) ----
+  // No dx on the streaming term (writeup typo); sigma_t's 1/6 and 1/3
+  // swapped from how the writeup prints them (writeup typo) -- the "u"
+  // coefficient is 1/3 and the "d" coefficient is 1/6, same pattern as
+  // eq. 41a, matching Kernel::solveDirect's existing xs/3, xs/6 split.
+  const Vector2hp streaming_d =
+      (mu_hp / 6) * (Lb_hp * (2 * psi_b_d_hp + psi_b_u_hp) + L_hp * (2 * Psi_d_hp + Psi_u_hp));
+  const Vector2hp absorption_csd_loss_d =
+      dx_hp * (sigma_t_hp / 3 + (S_Eg_hp - S_bar_hp / 2) / dE_hp) * (M_hp * Psi_u_hp) +
+      dx_hp * (sigma_t_hp / 6 - S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_d_hp);
+  // No CSD source here -- unlike eq. 41a, eq. 41b has no dependence on the
+  // previous group.
+  const Vector2hp external_source_d = (dx_hp / 6) * (M_hp * (2 * q_d_hp + q_u_hp));
+
+  const Vector2hp residual_d =
+      streaming_d + absorption_csd_loss_d - scatter_source - external_source_d;
+
+  Vector4hp result;
+  result << residual_u, residual_d;
+  return result;
+}
+
+Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular,
+                                           const Eigen::MatrixXd& psi_gm1,
+                                           const Eigen::MatrixXd& scalar) {
+  // angular, psi_gm1: (4nx, M), this group's psi and the previous group's
+  // (zero matrix for g==0). scalar: (4nx, G), all groups.
+  int L = 0;
+  int R = 1;
+
+  int nx = input_deck.mesh.n_x;
+  int M = input_deck.angle.M;
+
+  auto mu = input_deck.angle.mu;
+  auto dx = input_deck.mesh.dx;
+  auto dE = input_deck.energy.dE;
+  auto xs = input_deck.xs.total;
+  auto S = input_deck.xs.S;
+  auto S_bound = input_deck.xs.S_bound;
+
+  Eigen::MatrixXd residuals = Eigen::MatrixXd::Zero(4 * nx, M);
+
+  Eigen::Vector2d psi_b_up, psi_b_down, psi_in_E;
+  for (int m = 0; m < M; m++) {
+    for (int i = 0; i < nx; i++) {
+      auto psi_up = angular(Eigen::seqN(4 * i, 2), m);
+      auto psi_down = angular(Eigen::seqN(4 * i + 2, 2), m);
+
+      auto q_up = input_deck.source.values[g](Eigen::seqN(4 * i, 2), m);
+      auto q_down = input_deck.source.values[g](Eigen::seqN(4 * i + 2, 2), m);
+
+      if (g == 0) {
+        psi_in_E = Eigen::Vector2d::Zero();
+      } else {
+        psi_in_E = psi_gm1(Eigen::seqN(4 * i + 2, 2), m);
+      }
+
+      auto phi_gprime_up = scalar(Eigen::seqN(4 * i, 2), Eigen::placeholders::all);
+      auto phi_gprime_down = scalar(Eigen::seqN(4 * i + 2, 2), Eigen::placeholders::all);
+
+      auto sigma_s = input_deck.xs.scatter[i].col(g);
+
+      // construct appropraite psi^b
+      switch (mu[m] > 0) {
+      case true:
+        psi_b_up(R) = psi_up(R);
+        psi_b_down(R) = psi_down(R);
+
+        if (i == 0) {
+          psi_b_up(L) = input_deck.bc[g](0, m);
+          psi_b_down(L) = input_deck.bc[g](1, m);
+        } else {
+          psi_b_up(L) = angular((4 * (i - 1)), m);
+          psi_b_down(L) = angular((4 * (i - 1) + 2), m);
+        }
+        break;
+      case false:
+        psi_b_up(L) = psi_up(L);
+        psi_b_down(L) = psi_down(L);
+
+        if (i == nx - 1) {
+          psi_b_up(R) = input_deck.bc[g](0, m);
+          psi_b_down(R) = input_deck.bc[g](1, m);
+        } else {
+          psi_b_up(R) = angular((4 * (i + 1)), m);
+          psi_b_down(L) = angular((4 * (i + 1) + 2), m);
+        }
+        break;
+      }
+
+      residuals(Eigen::seqN(4 * i, 4), m) =
+          cellResidual(mu[m], dx[i], dE[g], xs(g, i), S(g, i), S_bound(g + 1, i), S_bound(g, i),
+                       psi_in_E, psi_b_up, psi_b_down, q_up, q_down, dE.cwiseProduct(sigma_s),
+                       phi_gprime_up, phi_gprime_down, psi_up, psi_down)
+              .cast<double>();
+    }
+  }
+
+  return residuals;
 }
 
 Eigen::Vector4d Solver::Kernel::solveDirect(
