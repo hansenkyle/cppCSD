@@ -9,6 +9,7 @@
 #define LOGGER_H
 
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <string>
 
@@ -31,7 +32,8 @@ public:
 
   // Opens log_path and out_path for writing. Throws std::runtime_error if
   // either file can't be opened.
-  static void configure(const std::filesystem::path& log_path, const std::filesystem::path& out_path);
+  static void configure(const std::filesystem::path& log_path,
+                        const std::filesystem::path& out_path);
 
   // Appends a level-tagged, timestamped line to the log file. If echo is
   // true, also prints that same line to stdout.

@@ -41,7 +41,8 @@ std::string timestamp() {
 
 } // namespace
 
-void Logger::configure(const std::filesystem::path& log_path, const std::filesystem::path& out_path) {
+void Logger::configure(const std::filesystem::path& log_path,
+                       const std::filesystem::path& out_path) {
   Logger& logger = instance();
   if (logger.stream_.is_open()) {
     logger.stream_.close();

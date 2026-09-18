@@ -131,7 +131,7 @@ Eigen::VectorXd Solver::integrateAngle(Eigen::MatrixXd psi) {
 Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
   // solve transport equqation in all groups via source iteration
 
-  LDCSD_LOG_INFO("Begin source iteration");
+  LDCSD_LOG_INFO("Begin source iteration", true);
 
   // initial guess (maybe provided)
   Eigen::MatrixXd phi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.energy.G);
@@ -146,7 +146,8 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
     // while not converged:
     // while norm(phi_latest - phi_old) > norm(phi_latest)epsilon
     auto i = 0;
-    while ((phi_g - phi.col(g)).norm() > phi_g.norm() * epsilon) { //  TODO calculate these
+    double abs_diff_norm = 1e10;
+    while (abs_diff_norm > (phi_g.norm() * epsilon)) { //  TODO calculate these
       i++;
       phi.col(g) = phi_g;
       // solve transport using known phi
@@ -155,7 +156,13 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       phi_g = integrateAngle(psi);
       LDCSD_LOG_INFO("Source iteration group " + std::to_string(g) + ", iteration " +
                      std::to_string(i));
+
+      abs_diff_norm = (phi_g - phi.col(g)).norm();
     }
+    phi.col(g) = phi_g;
+    LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_norm) + "in " +
+                       std::to_string(i) + " iterations",
+                   true);
     psi_up = psi;
   }
   return phi;
