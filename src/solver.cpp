@@ -378,10 +378,14 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   // cosine < 0 the L/R labeling of every spatially-structured input must be
   // swapped to match before assembly (scalar psi_in_x_up/down are already
   // direction-relative "upwind" values, so they're left alone).
+  Eigen::MatrixXd phi_gprime_up_local = phi_gprime_up;
+  Eigen::MatrixXd phi_gprime_down_local = phi_gprime_down;
   if (cosine < 0) {
     psi_in_E.reverseInPlace();
     q_up.reverseInPlace();
     q_down.reverseInPlace();
+    phi_gprime_up_local = phi_gprime_up_local.colwise().reverse().eval();
+    phi_gprime_down_local = phi_gprime_down_local.colwise().reverse().eval();
   }
 
   /*
@@ -424,7 +428,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   // CSD source
   b({0, 1}) += (dx / dE) * S_up * M * psi_in_E;
   // Scattering source
-  b({0, 1}) += (0.125) * M * (phi_gprime_down + phi_gprime_up) * sigma_sdEprime;
+  b({0, 1}) += (0.125) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
   // External source
   b({0, 1}) += (dx / 6) * M * (2 * q_up + q_down);
 
@@ -443,7 +447,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   // streaming source
   b(2) += (mu / 6) * (psi_in_x_up + 2 * psi_in_x_down);
   // Scattering source
-  b({2, 3}) += (0.125) * M * (phi_gprime_down + phi_gprime_up) * sigma_sdEprime;
+  b({2, 3}) += (0.125) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
   // External source
   b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
 
