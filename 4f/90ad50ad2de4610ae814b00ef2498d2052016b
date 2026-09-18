@@ -1,0 +1,18 @@
+CMakeLists.txt
+  h_c6d403188ce57a 1-7
+src/solver.h
+  h_c6d403188ce57a 1-7
+src/solver.cpp
+  h_c6d403188ce57a 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f90ad50ad2de4610ae814b00ef2498d2052016b",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
