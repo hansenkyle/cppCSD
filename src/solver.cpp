@@ -1,4 +1,5 @@
 #include "solver.h"
+#include "logger.h"
 #include "solver_formatter.h"
 
 #include <array>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 Solver::Kernel::Kernel() {
@@ -124,6 +126,38 @@ Eigen::VectorXd Solver::integrateAngle(Eigen::MatrixXd psi) {
   // psi: [4nx by M]
 
   return psi * input_deck.angle.w;
+}
+
+Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
+  // solve transport equqation in all groups via source iteration
+
+  // initial guess (maybe provided)
+  Eigen::MatrixXd phi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.energy.G);
+  Eigen::VectorXd phi_g = Eigen::VectorXd::Zero(4 * input_deck.mesh.n_x);
+  double rel_norm_2;
+
+  Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+  Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+
+  // for each E:
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    // while not converged:
+    rel_norm_2 = 1;
+    // while norm(phi_latest - phi_old) > norm(phi_latest)epsilon
+    auto i = 0;
+    while ((phi_g - phi.col(g)).norm() > phi_g.norm() * epsilon) { //  TODO calculate these
+      i++;
+      phi.col(g) = phi_g;
+      // solve transport using known phi
+      psi = transportSweep(g, psi_up, phi);
+      // compute new phi
+      phi_g = integrateAngle(psi);
+      LDCSD_LOG_INFO("Source iteration group " + std::to_string(g) + ", iteration " +
+                     std::to_string(i));
+    }
+    psi_up = psi;
+  }
+  return phi;
 }
 
 Eigen::Vector4d Solver::Kernel::solveDirect(

@@ -19,6 +19,8 @@ public:
 
   Eigen::VectorXd integrateAngle(Eigen::MatrixXd psi);
 
+  Eigen::MatrixXd sourceIterate(double epsilon);
+
   // Appends the run metadata block.
   void writeMetadata(const std::filesystem::path& file_path) const;
 
