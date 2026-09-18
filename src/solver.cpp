@@ -120,6 +120,12 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
   return psi;
 }
 
+Eigen::VectorXd Solver::integrateAngle(Eigen::MatrixXd psi) {
+  // psi: [4nx by M]
+
+  return psi * input_deck.angle.w;
+}
+
 Eigen::Vector4d Solver::Kernel::solveDirect(
     double cosine, double dx, double dE, double xs, double S, double S_up, double S_down,
     Eigen::Vector2d psi_in_E, double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,

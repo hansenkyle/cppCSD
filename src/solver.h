@@ -17,7 +17,7 @@ public:
 
   Eigen::MatrixXd transportSweep(int g, Eigen::MatrixXd psi_in_E, Eigen::MatrixXd scalar_flux);
 
-  
+  Eigen::VectorXd integrateAngle(Eigen::MatrixXd psi);
 
   // Appends the run metadata block.
   void writeMetadata(const std::filesystem::path& file_path) const;
