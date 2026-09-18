@@ -1,0 +1,15 @@
+src/input_deck.h
+  h_c6d403188ce57a 18-19
+  h_c6d403188ce57a 20-22,62,75-77,90-91,108-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a892aa5e0e20d1c165abf94c80a55b1d17c380a4",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
