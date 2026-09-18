@@ -41,8 +41,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
   auto dx = input_deck.mesh.dx;
   auto sigma_t = input_deck.xs.total(g, all);
   auto S = input_deck.xs.S(g, all);
-  auto S_up = input_deck.xs.S_bound(g + 1, all);
-  auto S_down = input_deck.xs.S_bound(g, all);
+  auto S_up = input_deck.xs.S_bound(g, all);
+  auto S_down = input_deck.xs.S_bound(g + 1, all);
   double bc_up, bc_down;
   Eigen::Vector2d q_up, q_down;
   Eigen::VectorXd sigmaSdEprime;
