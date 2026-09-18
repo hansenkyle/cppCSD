@@ -50,7 +50,7 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
 
   // loop over all angles
   for (int m = 0; m < input_deck.angle.M; m++) {
-    bool print_condition_number=false;
+    bool print_condition_number = false;
     auto mu = input_deck.angle.mu[m];
     auto q = input_deck.source.values[g](all, m);
 
@@ -397,21 +397,22 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
     int corner = static_cast<int>(max_row) - 4 * max_cell;
     int max_m = static_cast<int>(max_col);
     LDCSD_LOG_INFO("\t\tdebug_max: largest |residual| at group " + std::to_string(g) + ", cell " +
-                   std::to_string(max_cell) + ", corner " + std::to_string(corner) +
-                   ", ordinate " + std::to_string(max_m) + " (mu=" +
-                   std::format("{:.4e}", mu[max_m]) + ") -- recomputing term-by-term:");
+                   std::to_string(max_cell) + ", corner " + std::to_string(corner) + ", ordinate " +
+                   std::to_string(max_m) + " (mu=" + std::format("{:.4e}", mu[max_m]) +
+                   ") -- recomputing term-by-term:");
     cellResidualAt(max_cell, max_m, true);
   }
 
   return residuals;
 }
 
-Eigen::Vector4d Solver::Kernel::solveDirect(
-    double cosine, double dx, double dE, double xs, double S, double S_up, double S_down,
-    Eigen::Vector2d psi_in_E, double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
-    Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
-    const Eigen::MatrixXd& phi_gprime_up, const Eigen::MatrixXd& phi_gprime_down,
-    bool check_condition) {
+Eigen::Vector4d
+Solver::Kernel::solveDirect(double cosine, double dx, double dE, double xs, double S, double S_up,
+                            double S_down, Eigen::Vector2d psi_in_E, double psi_in_x_down,
+                            double psi_in_x_up, Eigen::Vector2d q_up, Eigen::Vector2d q_down,
+                            const Eigen::VectorXd& sigma_sdEprime,
+                            const Eigen::MatrixXd& phi_gprime_up,
+                            const Eigen::MatrixXd& phi_gprime_down, bool check_condition) {
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
 

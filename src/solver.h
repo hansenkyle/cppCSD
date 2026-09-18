@@ -120,7 +120,8 @@ public:
                                 double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
                                 Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
                                 const Eigen::MatrixXd& phi_gprime_up,
-                                const Eigen::MatrixXd& phi_gprime_down, bool check_condition = false);
+                                const Eigen::MatrixXd& phi_gprime_down,
+                                bool check_condition = false);
   };
 
 protected:
