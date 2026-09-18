@@ -185,3 +185,75 @@ boundary_conditions:
     1.49999985e+08, 1.49999985e+08, 1.49999985e+08, 1.49999985e+08, 1.49999985e+08,
     1.49999985e+08]
 
+
+
+# Independent source -- unit, isotropic, all groups/angles/cells
+source:
+  - &group_source
+    - &ordinate_row
+      - &unit_cell {up_left: 1.0, up_right: 1.0, down_left: 1.0, down_right: 1.0}
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source
