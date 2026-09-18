@@ -18,7 +18,7 @@ Solver::Kernel::Kernel() {
   b = Eigen::Vector4d::Zero();
 }
 
-Eigen::VectorXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
+Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
                                        Eigen::MatrixXd scalar_flux) {
   // Compute angular flux in a single energy group given a known source (and known scalar flux in
   // all groups).
