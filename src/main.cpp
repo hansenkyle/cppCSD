@@ -28,8 +28,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const Solver solver(deck);
+  Solver solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
+  solver.sourceIterate(1e-8);
 
   return 0;
 }
