@@ -76,7 +76,6 @@ add_library(ldcsd_core STATIC
     src/output.cpp
     src/solver.cpp
     src/solver_formatter.cpp
-    src/residual.cpp
     src/cli.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
