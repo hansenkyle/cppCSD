@@ -187,7 +187,7 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       abs_diff_norm = (phi_g - phi.col(g)).norm();
     }
     phi.col(g) = phi_g;
-    LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_norm) + "in " +
+    LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_norm) + " in " +
                        std::to_string(i) + " iterations",
                    true);
     psi_up = psi;
