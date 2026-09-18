@@ -41,7 +41,7 @@ materials:
       - 6.183378e+01
 
 
-# Angular Quadrature -- s16 double Gauss - Legendre
+# Angular Quadrature -- s6 double Gauss - Legendre
 angular_quadrature:
   mu: [-8.87298335e-01, -5.00000000e-01, -1.12701665e-01, 1.12701665e-01, 5.00000000e-01, 8.87298335e-01]
   w:  [2.77777778e-01, 4.44444444e-01, 2.77777778e-01, 2.77777778e-01, 4.44444444e-01, 2.77777778e-01]
@@ -61,3 +61,23 @@ boundary_conditions:
   - [1.57342191e+01, 1.57342191e+01, 1.57342191e+01, 10.0, 10.0, 10.0]
   - [1.81125155e+01, 1.81125155e+01, 1.81125155e+01, 10.0, 10.0, 10.0]
   - [1.99646869e+01, 1.99646869e+01, 1.99646869e+01, 10.0, 10.0, 10.0]
+
+
+# Independent source -- unit, isotropic, all groups/angles/cells
+source:
+  - &group_source
+    - &ordinate_row
+      - &unit_cell {up_left: 1.0, up_right: 1.0, down_left: 1.0, down_right: 1.0}
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+      - *unit_cell
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+  - *group_source
+  - *group_source
+  - *group_source
+  - *group_source

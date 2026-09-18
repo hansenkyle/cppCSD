@@ -15,7 +15,13 @@ Cross sections:
 Spatial mesh:
 - 5 cells, 5.0e-7 cm each
 
+Angular Quadrature:
+- s6 double Gauss-Legendre
+
 Boundary conditions:
 - Isotropic incoming flux on both sides
     - Left: psi(E) = 10(1+exp(-3e5 (x-1e-6))) [(cm2sMeVstr)^-1]
     - Right psi(E) = 10                       [(cm2sMeVstr)^-1]
+
+Independent source:
+- 1 in all cells, all groups, all angles
