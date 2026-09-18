@@ -1,8 +1,8 @@
 # Al slab test description, 5x5 cells
 
-Cross sections from Al-6061. Small test problem with 5 energy and 5 spatial cells.
+Test with zero scattering, otherwise same as 5g5x.
 
-Scattering is considered to be isotropic.
+
 
 Energy mesh:
 - 1 eV - 12.916 eV, log spaced (groups 23-27 from 36g)
@@ -10,7 +10,6 @@ Energy mesh:
 
 Cross sections:
 - Generated using `radiant.jl`, using inelastic + elastic collision, Bremsstrahlung, including knock-on production
-- Full scattering matrix (relavent for higher-energy groups)
 
 Spatial mesh:
 - 5 cells, 5.0e-7 cm each

@@ -32,23 +32,24 @@ std::string timestamp() {
   return oss.str();
 }
 
-// Renders a (4 * n_x) x G matrix as a grid: one column per spatial cell,
-// one row per energy group, with each cell's four values (rows
-// 4c..4c+3 = up_left, up_right, down_left, down_right) shown as a 2x2
+// Renders a (4 * n_x) x labels.size() matrix as a grid: one column per
+// spatial cell, one row per labels entry, with each cell's four values
+// (rows 4c..4c+3 = up_left, up_right, down_left, down_right) shown as a 2x2
 // cluster:
 //   up_left    up_right
 //   down_left  down_right
 std::string formatCornerGrid(const std::string& title, const Eigen::MatrixXd& data, int n_x,
-                             int G) {
+                             const std::vector<std::string>& labels) {
+  const auto count = static_cast<int>(labels.size());
   std::vector<std::vector<std::array<std::string, 4>>> formatted(
-      G, std::vector<std::array<std::string, 4>>(n_x));
+      count, std::vector<std::array<std::string, 4>>(n_x));
   std::size_t width = 0;
-  for (int g = 0; g < G; ++g) {
+  for (int i = 0; i < count; ++i) {
     for (int c = 0; c < n_x; ++c) {
       for (int k = 0; k < 4; ++k) {
-        std::string text = formatSci(data(4 * c + k, g));
+        std::string text = formatSci(data(4 * c + k, i));
         width = std::max(width, text.size());
-        formatted[g][c][k] = std::move(text);
+        formatted[i][c][k] = std::move(text);
       }
     }
   }
@@ -58,11 +59,11 @@ std::string formatCornerGrid(const std::string& title, const Eigen::MatrixXd& da
   out << "--- " << title << " ---\n";
   out << "columns are spatial cells 0.." << (n_x - 1)
       << "; each entry is [up_left up_right / down_left down_right]\n";
-  for (int g = 0; g < G; ++g) {
-    out << "group " << g << ":\n";
+  for (int i = 0; i < count; ++i) {
+    out << labels[i] << ":\n";
     for (int row = 0; row < 2; ++row) {
       for (int c = 0; c < n_x; ++c) {
-        const std::array<std::string, 4>& cell = formatted[g][c];
+        const std::array<std::string, 4>& cell = formatted[i][c];
         out << std::setw(col_width) << cell[2 * row] << std::setw(col_width) << cell[2 * row + 1];
       }
       out << "\n";
@@ -71,12 +72,24 @@ std::string formatCornerGrid(const std::string& title, const Eigen::MatrixXd& da
   return out.str();
 }
 
-// Per-ordinate title shared by the angular flux and residual blocks.
-std::string ordinateTitle(const std::string& label, int m, const InputDeck& deck) {
-  std::ostringstream title;
-  title << label << " - Ordinate " << m << " (mu=" << formatSci(deck.angle.mu[m])
-        << ", w=" << formatSci(deck.angle.w[m]) << ")";
-  return title.str();
+// "group 0", "group 1", ... -- row labels for a G-column matrix (scalar flux).
+std::vector<std::string> groupLabels(int G) {
+  std::vector<std::string> labels(G);
+  for (int g = 0; g < G; ++g) {
+    labels[g] = "group " + std::to_string(g);
+  }
+  return labels;
+}
+
+// "ordinate 0 (mu=.., w=..)", ... -- row labels for an M-column matrix
+// (angular flux/residuals within one energy group).
+std::vector<std::string> ordinateLabels(const InputDeck& deck) {
+  std::vector<std::string> labels(deck.angle.M);
+  for (int m = 0; m < deck.angle.M; ++m) {
+    labels[m] = "ordinate " + std::to_string(m) + " (mu=" + formatSci(deck.angle.mu[m]) +
+                ", w=" + formatSci(deck.angle.w[m]) + ")";
+  }
+  return labels;
 }
 
 } // namespace
@@ -89,21 +102,22 @@ std::string formatRunMetadata() {
   return metadata.txt();
 }
 
-std::string formatResults(const Solver::Results& results, const InputDeck& deck) {
+std::string formatResults(const Eigen::MatrixXd& scalar_flux,
+                          const std::vector<Eigen::MatrixXd>& angular_flux, const InputDeck& deck) {
   std::ostringstream out;
-  out << formatCornerGrid("Scalar Flux", results.scalar_flux, deck.mesh.n_x, deck.energy.G);
-  for (std::size_t m = 0; m < results.angular_flux.size(); ++m) {
-    out << formatCornerGrid(ordinateTitle("Angular Flux", static_cast<int>(m), deck),
-                            results.angular_flux[m], deck.mesh.n_x, deck.energy.G);
+  out << formatCornerGrid("Scalar Flux", scalar_flux, deck.mesh.n_x, groupLabels(deck.energy.G));
+  for (std::size_t g = 0; g < angular_flux.size(); ++g) {
+    out << formatCornerGrid("Angular Flux - Group " + std::to_string(g), angular_flux[g],
+                            deck.mesh.n_x, ordinateLabels(deck));
   }
   return out.str();
 }
 
 std::string formatResiduals(const std::vector<Eigen::MatrixXd>& residuals, const InputDeck& deck) {
   std::ostringstream out;
-  for (std::size_t m = 0; m < residuals.size(); ++m) {
-    out << formatCornerGrid(ordinateTitle("Angular Residual", static_cast<int>(m), deck),
-                            residuals[m], deck.mesh.n_x, deck.energy.G);
+  for (std::size_t g = 0; g < residuals.size(); ++g) {
+    out << formatCornerGrid("Angular Residual - Group " + std::to_string(g), residuals[g],
+                            deck.mesh.n_x, ordinateLabels(deck));
   }
   return out.str();
 }

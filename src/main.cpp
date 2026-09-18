@@ -10,6 +10,7 @@
 #include "cli.h"
 #include "input_deck.h"
 #include "logger.h"
+#include "output_manager.h"
 #include "solver.h"
 
 int main(int argc, char** argv) {
@@ -19,7 +20,10 @@ int main(int argc, char** argv) {
     return exit_code;
   }
 
-  Logger::configure("ldcsd.log");
+  const std::filesystem::path deck_dir = std::filesystem::absolute(*yaml_path).parent_path();
+  const OutputManager output(deck_dir);
+
+  Logger::configure(output.log_path, output.out_path);
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
 
   InputDeck deck;
@@ -28,8 +32,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const Solver solver(deck);
+  Solver solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
+
+  solver.writeMetadata(output.info_path);
+  solver.writeInputDeckEcho(output.info_path);
+
+  const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
+  solver.writeResults(output.results_path, phi, {});
 
   return 0;
 }

@@ -24,6 +24,7 @@ public:
   std::filesystem::path info_path;
   std::filesystem::path log_path;
   std::filesystem::path out_path;
+  std::filesystem::path results_path;
 };
 
 #endif

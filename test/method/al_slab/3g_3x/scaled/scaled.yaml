@@ -1,0 +1,66 @@
+# Spatial mesh
+spatial_mesh: [0.0, 0.5, 1.0, 1.5]
+
+# Regions
+regions:
+  materials:
+  [scaled_mat, scaled_mat, scaled_mat]
+
+
+# Energy mesh
+
+energy_mesh: [4.00, 3.00, 2.00, 1.00]
+materials:
+  scaled_mat:
+    sigma_t:
+    - 2.00
+    - 1.20
+    - 0.80
+    scattering:
+    - [1.50,0.30,0.20]
+    - [0   ,1.20,0   ]
+    - [0   ,0   ,0.80]
+    stopping_power:
+      group_average:
+      - 1.00
+      - 1.35
+      - 1.05
+      group_boundary:
+      - 0.60
+      - 1.30
+      - 1.00
+      - 0.80
+
+
+# Angular Quadrature -- s6 double Gauss - Legendre
+angular_quadrature:
+  mu: [-8.87298335e-01, -5.00000000e-01, -1.12701665e-01, 1.12701665e-01, 5.00000000e-01, 8.87298335e-01]
+  w:  [2.77777778e-01, 4.44444444e-01, 2.77777778e-01, 2.77777778e-01, 4.44444444e-01, 2.77777778e-01]
+
+
+# Boundary conditions
+boundary_conditions:
+  up:
+  - [1.12, 1.12, 1.12, 1.00, 1.00, 1.00]
+  - [1.33, 1.33, 1.33, 1.00, 1.00, 1.00]
+  - [1.58, 1.58, 1.58, 1.00, 1.00, 1.00]
+  down:
+  - [1.32, 1.32, 1.32, 1.00, 1.00, 1.00]
+  - [1.57, 1.57, 1.57, 1.00, 1.00, 1.00]
+  - [1.81, 1.81, 1.81, 1.00, 1.00, 1.00]
+
+
+# Independent source -- unit, isotropic, all groups/angles/cells
+source:
+  - &group_source
+    - &ordinate_row
+      - &unit_cell {up_left: 1.0, up_right: 1.0, down_left: 1.0, down_right: 1.0}
+      - *unit_cell
+      - *unit_cell
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+    - *ordinate_row
+  - *group_source
+  - *group_source

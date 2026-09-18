@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 // Holds all physical problem data (geometry, energy structure, cross
 // sections, angular quadrature, boundary conditions) and is the trust
@@ -65,27 +66,23 @@ public:
   // Cross sections and stopping power, per energy group and spatial cell.
   // Row g of total/S/S_bound is that group's space-dependent vector; (g, c)
   // is the value for group g in cell c. scatter is per-cell instead: a
-  // material's scattering matrix is a sparse group-to-group list (down- and
-  // up-scatter both allowed), defined once per material, and every cell
-  // using that material just holds a copy of the same list. YAML may spell
-  // this sparsely (from/to/value entries) or densely (a full G x G list of
-  // lists); either way it's stored here as the same sparse entry list.
+  // material's scattering matrix is a sparse G x G group-to-group matrix
+  // (down- and up-scatter both allowed; entry (from, to) is the xs for
+  // group `from` scattering into group `to`), defined once per material,
+  // and every cell using that material just holds a copy of the same
+  // matrix. YAML may spell this sparsely (from/to/value entries) or
+  // densely (a full G x G list of lists); either way it's stored here as
+  // an Eigen::SparseMatrix. Access it like any other Eigen matrix, but
+  // through .coeff(from, to)/.coeffRef(from, to) rather than operator() --
+  // Eigen's sparse types don't support that overload.
   struct Xs {
-    // One entry in a sparse group-to-group scattering matrix: group `from`
-    // scatters into group `to` with the given macroscopic cross section.
-    struct ScatterEntry {
-      int from;
-      int to;
-      double value;
-    };
-
-    Eigen::MatrixXd total;                          // group total xs, rows=G, cols=n_x
-    std::vector<std::vector<ScatterEntry>> scatter; // [cell], sparse group-to-group entries
+    Eigen::MatrixXd total;                            // group total xs, rows=G, cols=n_x
+    std::vector<Eigen::SparseMatrix<double>> scatter; // [cell], each G x G
     Eigen::MatrixXd S;       // group-average stopping power, rows=G, cols=n_x
     Eigen::MatrixXd S_bound; // stopping power at group boundaries, rows=G+1, cols=n_x
 
     // Checks total/S/S_bound values are non-negative, and every scatter
-    // entry's value is non-negative. Shape against mesh.n_x/energy.G is a
+    // matrix entry is non-negative. Shape against mesh.n_x/energy.G is a
     // cross-struct concern, checked by InputDeck::validate() instead.
     void validate() const;
   };
@@ -106,6 +103,20 @@ public:
     auto operator[](int g) const {
       return values(Eigen::seq(2 * g, 2 * g + 1), Eigen::placeholders::all);
     }
+  };
+
+  // External source, per energy group. values[g] holds group g's source:
+  // one column per angular ordinate, and 4 * mesh.n_x rows -- rows
+  // 4*c .. 4*c+3 are cell c's (up_left, up_right, down_left, down_right),
+  // the same corner layout Kernel::solveDirect uses for a single cell's
+  // q_up/q_down (L then R). Indexed by group rather than ordinate since
+  // few solver operations cross energy groups.
+  struct Source {
+    std::vector<Eigen::MatrixXd> values; // size G, each 4 * mesh.n_x rows x angle.M cols
+
+    // Checks every entry is non-negative. Shape against angle.M/mesh.n_x/energy.G is a
+    // cross-struct concern, checked by InputDeck::validate() instead.
+    void validate() const;
   };
 
   // Reads and validates path_to_yaml, populating this deck's members.
@@ -139,6 +150,7 @@ public:
   Angle angle;
   Xs xs;
   BoundaryConditions bc;
+  Source source;
 };
 
 #endif

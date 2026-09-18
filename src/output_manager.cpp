@@ -102,4 +102,5 @@ OutputManager::OutputManager(const fs::path& deck_dir) {
   info_path = run_dir / "info";
   log_path = run_dir / "log";
   out_path = run_dir / "out";
+  results_path = run_dir / "results";
 }

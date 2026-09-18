@@ -82,6 +82,9 @@ add_library(ldcsd_core STATIC
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
 target_link_libraries(ldcsd_core PRIVATE CLI11::CLI11)
+target_compile_options(ldcsd_core PRIVATE
+    $<$<CONFIG:Release>:-O3 -march=native>
+)
 if(LDCSD_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(ldcsd_core PUBLIC LDCSD_ENABLE_DEBUG_LOGGING)
 endif()
@@ -121,6 +124,11 @@ if(LDCSD_BUILD_TESTS)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
+    # Must match ldcsd_core's ISA flags: Eigen fixed-size types (e.g. Kernel's Matrix4d) get
+    # different vectorization alignment depending on -march, and calling across an alignment
+    # mismatch between this target and ldcsd_core.a segfaults intermittently.
+    target_compile_options(unit_test PRIVATE
+        $<$<CONFIG:Release>:-O3 -march=native>)
 
     # Coverage instrumentation
     option(LDCSD_ENABLE_COVERAGE "Build unit_test with coverage instrumentation" OFF)
