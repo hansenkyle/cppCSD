@@ -1,3 +1,10 @@
+// Copyright (c) 2026, Kyle Hansen (khansen3@ncsu.edu)
+//
+// Funded by CARRE (https://carre-psaapiv.org/)
+//
+// Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
+// or without modification are permitted provided that the terms of the license are met.
+
 #ifndef SOLVER_H
 #define SOLVER_H
 
@@ -20,46 +27,43 @@ public:
   Solver(InputDeck input_deck) : input_deck(input_deck) {}
   InputDeck input_deck;
 
+  /// @brief Solve high-order transport equation for all angles in a single energy group
+  /// @param g Group index. Needed for slicing sigma_s(g' -> g)
+  /// @param psi_in_E Angular flux, next-highest energy group. [4nx by M]
+  /// @param scalar_flux Scalar flux, all groups. [4nx by G]
+  /// @return Angular flux. [4nx by M]
   Eigen::MatrixXd transportSweep(int g, Eigen::MatrixXd psi_in_E, Eigen::MatrixXd scalar_flux);
 
   Eigen::VectorXd integrateAngle(Eigen::MatrixXd psi);
 
+  /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
+  ///
+  /// @param epsilon Convergence criterion. Transport iteration stops when |phi_old - phi_new|_2 >
+  /// |phi_new|_2*epsilon
+  /// @return Eigen::MatrixXd. Scalar flux in all energy groups. [4nx by G]
   Eigen::MatrixXd sourceIterate(double epsilon);
 
-  // Independently re-derives one cell's local system (mass/streaming
-  // matrices, cross sections, sources) in extended precision and evaluates
-  // the discretized BTE's residual (eq. 41a for rows 0,1 [up_left,
-  // up_right]; eq. 41b for rows 2,3 [down_left, down_right]) against
-  // candidate, the corner values solveDirect produced for this cell.
-  // Deliberately rebuilds M/L/Lb here rather than reusing Kernel's, so a
-  // bug in that assembly can't hide from its own residual check -- same
-  // reasoning as residual.h.
-  //
-  // Unlike Kernel::solveDirect, mu keeps its sign here (no abs(), no L/R
-  // swap): eq. 41c's mu-dependent upwind selection is resolved by the
-  // caller (the phase-space loop) before calling this, so psi_b_u/psi_b_d
-  // arrive already correct for whatever sign mu has.
-  //
-  // Symbol correspondence with the writeup:
-  //   mu                    : mu_m
-  //   dx                    : Delta x_i
-  //   dE                    : Delta E_g
-  //   sigma_t               : sigma_{t,g,i}
-  //   S_bar                 : bar S_{g,i}            (group-average stopping power)
-  //   S_Eg                  : S_i(E_g)                (stopping power at this group's lower edge)
-  //   S_Egm1                : S_i(E_{g-1})             (stopping power at this group's upper edge)
-  //   psi_gm1_d             : Psi_{m,g-1,d,i}          (previous group's "d"-edge flux, CSD source)
-  //   psi_b_u, psi_b_d      : Psi^b_{m,g,i,u}, Psi^b_{m,g,i,d}   (eq. 41c, already resolved)
-  //   q_u, q_d              : q_{m,g,i,u}, q_{m,g,i,d}
-  //   sigma_sdEprime        : Delta E_g' * sigma_{s0,g'->g,i}, all g'
-  //   phi_gprime_u/d        : Phi_{g',u,i}, Phi_{g',d,i}, all g'  (each [L,R] x g' matrix)
-  //   candidate             : [up_left, up_right, down_left, down_right] = [Psi_u,L Psi_u,R Psi_d,L
-  //   Psi_d,R]
-  // verbose: if true, logs every named intermediate term (streaming,
-  // absorption+CSD-loss, CSD source, scattering source, external source,
-  // and the final residual) for both eq. 41a and eq. 41b, one LDCSD_LOG_INFO
-  // line each -- for tracking down which term disagrees with solveDirect
-  // at a specific cell. Off by default since it's very noisy.
+  /// @brief Calculate residuals (Ax-b) given a solution and all coefficients; checks that transport
+  /// equation was solved correctly in a single cell. Fully independent from solver methods.
+  /// @param mu Cos(theta)
+  /// @param dx Spatial cell width
+  /// @param dE Energy cell width
+  /// @param sigma_t Total cross section (cm-1)
+  /// @param S_bar Group average stopping power
+  /// @param S_Eg Stopping power at lower enegy bound
+  /// @param S_Egm1 Stopping power at higher energy bound
+  /// @param psi_gm1_d Angular flux, "down" for next-highest energy group
+  /// @param psi_b_u Flux AT boundary-- use upwinding conditions
+  /// @param psi_b_d Flux AT boundary-- use upwinding conditions
+  /// @param q_u External source, L/R values -- upper energy moment
+  /// @param q_d External source, L/R values -- higher energy moment
+  /// @param sigma_sdEprime sigma_s(g' -> g) * dE_g' for all g'
+  /// @param phi_gprime_u scalar flux for all g' -- 'U' moment
+  /// @param phi_gprime_d scalar flux for all g' -- 'D' moment
+  /// @param psi_up Angular flux solution -- 'U' moment
+  /// @param psi_down Angular flux solution -- 'U' moment
+  /// @param verbose Prints all residual components for this cell to LOG_INFO
+  /// @return Eigen::Vector<HighPrecision, 4>: 4 residual values at extended precision
   Eigen::Vector<HighPrecision, 4>
   cellResidual(double mu, double dx, double dE, double sigma_t, double S_bar, double S_Eg,
                double S_Egm1, const Eigen::Vector2d& psi_gm1_d, const Eigen::Vector2d& psi_b_u,
@@ -69,15 +73,13 @@ public:
                const Eigen::Vector2d& psi_up, const Eigen::Vector2d& psi_down,
                bool verbose = false) const;
 
-  // Residuals for one energy group g. angular is that group's own psi
-  // (4*n_x x M); psi_gm1 is the previous group's converged psi, same
-  // shape (needed for the CSD source -- pass a zero matrix for g==0), the
-  // same value sourceIterate already tracks as psi_up. scalar is still
-  // all groups (4*n_x x G), since the scattering source sums over g'.
-  //
-  // debug_max: if true, after computing the full grid, finds the cell/
-  // ordinate with the largest |residual|, logs which one it picked, and
-  // re-evaluates cellResidual there with verbose=true.
+  /// @brief Calculate residuals for each of 4 equations, all space, one energy group.
+  /// @param g Group index, needed to slice scattering matrix
+  /// @param angular Psi: angular flux for this energy group. [4nx by M]
+  /// @param psi_gm1 Angular flux in next-highest energy group. [4nx by M]
+  /// @param scalar Scalar flux, all energy groups. [4nx by G]
+  /// @param debug_max cellResidual set to verbose for every cell, default false
+  /// @return Eigen::MatrixXd [4nx by M]. Values demoted to double-precision
   Eigen::MatrixXd calculateResiduals(int g, const Eigen::MatrixXd& angular,
                                      const Eigen::MatrixXd& psi_gm1, const Eigen::MatrixXd& scalar,
                                      bool debug_max = false);
@@ -111,10 +113,26 @@ public:
 
   public:
     Kernel();
-    // check_condition: if true, logs A's condition number (via JacobiSVD,
-    // largest/smallest singular value) before solving -- a diagnostic for
-    // whether this cell's system is too ill-conditioned for a plain double
-    // partialPivLu solve to be trusted. Off by default since it's not free.
+
+    /// @brief Solve the high-order transport equation in a single cell. Forms 4x4 system, solved
+    /// with Eigen direct solver. Problem is rotated internally, forces mu>0
+    /// @param cosine Angle cosine, "mu"
+    /// @param dx Cell width
+    /// @param dE Energy group width
+    /// @param xs Total cross section in this cell and energy group
+    /// @param S  Group-average stopping power in this cell and energy group
+    /// @param S_up Stopping power at upper energy boundary
+    /// @param S_down Stopping power at lower energy boundary
+    /// @param psi_in_E L/R pair; "D" moment of incoming-in-E flux
+    /// @param psi_in_x_down Incoming flux, "D" moment
+    /// @param psi_in_x_up Incoming flux, "U" moment
+    /// @param q_up External source, "U" moment, L/R pair
+    /// @param q_down External source, "D" moment, L/R pair
+    /// @param sigma_sdEprime Sigma_s(g' -> g) times dE(g') for all g'
+    /// @param phi_gprime_up Scalar flux, L/R pair, "U" moment, all energy groups
+    /// @param phi_gprime_down Scalar flux, L/R pair, "D" moment, all energy groups
+    /// @param check_condition Print matrix's condition number to LOG_INFO, default false
+    /// @return Angular flux in this cell: [U_L, U_R, D_L, D_R]^T
     Eigen::Vector4d solveDirect(double cosine, double dx, double dE, double xs, double S,
                                 double S_up, double S_down, Eigen::Vector2d psi_in_E,
                                 double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,

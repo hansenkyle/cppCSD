@@ -1,3 +1,10 @@
+# Copyright (c) 2026, Kyle Hansen (khansen3@ncsu.edu)
+#
+# Funded by CARRE (https://carre-psaapiv.org/)
+#
+# Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
+# or without modification are permitted provided that the terms of the license are met.
+
 cmake_minimum_required(VERSION 4.0)
 project(ldcsd LANGUAGES CXX)
 
@@ -76,7 +83,6 @@ add_library(ldcsd_core STATIC
     src/output.cpp
     src/solver.cpp
     src/solver_formatter.cpp
-    src/residual.cpp
     src/cli.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
