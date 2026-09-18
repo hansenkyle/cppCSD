@@ -73,3 +73,6 @@ scripts/xs_data/
 
 # Python stuff
 __pycache__/
+
+# generated per-deck run output (see docs/output-layout.md)
+runs/
