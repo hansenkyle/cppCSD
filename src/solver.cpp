@@ -162,18 +162,25 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       // problem.
       Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi);
       Eigen::Index max_row, max_col, min_row, min_col;
-      double max_residual = residuals.maxCoeff(&max_row, &max_col);
-      double min_residual = residuals.minCoeff(&min_row, &min_col);
-      LDCSD_LOG_INFO("Residuals group " + std::to_string(g) + ", iteration " + std::to_string(i) +
-                     ": max = " + std::format("{:.4e}", max_residual) + " at (" +
-                     std::to_string(max_row) + ", " + std::to_string(max_col) + "), min = " +
-                     std::format("{:.4e}", min_residual) + " at (" + std::to_string(min_row) +
-                     ", " + std::to_string(min_col) + ")");
+      double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
+      double min_residual = residuals.cwiseAbs().minCoeff(&min_row, &min_col);
+
+      int max_cell = int(max_row) / 4;
+      int cv_index = max_row - (4 * max_cell);
+      LDCSD_LOG_INFO("Group " + std::to_string(g) + ", iteration " + std::to_string(i) +
+                     " complete.");
+      LDCSD_LOG_INFO("\t\tResiduals:");
+      LDCSD_LOG_INFO("\t\t-------------------");
+      LDCSD_LOG_INFO("\t\t\tmax = " + std::format("{:.4e}", max_residual) + " at (" +
+                     std::to_string(max_row) + ", " + std::to_string(max_col) +
+                     ") (eqn, ordinate)");
+      LDCSD_LOG_INFO("\t\t\t\tCell " + std::to_string(max_cell) + ", Corner value " +
+                     std::to_string(cv_index));
+      LDCSD_LOG_INFO("\t\t\tmin = " + std::format("{:.4e}", min_residual) + " at (" +
+                     std::to_string(min_row) + ", " + std::to_string(min_col) + ")\n");
 
       // compute new phi
       phi_g = integrateAngle(psi);
-      LDCSD_LOG_INFO("Source iteration group " + std::to_string(g) + ", iteration " +
-                     std::to_string(i));
 
       abs_diff_norm = (phi_g - phi.col(g)).norm();
     }
