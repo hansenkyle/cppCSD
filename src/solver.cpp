@@ -108,8 +108,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
         q_down = q(seqN(i * 4 + 2, 2));
         phi = scalar_flux(seqN(i * 4, 4), all);
         sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
-        bc_up = psi((i + 1) * 4 + 1, m);
-        bc_down = psi((i + 1) * 4 + 3, m);
+        bc_up = psi((i + 1) * 4, m);
+        bc_down = psi((i + 1) * 4 + 2, m);
 
         psi(seqN(i * 4, 4), m) = kernel.solveDirect(
             mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
