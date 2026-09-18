@@ -99,6 +99,91 @@ TEST_CASE("solveDirect reduces to pure streaming with no absorption, scattering,
 
 namespace {
 
+// A small but fully-populated deck: 2 cells, 2 groups, 2 ordinates (one of
+// each sign), nonzero scattering, stopping power, and external source.
+// Everything is O(1) so an absolute residual tolerance is meaningful.
+InputDeck makeResidualDeck() {
+  InputDeck deck;
+  deck.mesh.n_x = 2;
+  deck.mesh.x_boundary = Eigen::Vector3d(0.0, 0.6, 1.4);
+  deck.energy.G = 2;
+  deck.energy.E_boundary = Eigen::Vector3d(2.0, 1.2, 0.5);
+  deck.angle.M = 2;
+  deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
+  deck.angle.w = Eigen::Vector2d(1.0, 1.0);
+
+  deck.xs.total = Eigen::MatrixXd(2, 2);
+  deck.xs.total << 1.3, 0.9, 0.7, 1.1;
+
+  // Nonzero scattering is what makes this test bite: the scattering source is
+  // the only term that vanishes when phi == 0, so a bug in its assembly is
+  // invisible on a first iteration and only shows up once phi is populated.
+  deck.xs.scatter.clear();
+  for (int i = 0; i < 2; ++i) {
+    Eigen::SparseMatrix<double> s(2, 2);
+    s.insert(0, 0) = 0.4 + 0.1 * i; // within-group, g0
+    s.insert(0, 1) = 0.3;           // downscatter g0 -> g1
+    s.insert(1, 1) = 0.5;           // within-group, g1
+    s.makeCompressed();
+    deck.xs.scatter.push_back(s);
+  }
+
+  deck.xs.S = Eigen::MatrixXd(2, 2);
+  deck.xs.S << 0.6, 0.45, 0.35, 0.55;
+  deck.xs.S_bound = Eigen::MatrixXd(3, 2);
+  deck.xs.S_bound << 0.7, 0.5, 0.5, 0.4, 0.3, 0.6;
+
+  deck.bc.values = Eigen::MatrixXd(4, 2);
+  deck.bc.values << 1.1, 0.9, 1.3, 0.8, 0.7, 1.2, 0.6, 1.0;
+
+  deck.source.values.clear();
+  for (int g = 0; g < 2; ++g) {
+    Eigen::MatrixXd q(8, 2);
+    q << 0.5, 0.4, 0.6, 0.3, 0.45, 0.55, 0.35, 0.65, 0.7, 0.2, 0.25, 0.75, 0.15, 0.85, 0.8, 0.1;
+    deck.source.values.push_back(q * (1.0 + 0.25 * g));
+  }
+
+  deck.validate();
+  return deck;
+}
+
+} // namespace
+
+// The real invariant tying Kernel::solveDirect to Solver::cellResidual: whatever
+// solveDirect produces must satisfy, to machine precision, the same discretized
+// equations that cellResidual independently re-derives in extended precision.
+// Any term one of them assembles differently from the other shows up here.
+//
+// Crucially this runs with a NONZERO scalar flux. With phi == 0 the scattering
+// source drops out of both sides and the check passes no matter how that term
+// is assembled -- which is exactly how a missing dx factor on solveDirect's
+// scattering source stayed hidden through a first iteration.
+TEST_CASE("transportSweep output satisfies the discretized equations to machine precision") {
+  Solver solver(makeResidualDeck());
+
+  const int n_rows = 4 * 2;
+  const Eigen::MatrixXd zero_psi = Eigen::MatrixXd::Zero(n_rows, 2);
+
+  // An arbitrary, definitely-nonzero scalar flux in both groups.
+  Eigen::MatrixXd phi(n_rows, 2);
+  phi << 1.7, 0.8, 1.4, 0.95, 1.2, 1.1, 1.05, 1.35, 0.9, 1.6, 1.25, 0.75, 1.5, 1.15, 0.85, 1.45;
+
+  for (int g = 0; g < 2; ++g) {
+    // g == 1 also exercises the CSD coupling, by feeding it a nonzero
+    // previous-group psi rather than the zero matrix g == 0 gets.
+    const Eigen::MatrixXd psi_gm1 =
+        (g == 0) ? zero_psi : Eigen::MatrixXd(solver.transportSweep(0, zero_psi, phi));
+
+    const Eigen::MatrixXd psi = solver.transportSweep(g, psi_gm1, phi);
+    const Eigen::MatrixXd residuals = solver.calculateResiduals(g, psi, psi_gm1, phi);
+
+    CAPTURE(g);
+    CHECK(residuals.cwiseAbs().maxCoeff() < 1e-12);
+  }
+}
+
+namespace {
+
 // A minimally-valid, 1-cell/1-group/1-ordinate deck.
 InputDeck makeDeck() {
   InputDeck deck;
