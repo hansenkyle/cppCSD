@@ -1,0 +1,52 @@
+test/method/al_slab/5g_5x/no_scatter/description.md
+  h_c6d403188ce57a 1-26
+src/solver.cpp
+  s_5758c6483c7177::t_4cf4885cdafd20 284-303
+  s_5758c6483c7177::t_ee1372c162900c 412-413
+  s_5758c6483c7177::t_5e779dc228e821 403,496-502
+  h_c6d403188ce57a 53,103,275-276
+  s_5758c6483c7177::t_f4d9c0a772cd33 203
+  s_5758c6483c7177::t_98d1f0e4c9989e 311,331-356,358-360,362-363,365-368,370-375,377-384,386-388,392-402
+  s_5758c6483c7177::t_f9421adbfae8d9 164
+  s_5758c6483c7177::t_9a890e097105f1 404
+test/method/al_slab/3g_3x/scaled/scaled.yaml
+  s_c075a596d9b941::t_2cd69022a267ba 1-66
+test/method/al_slab/3g_3x/3g_3x.yaml
+  h_c6d403188ce57a 45-47,49-51
+test/method/al_slab/3g_3x/scaled/description.md
+  s_c075a596d9b941::t_7e92f3a497be4a 1-30
+src/solver.h
+  s_5758c6483c7177::t_68ac7409b73f93 114-117,123
+  s_5758c6483c7177::t_bf9a3f38cc1cc6 58-62,69-70,77-80,82-83
+test/method/al_slab/5g_5x/no_scatter/5g5x_noscatter.yaml
+  s_5758c6483c7177::t_69a38940fec195 1-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c719af9b9d8bf65b3cca21489ba2681cec5ee6e",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_5758c6483c7177": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bc371b-346a-425e-9a08-3e2d9f7415df",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    },
+    "s_c075a596d9b941": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "426a95ae-ade1-4368-a613-2251666763c9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
