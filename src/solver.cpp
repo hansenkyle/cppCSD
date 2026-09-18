@@ -100,7 +100,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       bc_down = input_deck.bc[g](1, m);
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
           mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all), true);
+          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all),
+          print_condition_number);
 
       // loop through all other cells
       for (i = input_deck.mesh.n_x - 2; i > -1; i--) {
@@ -470,7 +471,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   // CSD source
   b({0, 1}) += (dx / dE) * S_up * M * psi_in_E;
   // Scattering source
-  b({0, 1}) += (0.125) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
+  b({0, 1}) += (dx / 8) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
   // External source
   b({0, 1}) += (dx / 6) * M * (2 * q_up + q_down);
 
@@ -489,7 +490,7 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   // streaming source
   b(2) += (mu / 6) * (psi_in_x_up + 2 * psi_in_x_down);
   // Scattering source
-  b({2, 3}) += (0.125) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
+  b({2, 3}) += (dx / 8) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
   // External source
   b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
 
