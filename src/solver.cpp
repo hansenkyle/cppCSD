@@ -162,13 +162,6 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       // solve transport using known phi
       psi = transportSweep(g, psi_up, phi);
 
-      // Independent check: re-derive the discretized equation the sweep
-      // just solved, in extended precision, using the exact psi/phi it was
-      // solved with (not the updated phi_g below) -- should be near-zero
-      // regardless of whether the source itself is physically correct,
-      // since this only checks that solveDirect's assembly matches the
-      // governing equations, not that the equations model the right
-      // problem.
       Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi, true);
       Eigen::Index max_row, max_col, min_row, min_col;
       double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
@@ -215,9 +208,6 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   using VectorXhp = Eigen::Matrix<HighPrecision, Eigen::Dynamic, 1>;
   using MatrixXhp = Eigen::Matrix<HighPrecision, Eigen::Dynamic, Eigen::Dynamic>;
 
-  // M, L, Lb exactly as written in the method derivation -- re-derived
-  // independently of Kernel's (double-precision) copies; see the
-  // class-declaration comment for why.
   Matrix2hp M_hp;
   M_hp << 2, 1, 1, 2;
   M_hp *= HighPrecision(1) / 6;
@@ -229,8 +219,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   Matrix2hp Lb_hp;
   Lb_hp << -1, 0, 0, 1;
 
-  // Promote every scalar input. mu keeps its sign (see the declaration
-  // comment) -- no std::abs, no L/R swap.
+  // Promote every scalar input. mu keeps its sign
   const HighPrecision mu_hp = mu;
   const HighPrecision dx_hp = dx;
   const HighPrecision dE_hp = dE;
@@ -239,7 +228,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   const HighPrecision S_Eg_hp = S_Eg;
   const HighPrecision S_Egm1_hp = S_Egm1;
 
-  // Promote every vector/matrix input.
+  // Promote every vector/matrix input
   const Vector2hp psi_gm1_d_hp = psi_gm1_d.cast<HighPrecision>();
   const Vector2hp psi_b_u_hp = psi_b_u.cast<HighPrecision>();
   const Vector2hp psi_b_d_hp = psi_b_d.cast<HighPrecision>();
@@ -249,8 +238,6 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   const MatrixXhp phi_gprime_u_hp = phi_gprime_u.cast<HighPrecision>();
   const MatrixXhp phi_gprime_d_hp = phi_gprime_d.cast<HighPrecision>();
 
-  // candidate is laid out like everywhere else in Solver: [up_left,
-  // up_right, down_left, down_right] = [Psi_u,L Psi_u,R Psi_d,L Psi_d,R].
   const Vector2hp Psi_u_hp = psi_up.cast<HighPrecision>();
   const Vector2hp Psi_d_hp = psi_down.cast<HighPrecision>();
 
@@ -259,8 +246,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   const Vector2hp scatter_source =
       (dx_hp / 8) * (M_hp * ((phi_gprime_d_hp + phi_gprime_u_hp) * sigma_sdEprime_hp));
 
-  // ---- eq. 41a ("u" edge; candidate rows 0,1) ----
-  // No dx on the streaming term (writeup typo).
+  // UP equations-- TE weighted by up basis function and integrated
   const Vector2hp streaming_u =
       (mu_hp / 6) * (Lb_hp * (psi_b_d_hp + 2 * psi_b_u_hp) + L_hp * (Psi_d_hp + 2 * Psi_u_hp));
   const Vector2hp absorption_csd_loss_u =
@@ -272,18 +258,12 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   const Vector2hp residual_u =
       streaming_u + absorption_csd_loss_u - csd_source_u - scatter_source - external_source_u;
 
-  // ---- eq. 41b ("d" edge; candidate rows 2,3) ----
-  // No dx on the streaming term (writeup typo); sigma_t's 1/6 and 1/3
-  // swapped from how the writeup prints them (writeup typo) -- the "u"
-  // coefficient is 1/3 and the "d" coefficient is 1/6, same pattern as
-  // eq. 41a, matching Kernel::solveDirect's existing xs/3, xs/6 split.
+  // DOWN equations-- TE weighted by down basis function and integrated
   const Vector2hp streaming_d =
       (mu_hp / 6) * (Lb_hp * (2 * psi_b_d_hp + psi_b_u_hp) + L_hp * (2 * Psi_d_hp + Psi_u_hp));
   const Vector2hp absorption_csd_loss_d =
       dx_hp * (sigma_t_hp / 3 + (S_Eg_hp - S_bar_hp / 2) / dE_hp) * (M_hp * Psi_d_hp) +
       dx_hp * (sigma_t_hp / 6 - S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_u_hp);
-  // No CSD source here -- unlike eq. 41a, eq. 41b has no dependence on the
-  // previous group.
   const Vector2hp external_source_d = (dx_hp / 6) * (M_hp * (2 * q_d_hp + q_u_hp));
 
   const Vector2hp residual_d =
@@ -317,8 +297,6 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
 Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular,
                                            const Eigen::MatrixXd& psi_gm1,
                                            const Eigen::MatrixXd& scalar, bool debug_max) {
-  // angular, psi_gm1: (4nx, M), this group's psi and the previous group's
-  // (zero matrix for g==0). scalar: (4nx, G), all groups.
   int L = 0;
   int R = 1;
 
@@ -423,12 +401,11 @@ Solver::Kernel::solveDirect(double cosine, double dx, double dE, double xs, doub
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
 
+  // All inputs are rotated to solve problem for mu>0 to reduce code duplication.
+  //
+  //
   double mu = std::abs(cosine);
 
-  // The element matrices below are built assuming flow travels L->R; for
-  // cosine < 0 the L/R labeling of every spatially-structured input must be
-  // swapped to match before assembly (scalar psi_in_x_up/down are already
-  // direction-relative "upwind" values, so they're left alone).
   Eigen::MatrixXd phi_gprime_up_local = phi_gprime_up;
   Eigen::MatrixXd phi_gprime_down_local = phi_gprime_down;
   if (cosine < 0) {
@@ -511,13 +488,13 @@ Solver::Kernel::solveDirect(double cosine, double dx, double dE, double xs, doub
 
   Eigen::Vector4d x = A.partialPivLu().solve(b);
 
+  // Return result in expected order
+  //
   if (cosine < 0) {
     return x({1, 0, 3, 2});
   }
 
   return x;
-
-  return Eigen::Vector4d::Zero();
 }
 
 namespace {
