@@ -55,21 +55,32 @@ public:
   //   phi_gprime_u/d        : Phi_{g',u,i}, Phi_{g',d,i}, all g'  (each [L,R] x g' matrix)
   //   candidate             : [up_left, up_right, down_left, down_right] = [Psi_u,L Psi_u,R Psi_d,L
   //   Psi_d,R]
+  // verbose: if true, logs every named intermediate term (streaming,
+  // absorption+CSD-loss, CSD source, scattering source, external source,
+  // and the final residual) for both eq. 41a and eq. 41b, one LDCSD_LOG_INFO
+  // line each -- for tracking down which term disagrees with solveDirect
+  // at a specific cell. Off by default since it's very noisy.
   Eigen::Vector<HighPrecision, 4>
   cellResidual(double mu, double dx, double dE, double sigma_t, double S_bar, double S_Eg,
                double S_Egm1, const Eigen::Vector2d& psi_gm1_d, const Eigen::Vector2d& psi_b_u,
                const Eigen::Vector2d& psi_b_d, const Eigen::Vector2d& q_u,
                const Eigen::Vector2d& q_d, const Eigen::VectorXd& sigma_sdEprime,
                const Eigen::MatrixXd& phi_gprime_u, const Eigen::MatrixXd& phi_gprime_d,
-               const Eigen::Vector2d& psi_up, const Eigen::Vector2d& psi_down) const;
+               const Eigen::Vector2d& psi_up, const Eigen::Vector2d& psi_down,
+               bool verbose = false) const;
 
   // Residuals for one energy group g. angular is that group's own psi
   // (4*n_x x M); psi_gm1 is the previous group's converged psi, same
   // shape (needed for the CSD source -- pass a zero matrix for g==0), the
   // same value sourceIterate already tracks as psi_up. scalar is still
   // all groups (4*n_x x G), since the scattering source sums over g'.
+  //
+  // debug_max: if true, after computing the full grid, finds the cell/
+  // ordinate with the largest |residual|, logs which one it picked, and
+  // re-evaluates cellResidual there with verbose=true.
   Eigen::MatrixXd calculateResiduals(int g, const Eigen::MatrixXd& angular,
-                                     const Eigen::MatrixXd& psi_gm1, const Eigen::MatrixXd& scalar);
+                                     const Eigen::MatrixXd& psi_gm1, const Eigen::MatrixXd& scalar,
+                                     bool debug_max = false);
 
   // Appends the run metadata block.
   void writeMetadata(const std::filesystem::path& file_path) const;
@@ -100,12 +111,16 @@ public:
 
   public:
     Kernel();
+    // check_condition: if true, logs A's condition number (via JacobiSVD,
+    // largest/smallest singular value) before solving -- a diagnostic for
+    // whether this cell's system is too ill-conditioned for a plain double
+    // partialPivLu solve to be trusted. Off by default since it's not free.
     Eigen::Vector4d solveDirect(double cosine, double dx, double dE, double xs, double S,
                                 double S_up, double S_down, Eigen::Vector2d psi_in_E,
                                 double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
                                 Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
                                 const Eigen::MatrixXd& phi_gprime_up,
-                                const Eigen::MatrixXd& phi_gprime_down);
+                                const Eigen::MatrixXd& phi_gprime_down, bool check_condition = false);
   };
 
 protected:

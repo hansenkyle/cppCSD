@@ -1,36 +1,44 @@
 # Spatial mesh
-spatial_mesh: [0.0, 5e-7, 1e-6, 1.5e-6]
+spatial_mesh: [0.0, 5e-7, 1e-6, 1.5e-6, 2e-6, 2.5e-6]
 
 # Regions
 regions:
   materials:
-  [al_6061, al_6061, al_6061]
+  [al_6061, al_6061, al_6061, al_6061, al_6061]
 
 
 # Energy mesh
 
-energy_mesh: [7.742637e-06, 4.641589e-06,
-              2.782559e-06, 1.668101e-06]
+energy_mesh: [1.291550e-05, 7.742637e-06, 4.641589e-06, 
+              2.782559e-06, 1.668101e-06 ,1.000000e-06]
 materials:
   al_6061:
     sigma_t:
+    - 3.166029e+07
     - 1.913657e+07
     - 5.843348e+06
     - 3.611554e+06
+    - 2.307015e+06
     scattering:
-    - [7.142434e+06,2.059287e+04,3.540908e+06]
-    - [0           ,5.843348e+06,0           ]
-    - [0           ,0           ,3.611554e+06]
+    - [0,0,0,0,0]
+    - [0,0,0,0,0]
+    - [0,0,0,0,0]
+    - [0,0,0,0,0]
+    - [0,0,0,0,0]
     stopping_power:
-      group_average:
+      group_average: 
+      - 3.818822e+01
       - 8.709547e+01
       - 1.177253e+02
       - 9.161268e+01
-      group_boundary:
+      - 7.114694e+01
+      group_boundary: 
+      - 1.243796e+01
       - 5.827241e+01
       - 1.315944e+02
       - 1.025300e+02
       - 7.968295e+01
+      - 6.183378e+01
 
 
 # Angular Quadrature -- s6 double Gauss - Legendre
@@ -42,13 +50,17 @@ angular_quadrature:
 # Boundary conditions
 boundary_conditions:
   up:
+  - [1.01556533e+01, 1.01556533e+01, 1.01556533e+01, 10.0, 10.0, 10.0]
   - [1.11754206e+01, 1.11754206e+01, 1.11754206e+01, 10.0, 10.0, 10.0]
   - [1.32463123e+01, 1.32463123e+01, 1.32463123e+01, 10.0, 10.0, 10.0]
   - [1.58003097e+01, 1.58003097e+01, 1.58003097e+01, 10.0, 10.0, 10.0]
+  - [1.81587351e+01, 1.81587351e+01, 1.81587351e+01, 10.0, 10.0, 10.0]
   down:
+  - [1.11880480e+01, 1.11880480e+01, 1.11880480e+01, 10.0, 10.0, 10.0]
   - [1.31909213e+01, 1.31909213e+01, 1.31909213e+01, 10.0, 10.0, 10.0]
   - [1.57342191e+01, 1.57342191e+01, 1.57342191e+01, 10.0, 10.0, 10.0]
   - [1.81125155e+01, 1.81125155e+01, 1.81125155e+01, 10.0, 10.0, 10.0]
+  - [1.99646869e+01, 1.99646869e+01, 1.99646869e+01, 10.0, 10.0, 10.0]
 
 
 # Independent source -- unit, isotropic, all groups/angles/cells
@@ -58,10 +70,14 @@ source:
       - &unit_cell {up_left: 1.0, up_right: 1.0, down_left: 1.0, down_right: 1.0}
       - *unit_cell
       - *unit_cell
+      - *unit_cell
+      - *unit_cell
     - *ordinate_row
     - *ordinate_row
     - *ordinate_row
     - *ordinate_row
     - *ordinate_row
+  - *group_source
+  - *group_source
   - *group_source
   - *group_source

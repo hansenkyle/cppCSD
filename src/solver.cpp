@@ -50,6 +50,7 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
 
   // loop over all angles
   for (int m = 0; m < input_deck.angle.M; m++) {
+    bool print_condition_number=false;
     auto mu = input_deck.angle.mu[m];
     auto q = input_deck.source.values[g](all, m);
 
@@ -99,7 +100,7 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       bc_down = input_deck.bc[g](1, m);
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
           mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all), true);
 
       // loop through all other cells
       for (i = input_deck.mesh.n_x - 2; i > -1; i--) {
@@ -160,7 +161,7 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       // since this only checks that solveDirect's assembly matches the
       // governing equations, not that the equations model the right
       // problem.
-      Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi);
+      Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi, true);
       Eigen::Index max_row, max_col, min_row, min_col;
       double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
       double min_residual = residuals.cwiseAbs().minCoeff(&min_row, &min_col);
@@ -199,7 +200,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
                      const Eigen::Vector2d& q_u, const Eigen::Vector2d& q_d,
                      const Eigen::VectorXd& sigma_sdEprime, const Eigen::MatrixXd& phi_gprime_u,
                      const Eigen::MatrixXd& phi_gprime_d, const Eigen::Vector2d& psi_up,
-                     const Eigen::Vector2d& psi_down) const {
+                     const Eigen::Vector2d& psi_down, bool verbose) const {
   using Matrix2hp = Eigen::Matrix<HighPrecision, 2, 2>;
   using Vector2hp = Eigen::Vector<HighPrecision, 2>;
   using Vector4hp = Eigen::Vector<HighPrecision, 4>;
@@ -271,14 +272,34 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   const Vector2hp streaming_d =
       (mu_hp / 6) * (Lb_hp * (2 * psi_b_d_hp + psi_b_u_hp) + L_hp * (2 * Psi_d_hp + Psi_u_hp));
   const Vector2hp absorption_csd_loss_d =
-      dx_hp * (sigma_t_hp / 3 + (S_Eg_hp - S_bar_hp / 2) / dE_hp) * (M_hp * Psi_u_hp) +
-      dx_hp * (sigma_t_hp / 6 - S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_d_hp);
+      dx_hp * (sigma_t_hp / 3 + (S_Eg_hp - S_bar_hp / 2) / dE_hp) * (M_hp * Psi_d_hp) +
+      dx_hp * (sigma_t_hp / 6 - S_bar_hp / (2 * dE_hp)) * (M_hp * Psi_u_hp);
   // No CSD source here -- unlike eq. 41a, eq. 41b has no dependence on the
   // previous group.
   const Vector2hp external_source_d = (dx_hp / 6) * (M_hp * (2 * q_d_hp + q_u_hp));
 
   const Vector2hp residual_d =
       streaming_d + absorption_csd_loss_d - scatter_source - external_source_d;
+
+  if (verbose) {
+    auto logTerm = [](const std::string& name, const Vector2hp& v) {
+      LDCSD_LOG_INFO("\t\t\t\t" + name + " = [" + std::format("{:.6e}", static_cast<double>(v(0))) +
+                     ", " + std::format("{:.6e}", static_cast<double>(v(1))) + "]");
+    };
+    LDCSD_LOG_INFO("\t\t\teq. 41a (\"u\" edge):");
+    logTerm("streaming_u          ", streaming_u);
+    logTerm("absorption_csd_loss_u", absorption_csd_loss_u);
+    logTerm("csd_source_u         ", csd_source_u);
+    logTerm("scatter_source       ", scatter_source);
+    logTerm("external_source_u    ", external_source_u);
+    logTerm("residual_u           ", residual_u);
+    LDCSD_LOG_INFO("\t\t\teq. 41b (\"d\" edge):");
+    logTerm("streaming_d          ", streaming_d);
+    logTerm("absorption_csd_loss_d", absorption_csd_loss_d);
+    logTerm("scatter_source       ", scatter_source);
+    logTerm("external_source_d    ", external_source_d);
+    logTerm("residual_d           ", residual_d);
+  }
 
   Vector4hp result;
   result << residual_u, residual_d;
@@ -287,7 +308,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
 
 Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular,
                                            const Eigen::MatrixXd& psi_gm1,
-                                           const Eigen::MatrixXd& scalar) {
+                                           const Eigen::MatrixXd& scalar, bool debug_max) {
   // angular, psi_gm1: (4nx, M), this group's psi and the previous group's
   // (zero matrix for g==0). scalar: (4nx, G), all groups.
   int L = 0;
@@ -306,59 +327,79 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
   Eigen::MatrixXd residuals = Eigen::MatrixXd::Zero(4 * nx, M);
 
   Eigen::Vector2d psi_b_up, psi_b_down, psi_in_E;
+
+  // Gathers cell (i, m)'s inputs and evaluates cellResidual there -- shared
+  // by the main grid pass below and the debug_max re-evaluation, so the two
+  // can't drift apart from each other.
+  auto cellResidualAt = [&](int i, int m, bool verbose) -> Eigen::Vector4d {
+    auto psi_up = angular(Eigen::seqN(4 * i, 2), m);
+    auto psi_down = angular(Eigen::seqN(4 * i + 2, 2), m);
+
+    auto q_up = input_deck.source.values[g](Eigen::seqN(4 * i, 2), m);
+    auto q_down = input_deck.source.values[g](Eigen::seqN(4 * i + 2, 2), m);
+
+    if (g == 0) {
+      psi_in_E = Eigen::Vector2d::Zero();
+    } else {
+      psi_in_E = psi_gm1(Eigen::seqN(4 * i + 2, 2), m);
+    }
+
+    auto phi_gprime_up = scalar(Eigen::seqN(4 * i, 2), Eigen::placeholders::all);
+    auto phi_gprime_down = scalar(Eigen::seqN(4 * i + 2, 2), Eigen::placeholders::all);
+
+    auto sigma_s = input_deck.xs.scatter[i].col(g);
+
+    // construct appropraite psi^b
+    switch (mu[m] > 0) {
+    case true:
+      psi_b_up(R) = psi_up(R);
+      psi_b_down(R) = psi_down(R);
+
+      if (i == 0) {
+        psi_b_up(L) = input_deck.bc[g](0, m);
+        psi_b_down(L) = input_deck.bc[g](1, m);
+      } else {
+        psi_b_up(L) = angular((4 * (i - 1) + 1), m);
+        psi_b_down(L) = angular((4 * (i - 1) + 3), m);
+      }
+      break;
+    case false:
+      psi_b_up(L) = psi_up(L);
+      psi_b_down(L) = psi_down(L);
+
+      if (i == nx - 1) {
+        psi_b_up(R) = input_deck.bc[g](0, m);
+        psi_b_down(R) = input_deck.bc[g](1, m);
+      } else {
+        psi_b_up(R) = angular((4 * (i + 1)), m);
+        psi_b_down(R) = angular((4 * (i + 1) + 2), m);
+      }
+      break;
+    }
+
+    return cellResidual(mu[m], dx[i], dE[g], xs(g, i), S(g, i), S_bound(g + 1, i), S_bound(g, i),
+                        psi_in_E, psi_b_up, psi_b_down, q_up, q_down, dE.cwiseProduct(sigma_s),
+                        phi_gprime_up, phi_gprime_down, psi_up, psi_down, verbose)
+        .cast<double>();
+  };
+
   for (int m = 0; m < M; m++) {
     for (int i = 0; i < nx; i++) {
-      auto psi_up = angular(Eigen::seqN(4 * i, 2), m);
-      auto psi_down = angular(Eigen::seqN(4 * i + 2, 2), m);
-
-      auto q_up = input_deck.source.values[g](Eigen::seqN(4 * i, 2), m);
-      auto q_down = input_deck.source.values[g](Eigen::seqN(4 * i + 2, 2), m);
-
-      if (g == 0) {
-        psi_in_E = Eigen::Vector2d::Zero();
-      } else {
-        psi_in_E = psi_gm1(Eigen::seqN(4 * i + 2, 2), m);
-      }
-
-      auto phi_gprime_up = scalar(Eigen::seqN(4 * i, 2), Eigen::placeholders::all);
-      auto phi_gprime_down = scalar(Eigen::seqN(4 * i + 2, 2), Eigen::placeholders::all);
-
-      auto sigma_s = input_deck.xs.scatter[i].col(g);
-
-      // construct appropraite psi^b
-      switch (mu[m] > 0) {
-      case true:
-        psi_b_up(R) = psi_up(R);
-        psi_b_down(R) = psi_down(R);
-
-        if (i == 0) {
-          psi_b_up(L) = input_deck.bc[g](0, m);
-          psi_b_down(L) = input_deck.bc[g](1, m);
-        } else {
-          psi_b_up(L) = angular((4 * (i - 1)+1), m);
-          psi_b_down(L) = angular((4 * (i - 1) + 3), m);
-        }
-        break;
-      case false:
-        psi_b_up(L) = psi_up(L);
-        psi_b_down(L) = psi_down(L);
-
-        if (i == nx - 1) {
-          psi_b_up(R) = input_deck.bc[g](0, m);
-          psi_b_down(R) = input_deck.bc[g](1, m);
-        } else {
-          psi_b_up(R) = angular((4 * (i + 1)), m);
-          psi_b_down(R) = angular((4 * (i + 1) + 2), m);
-        }
-        break;
-      }
-
-      residuals(Eigen::seqN(4 * i, 4), m) =
-          cellResidual(mu[m], dx[i], dE[g], xs(g, i), S(g, i), S_bound(g + 1, i), S_bound(g, i),
-                       psi_in_E, psi_b_up, psi_b_down, q_up, q_down, dE.cwiseProduct(sigma_s),
-                       phi_gprime_up, phi_gprime_down, psi_up, psi_down)
-              .cast<double>();
+      residuals(Eigen::seqN(4 * i, 4), m) = cellResidualAt(i, m, false);
     }
+  }
+
+  if (debug_max) {
+    Eigen::Index max_row, max_col;
+    residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
+    int max_cell = static_cast<int>(max_row) / 4;
+    int corner = static_cast<int>(max_row) - 4 * max_cell;
+    int max_m = static_cast<int>(max_col);
+    LDCSD_LOG_INFO("\t\tdebug_max: largest |residual| at group " + std::to_string(g) + ", cell " +
+                   std::to_string(max_cell) + ", corner " + std::to_string(corner) +
+                   ", ordinate " + std::to_string(max_m) + " (mu=" +
+                   std::format("{:.4e}", mu[max_m]) + ") -- recomputing term-by-term:");
+    cellResidualAt(max_cell, max_m, true);
   }
 
   return residuals;
@@ -368,7 +409,8 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
     double cosine, double dx, double dE, double xs, double S, double S_up, double S_down,
     Eigen::Vector2d psi_in_E, double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
     Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
-    const Eigen::MatrixXd& phi_gprime_up, const Eigen::MatrixXd& phi_gprime_down) {
+    const Eigen::MatrixXd& phi_gprime_up, const Eigen::MatrixXd& phi_gprime_down,
+    bool check_condition) {
   A = Eigen::Matrix4d::Zero();
   b = Eigen::Vector4d::Zero();
 
@@ -450,6 +492,13 @@ Eigen::Vector4d Solver::Kernel::solveDirect(
   b({2, 3}) += (0.125) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
   // External source
   b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
+
+  if (check_condition) {
+    Eigen::JacobiSVD<Eigen::Matrix4d> svd(A);
+    const Eigen::Vector4d& singular_values = svd.singularValues();
+    double condition_number = singular_values(0) / singular_values(singular_values.size() - 1);
+    LDCSD_LOG_INFO("solveDirect: condition number = " + std::format("{:.4e}", condition_number));
+  }
 
   Eigen::Vector4d x = A.partialPivLu().solve(b);
 
