@@ -69,8 +69,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       bc_down = input_deck.bc[g](1, m);
 
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
-          q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
+          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       // loop through all other cells
       for (i = 1; i < input_deck.mesh.n_x; i++) {
         // slice data
@@ -82,8 +82,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
         bc_down = psi((i - 1) * 4 + 3, m);
 
         psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
-            q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
+            bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       }
       break;    // left-to-right
     case false: // right-to-left
@@ -98,8 +98,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       bc_up = input_deck.bc[g](0, m);
       bc_down = input_deck.bc[g](1, m);
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
-          q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
+          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
 
       // loop through all other cells
       for (i = input_deck.mesh.n_x - 2; i > -1; i--) {
@@ -112,8 +112,8 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
         bc_down = psi((i + 1) * 4 + 3, m);
 
         psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(all, m), bc_down, bc_up,
-            q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
+            bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       }
       break;
     }
@@ -335,8 +335,8 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
           psi_b_up(L) = input_deck.bc[g](0, m);
           psi_b_down(L) = input_deck.bc[g](1, m);
         } else {
-          psi_b_up(L) = angular((4 * (i - 1)), m);
-          psi_b_down(L) = angular((4 * (i - 1) + 2), m);
+          psi_b_up(L) = angular((4 * (i - 1)+1), m);
+          psi_b_down(L) = angular((4 * (i - 1) + 3), m);
         }
         break;
       case false:
@@ -348,7 +348,7 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
           psi_b_down(R) = input_deck.bc[g](1, m);
         } else {
           psi_b_up(R) = angular((4 * (i + 1)), m);
-          psi_b_down(L) = angular((4 * (i + 1) + 2), m);
+          psi_b_down(R) = angular((4 * (i + 1) + 2), m);
         }
         break;
       }
