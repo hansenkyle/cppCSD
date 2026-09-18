@@ -34,7 +34,12 @@ int main(int argc, char** argv) {
 
   Solver solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
-  solver.sourceIterate(1e-8);
+
+  solver.writeMetadata(output.info_path);
+  solver.writeInputDeckEcho(output.info_path);
+
+  const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
+  solver.writeResults(output.results_path, phi, {});
 
   return 0;
 }
