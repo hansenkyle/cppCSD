@@ -1,0 +1,26 @@
+test/method/al_slab/3g_3x/description.md
+  s_c075a596d9b941::t_a99261d872e790 1-30
+test/method/al_slab/3g_3x/3g_3x.yaml
+  s_c075a596d9b941::t_387c027f638e68 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b011b4883f8924b655d50ca20b4fa3210318a7af",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_c075a596d9b941": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "426a95ae-ade1-4368-a613-2251666763c9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
