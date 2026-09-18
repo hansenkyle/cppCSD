@@ -152,6 +152,24 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
       phi.col(g) = phi_g;
       // solve transport using known phi
       psi = transportSweep(g, psi_up, phi);
+
+      // Independent check: re-derive the discretized equation the sweep
+      // just solved, in extended precision, using the exact psi/phi it was
+      // solved with (not the updated phi_g below) -- should be near-zero
+      // regardless of whether the source itself is physically correct,
+      // since this only checks that solveDirect's assembly matches the
+      // governing equations, not that the equations model the right
+      // problem.
+      Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi);
+      Eigen::Index max_row, max_col, min_row, min_col;
+      double max_residual = residuals.maxCoeff(&max_row, &max_col);
+      double min_residual = residuals.minCoeff(&min_row, &min_col);
+      LDCSD_LOG_INFO("Residuals group " + std::to_string(g) + ", iteration " + std::to_string(i) +
+                     ": max = " + std::format("{:.4e}", max_residual) + " at (" +
+                     std::to_string(max_row) + ", " + std::to_string(max_col) + "), min = " +
+                     std::format("{:.4e}", min_residual) + " at (" + std::to_string(min_row) +
+                     ", " + std::to_string(min_col) + ")");
+
       // compute new phi
       phi_g = integrateAngle(psi);
       LDCSD_LOG_INFO("Source iteration group " + std::to_string(g) + ", iteration " +
@@ -218,7 +236,7 @@ Solver::cellResidual(double mu, double dx, double dE, double sigma_t, double S_b
   // candidate is laid out like everywhere else in Solver: [up_left,
   // up_right, down_left, down_right] = [Psi_u,L Psi_u,R Psi_d,L Psi_d,R].
   const Vector2hp Psi_u_hp = psi_up.cast<HighPrecision>();
-  const Vector2hp Psi_d_hp = psi_down({2, 3}).cast<HighPrecision>();
+  const Vector2hp Psi_d_hp = psi_down.cast<HighPrecision>();
 
   // Scattering source is the same expression in both equations, just with
   // opposite external-source weighting below -- computed once.
