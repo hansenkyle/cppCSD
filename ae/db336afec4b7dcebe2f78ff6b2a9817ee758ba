@@ -1,0 +1,14 @@
+notes/13-krylov.md
+  h_250041054ad857 1-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aedb336afec4b7dcebe2f78ff6b2a9817ee758ba",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
