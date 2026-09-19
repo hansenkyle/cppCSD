@@ -1,0 +1,34 @@
+CMakeLists.txt
+  h_250041054ad857 80,124
+src/convergence.cpp
+  h_250041054ad857 1-90
+src/convergence.h
+  h_250041054ad857 1-89
+src/main.cpp
+  h_250041054ad857 42-43,46
+src/output.cpp
+  h_250041054ad857 74-87,96-107,211-212
+src/output.h
+  h_250041054ad857 52-57,69-71,76-78
+src/solver.cpp
+  h_250041054ad857 13,141-147,150,162-169,174-176,181-194,196,198-211,549-552
+src/solver.h
+  h_250041054ad857 20,42-44,47-48,50-62,121-124,169
+src/solver_formatter.cpp
+  h_250041054ad857 12,117-196
+src/solver_formatter.h
+  h_250041054ad857 16,42-46
+test/unit/convergence.test.cpp
+  h_250041054ad857 1-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ff0f48df497101d92f7355d99067d80ca3260a9",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
