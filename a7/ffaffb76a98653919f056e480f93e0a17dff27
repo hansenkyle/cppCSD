@@ -1,0 +1,26 @@
+REFACTOR.md
+  h_250041054ad857 1-67
+ROADMAP.md
+  s_6b3b424fd2ab3a::t_8ec634e7555527 1-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7ffaffb76a98653919f056e480f93e0a17dff27",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6b3b424fd2ab3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5e2d2f7-f48d-44ad-b278-7490a20993e8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
