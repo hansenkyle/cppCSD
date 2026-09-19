@@ -1,0 +1,45 @@
+scripts/generate_bc.py
+  s_ba27771e6745d8::t_7763cedd205e5d 32-33,36
+  s_ba27771e6745d8::t_3c8389912e40b6 75-76,82
+  s_ba27771e6745d8::t_f82de7328a6b1a 1-31,34-35,37-74,77-81,83-98
+test/method/al_slab/description.md
+  h_250041054ad857 12-13
+test/method/al_slab/36g_100x.yaml
+  h_250041054ad857 1-382
+  s_ba27771e6745d8::t_5bb593ca2e155f 383-675
+test/method/al_slab/12g_40x.yaml
+  h_250041054ad857 1-187
+test/method/al_slab/al_6061_12g.csv
+  h_250041054ad857 2,8,17,19-30,33-44
+test/method/al_slab/al_6061_12g_no_knockon.csv
+  h_250041054ad857 2,8,17,19-30,33-44
+test/method/al_slab/al_6061_24g.csv
+  h_250041054ad857 2,4,8,17,19-42,44-68
+test/method/al_slab/al_6061_24g_no_knockon.csv
+  h_250041054ad857 1-68
+test/method/al_slab/al_6061_36g.csv
+  h_250041054ad857 2,4,8,17,19-54,56-92
+test/method/al_slab/al_6061_36g_no_knockon.csv
+  h_250041054ad857 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edac26fbf8c1d19bfd45541437b31deca4c315b7",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_ba27771e6745d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83982896-b23b-4cc9-91a2-fa855813275a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
