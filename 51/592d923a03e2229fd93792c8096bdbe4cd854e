@@ -1,0 +1,44 @@
+src/run_report.h
+  s_1ac613afdd667e::t_7efd9e2ae56cfb 1-58
+src/source_iteration.h
+  s_1ac613afdd667e::t_cfe89379c98208 1-32
+src/transport_operator.cpp
+  s_1ac613afdd667e::t_fa75a5f22b505c 1-462
+CMakeLists.txt
+  s_1ac613afdd667e::t_7efd9e2ae56cfb 118-120,169-171
+src/run_report.cpp
+  s_1ac613afdd667e::t_7efd9e2ae56cfb 1-62
+test/unit/run_report.test.cpp
+  s_1ac613afdd667e::t_7b75d44ff378b1 57,79,95,111,128,134,149-177
+  s_1ac613afdd667e::t_4dbf40bd592ae1 1-56,58-78,80-94,96-110,112-127,129-133,135-148,178-181
+src/transport_operator.h
+  s_1ac613afdd667e::t_0848a4a9ce6e0d 1-142
+test/unit/source_iteration.test.cpp
+  s_1ac613afdd667e::t_7708c2499d47c4 1-192
+src/main.cpp
+  s_1ac613afdd667e::t_5cfd0b93e01a4b 27-28,30,75,88-91
+  s_1ac613afdd667e::t_a3ab2feba5985c 152-157,164-165,169-170,175,179,182-183,185
+test/unit/transport_operator.test.cpp
+  s_1ac613afdd667e::t_888aefc959bc15 1-180
+src/method.h
+  s_1ac613afdd667e::t_cfe89379c98208 1-83
+src/source_iteration.cpp
+  s_1ac613afdd667e::t_00cb8027b8fcfd 1-164
+  s_1ac613afdd667e::t_083ae67e55792a 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51592d923a03e2229fd93792c8096bdbe4cd854e",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
