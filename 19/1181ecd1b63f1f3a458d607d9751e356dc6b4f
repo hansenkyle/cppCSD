@@ -1,0 +1,35 @@
+src/solver.h
+  s_1ac613afdd667e::t_585163f0f76fd1 21,26-43,120-124
+test/unit/solver.test.cpp
+  s_1ac613afdd667e::t_b3cc542b77c2a2 323-338,340,342-363,370-386,440-441
+  s_1ac613afdd667e::t_83f91541ab48fc 397
+  s_1ac613afdd667e::t_a3a7e63aa0c5bd 387-396,398-432
+  s_1ac613afdd667e::t_059fac16475a99 339,341,364-369,433-439
+src/solver.cpp
+  s_1ac613afdd667e::t_320c5ab6e9b3cc 285-286,294-298,302,306,312-318,321-331,387-400
+  s_1ac613afdd667e::t_43bd266e74f9de 401
+CMakeLists.txt
+  s_1ac613afdd667e::t_887830c5ce496c 126-132
+docs/input-deck.md
+  s_1ac613afdd667e::t_9aa842f909eedc 197-200
+docs/output-layout.md
+  s_1ac613afdd667e::t_8368a7499c7876 73-76
+src/logger.h
+  s_1ac613afdd667e::t_35f6dbd4f298d6 129-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "191181ecd1b63f1f3a458d607d9751e356dc6b4f",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
