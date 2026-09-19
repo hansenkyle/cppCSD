@@ -1,0 +1,20 @@
+scripts/group_structure_study.py
+  s_1ac613afdd667e::t_b0bb9a131d15d5 181-182,200,234-238,240,247,254-259,262
+  s_1ac613afdd667e::t_82bd642627cac6 1-180,183-199,201-233,239,241-246,248-253,260-261,263-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ad5f13d082d0f43993e0a43a400dfe865d2b9da",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
