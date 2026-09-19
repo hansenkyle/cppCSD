@@ -1,0 +1,49 @@
+src/output.cpp
+  s_1ac613afdd667e::t_6af9ac63dc0bfa 74-87,96-107,211-212
+src/solver_formatter.h
+  s_1ac613afdd667e::t_182f54b12f6bf3 16,42-45
+  s_1ac613afdd667e::t_edbfafb0d64f81 46
+src/convergence.cpp
+  s_1ac613afdd667e::t_a6daf92db1092d 1-58,60-90
+  s_1ac613afdd667e::t_461851b98f4b16 59
+CMakeLists.txt
+  s_1ac613afdd667e::t_182f54b12f6bf3 80,124
+test/unit/convergence.test.cpp
+  s_1ac613afdd667e::t_ca6096835d471d 1-106,108-115
+  s_1ac613afdd667e::t_a1a5f929422f0b 107
+src/solver.cpp
+  s_1ac613afdd667e::t_461851b98f4b16 190-194
+  s_1ac613afdd667e::t_99db154ede4a0f 13,141-147,150,162-169,174-176,181-189,196,198-211,549-551
+  s_1ac613afdd667e::t_fe93566e8e7437 552
+src/convergence.h
+  s_1ac613afdd667e::t_a6daf92db1092d 1-20,27-89
+  s_1ac613afdd667e::t_461851b98f4b16 21-26
+src/output.h
+  s_1ac613afdd667e::t_6af9ac63dc0bfa 52-57,69-71,76-78
+src/solver_formatter.cpp
+  s_1ac613afdd667e::t_461851b98f4b16 174-175
+  s_1ac613afdd667e::t_182f54b12f6bf3 12,117-173,176-193
+  s_1ac613afdd667e::t_f800e1726d1859 194-196
+src/main.cpp
+  s_1ac613afdd667e::t_81a8dc50026353 42-43,46
+src/solver.h
+  s_1ac613afdd667e::t_4e5e0cfa6fdfdd 20,42-44,47-48,50-62,121-124,169
+notes/01-iteration-summary.md
+  s_1ac613afdd667e::t_d9484c4cfd7cd2 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c2b834f089cb8d83c21bbb3781583382d95351a",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
