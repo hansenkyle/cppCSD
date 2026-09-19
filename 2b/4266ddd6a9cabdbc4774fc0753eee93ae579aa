@@ -1,0 +1,14 @@
+notes/14-group-structure.md
+  h_250041054ad857 1-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b4266ddd6a9cabdbc4774fc0753eee93ae579aa",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
