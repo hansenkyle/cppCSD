@@ -5,12 +5,10 @@
 #
 # Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 # or without modification are permitted provided that the terms of the license are met.
-#
-# Runs ldcsd on every input deck under test/method/, so a machine that has
-# never seen a deck before can reproduce its run directory locally. Run
-# output is gitignored by design (see docs/output-layout.md), so this script
-# -- not the repository -- is how results move between machines.
-#
+
+# Run ldcsd on every input deck under test/method
+# This is how results are moved between machines
+
 # Usage:
 #   scripts/run_all_methods.sh [-n] [-b BUILD_DIR] [-d DECK_ROOT] [PATTERN]
 #
@@ -45,9 +43,8 @@ if [[ $dry_run -eq 0 && ! -x "$binary" ]]; then
     exit 1
 fi
 
-# A deck is any *.yaml directly inside a directory; a directory may hold at
-# most one. Anything under a runs/ or xs_data/ directory is output or
-# support data, never a deck.
+# "Input deck" = any *.yaml directly inside a directory; a directory may hold at
+# most one. Exclude supporting data from runs/ and xs_data/
 mapfile -t decks < <(find "$deck_root" -name '*.yaml' -not -path '*/runs/*' -not -path '*/xs_data/*' | sort)
 
 if [[ -n "$pattern" ]]; then

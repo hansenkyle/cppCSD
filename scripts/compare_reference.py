@@ -9,20 +9,13 @@
 """Compares a run's scalar flux against the Stage 0 reference results in
 notes/reference/.
 
-The point is to survive formatting changes: rather than diffing text, this
-pulls every floating-point number out of the "Scalar Flux" block in document
-order and compares the two sequences numerically. Ordering (group-major,
-then the up/down row pair, then spatial cells) is what's being pinned, not
-the layout, the column widths, or the printed precision.
-
-Because the output format is moving to 4 significant decimal digits, the
-default tolerance is 2e-4 relative -- tight enough to catch a real change in
-the physics, loose enough to ignore a precision change.
+2e-4 relative tolerance:
+captures physics changes while leaving room for numerical changes to an equivalent algorithm
 
 Usage:
     scripts/compare_reference.py                  # re-run nothing, compare runs/latest of every deck
     scripts/compare_reference.py --update         # overwrite the references with current results
-    scripts/compare_reference.py --rtol 1e-6      # stricter
+    scripts/compare_reference.py --rtol 1e-6      # custom (stricter) tolerance
 """
 
 import argparse
