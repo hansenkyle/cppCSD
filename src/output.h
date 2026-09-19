@@ -49,6 +49,12 @@ public:
   // cannot be mixed with addColumn() on the same table.
   void addRow(std::string name, Format format, std::vector<double> values);
 
+  // Appends a named column of n_entries already-rendered strings, one per
+  // row, aligned like any other column. For values that aren't numbers --
+  // a status word, a material name, a units label. Column-major, so it
+  // can't be mixed with addRow() either.
+  void addTextColumn(std::string name, std::vector<std::string> values);
+
   // Renders as human-readable, whitespace-aligned text: a title line, then
   // a right-justified header row and data rows (column-major), or a header
   // row of numbered columns and left-labeled data rows (row-major). Column
@@ -60,10 +66,16 @@ public:
   std::string csv() const;
 
 private:
+  // A column or row of the table. Exactly one of `values` (numeric,
+  // rendered through `format`) and `text` (pre-rendered) is populated;
+  // `text` non-empty marks the entry as a text column.
   struct Entry {
     std::string name;
     Format format;
     std::vector<double> values;
+    std::vector<std::string> text;
+
+    bool isText() const { return !text.empty(); }
   };
   enum class Orientation { Unset, ColumnMajor, RowMajor };
 

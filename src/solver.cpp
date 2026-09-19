@@ -10,6 +10,7 @@
 #include "solver_formatter.h"
 
 #include <array>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <optional>
@@ -137,10 +138,16 @@ Eigen::VectorXd Solver::integrateAngle(Eigen::MatrixXd psi) {
   return psi * input_deck.angle.w;
 }
 
-Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
-  // solve transport equqation in all groups via source iteration
+Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
+  // Solve the transport equation in all groups via source iteration.
+  //
+  // Groups are solved in a single downward pass and never revisited: that's
+  // correct for pure CSD plus downscatter, and silently wrong if a deck ever
+  // carries upscatter. The scalar flux is *not* reset between groups, so
+  // group g starts from group g-1's converged answer (a warm start).
 
   LDCSD_LOG_INFO("Begin source iteration", true);
+  convergence_ = ConvergenceHistory{};
 
   // initial guess (maybe provided)
   Eigen::MatrixXd phi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.energy.G);
@@ -152,44 +159,56 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon) {
   // for each E:
   for (int g = 0; g < input_deck.energy.G; g++) {
     LDCSD_LOG_INFO("Beginning group " + std::to_string(g));
-    // while not converged:
-    // while norm(phi_latest - phi_old) > norm(phi_latest)epsilon
-    auto i = 0;
-    double abs_diff_norm = 1e10;
-    while (abs_diff_norm > (phi_g.norm() * epsilon)) { //  TODO calculate these
-      i++;
+    const auto group_start = std::chrono::steady_clock::now();
+
+    int iteration = 0;
+    double abs_diff = 0.0;
+    bool converged = false;
+
+    while (!converged && iteration < max_iterations) {
+      iteration++;
       phi.col(g) = phi_g;
       // solve transport using known phi
       psi = transportSweep(g, psi_up, phi);
 
-      Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi, true);
-      Eigen::Index max_row, max_col, min_row, min_col;
-      double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
-      double min_residual = residuals.cwiseAbs().minCoeff(&min_row, &min_col);
-
-      int max_cell = int(max_row) / 4;
-      int cv_index = max_row - (4 * max_cell);
-      LDCSD_LOG_INFO("Group " + std::to_string(g) + ", iteration " + std::to_string(i) +
-                     " complete.");
-      LDCSD_LOG_INFO("\t\tResiduals:");
-      LDCSD_LOG_INFO("\t\t-------------------");
-      LDCSD_LOG_INFO("\t\t\tmax = " + std::format("{:.4e}", max_residual) + " at (" +
-                     std::to_string(max_row) + ", " + std::to_string(max_col) +
-                     ") (eqn, ordinate)");
-      LDCSD_LOG_INFO("\t\t\t\tCell " + std::to_string(max_cell) + ", Corner value " +
-                     std::to_string(cv_index));
-      LDCSD_LOG_INFO("\t\t\tmin = " + std::format("{:.4e}", min_residual) + " at (" +
-                     std::to_string(min_row) + ", " + std::to_string(min_col) + ")\n");
+      const Eigen::MatrixXd residuals = calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
+      Eigen::Index max_row, max_col;
+      const double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
 
       // compute new phi
       phi_g = integrateAngle(psi);
 
-      abs_diff_norm = (phi_g - phi.col(g)).norm();
+      abs_diff = (phi_g - phi.col(g)).norm();
+      const double phi_norm = phi_g.norm();
+      converged = abs_diff <= phi_norm * epsilon;
+
+      convergence_.record(IterationRecord{g, iteration, phi_norm, abs_diff, 0.0, max_residual});
+
+      const int max_cell = static_cast<int>(max_row) / 4;
+      const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
+      LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
+                     ": |dphi| = " + std::format("{:.4e}", abs_diff) +
+                     ", |phi| = " + std::format("{:.4e}", phi_norm) +
+                     ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
+                     std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
+                     ", ordinate " + std::to_string(max_col) + ")");
     }
+
     phi.col(g) = phi_g;
-    LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_norm) + " in " +
-                       std::to_string(i) + " iterations",
-                   true);
+
+    const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
+    convergence_.finishGroup(g, converged, elapsed.count());
+
+    if (converged) {
+      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
+                         std::to_string(iteration) + " iterations",
+                     true);
+    } else {
+      LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
+                         std::to_string(max_iterations) +
+                         "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff),
+                     true);
+    }
     psi_up = psi;
   }
   return phi;
@@ -526,4 +545,8 @@ void Solver::writeResults(const std::filesystem::path& file_path,
 void Solver::writeResiduals(const std::filesystem::path& file_path,
                             const std::vector<Eigen::MatrixXd>& residuals) const {
   appendToFile(file_path, SolverFormatter::formatResiduals(residuals, input_deck));
+}
+
+void Solver::writeConvergence(const std::filesystem::path& file_path) const {
+  appendToFile(file_path, SolverFormatter::formatConvergence(convergence_));
 }
