@@ -1,0 +1,35 @@
+src/input_deck.h
+  s_1ac613afdd667e::t_48e55da65857eb 18-19,114-149
+  s_1ac613afdd667e::t_23449906dd7647 150
+test/unit/input_deck.test.cpp
+  s_1ac613afdd667e::t_893bda63d8b4be 555-945
+src/quadrature.cpp
+  s_1ac613afdd667e::t_9ebd098cdbe96d 1-166
+src/quadrature.h
+  s_1ac613afdd667e::t_9ebd098cdbe96d 1-74
+src/input_deck.cpp
+  s_1ac613afdd667e::t_3a717407db302f 455-557
+  s_1ac613afdd667e::t_bcd29b26553a4f 223-303
+  s_1ac613afdd667e::t_58497e6417a89e 12,721-723,725-759,761-766,768-800,804-816,818-822,824-838
+  s_1ac613afdd667e::t_1c4aa4a0305d03 720
+CMakeLists.txt
+  s_1ac613afdd667e::t_9ebd098cdbe96d 103,150
+test/unit/quadrature.test.cpp
+  s_1ac613afdd667e::t_dd1713f966cd8b 1-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ac881223d50e085dde40487533c158b516e55d7",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
