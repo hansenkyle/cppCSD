@@ -1,0 +1,19 @@
+src/solver.cpp
+  s_629629873f3673::t_381ff9e70810d5 21-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e84e977fc94df9a0d4be814b30235cecb4618078",
+  "prompts": {},
+  "sessions": {
+    "s_629629873f3673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "120c09b2-b328-4ffb-9a1b-73fccf45e3ca",
+        "model": "unknown"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

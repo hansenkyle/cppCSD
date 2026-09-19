@@ -1,0 +1,20 @@
+test/unit/solver.test.cpp
+  s_629629873f3673::t_d8025a4e5ad0c0 97-101
+  s_629629873f3673::t_5517efe207a6b5 102-146,148-149,151-157,159,161-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6cc6a28f88ceed09b4571a28c6624b0a2698cd3",
+  "prompts": {},
+  "sessions": {
+    "s_629629873f3673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "120c09b2-b328-4ffb-9a1b-73fccf45e3ca",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

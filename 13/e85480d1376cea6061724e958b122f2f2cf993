@@ -1,0 +1,32 @@
+src/input_deck.cpp
+  s_a8e9e0b16f916a::t_17e29620013431 181,183,185-193,195-199
+  s_a8e9e0b16f916a::t_b406e2b8bf3e21 447,449-452
+  s_a8e9e0b16f916a::t_fffa469df136fd 542-546
+  s_a8e9e0b16f916a::t_c4c5006ff2daa8 335
+  s_a8e9e0b16f916a::t_887abeff21deee 334,337-339,341
+src/input_deck.h
+  s_a8e9e0b16f916a::t_d87cbcdf2ce372 111-112,115-116,118
+test/unit/input_deck.test.cpp
+  s_a8e9e0b16f916a::t_7750463a2378d6 529
+  s_a8e9e0b16f916a::t_9e6dba690ecaf4 61-62
+  s_a8e9e0b16f916a::t_ca04e19186e9af 113,115,117-123
+  s_a8e9e0b16f916a::t_699d971a7c1ac7 259,261,266,274-275,277
+test/unit/data/sample_input.yaml
+  s_a8e9e0b16f916a::t_f2a13978c97c91 48,53-54,58,62,66,70-83,87-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13e85480d1376cea6061724e958b122f2f2cf993",
+  "prompts": {},
+  "sessions": {
+    "s_a8e9e0b16f916a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bfbcc072-949d-441a-b02e-a2bad14e53d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

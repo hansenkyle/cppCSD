@@ -1,0 +1,27 @@
+test/method/al_slab/5g_5x/description.md
+  h_c6d403188ce57a 18-20,25-27
+test/method/al_slab/5g_5x/5g_5x.yaml
+  h_c6d403188ce57a 44
+  s_a5fb8725767e85::t_3fef52d03e36ac 64-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb97873be19005acdf5fe00043345d70a19bb3f9",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_a5fb8725767e85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39499985-0d96-4a9c-8377-f45e25a18efc",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

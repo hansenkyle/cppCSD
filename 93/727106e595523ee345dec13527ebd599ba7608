@@ -1,0 +1,29 @@
+CMakeLists.txt
+  s_d16036fc45c1c4::t_5804c74814dc61 125-129
+test/unit/solver.test.cpp
+  s_d16036fc45c1c4::t_c9209cd2824e38 36-43,66-67,87-88
+  s_d16036fc45c1c4::t_8023752d54beb4 1-7,11-35,44-65,68-86,89-95
+src/solver.cpp
+  s_d16036fc45c1c4::t_c9209cd2824e38 23-24,81,100
+  s_d16036fc45c1c4::t_3ee089b342d445 31-40
+src/solver.h
+  s_d16036fc45c1c4::t_223a4519ebb66c 37
+  s_d16036fc45c1c4::t_48b27476fccdf9 29
+  s_d16036fc45c1c4::t_c9209cd2824e38 28,30-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93727106e595523ee345dec13527ebd599ba7608",
+  "prompts": {},
+  "sessions": {
+    "s_d16036fc45c1c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "effb1960-e925-4340-a6a0-6d756193deeb",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

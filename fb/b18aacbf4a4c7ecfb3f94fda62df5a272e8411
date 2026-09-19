@@ -1,0 +1,26 @@
+test/method/al_slab/12g_40x/12g_40x.yaml
+  s_5758c6483c7177::t_47f3c898d6b6bb 188-259
+test/method/al_slab/36g_100x/36g_100x.yaml
+  s_5758c6483c7177::t_47f3c898d6b6bb 676-831
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbb18aacbf4a4c7ecfb3f94fda62df5a272e8411",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_5758c6483c7177": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bc371b-346a-425e-9a08-3e2d9f7415df",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
