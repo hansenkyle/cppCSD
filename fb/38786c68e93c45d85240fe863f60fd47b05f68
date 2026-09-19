@@ -1,0 +1,22 @@
+scripts/read_results.py
+  s_1ac613afdd667e::t_8038429397e20b 1-176,260-261,265-273,279-381
+  s_1ac613afdd667e::t_50f2567fa13c0b 177-259,262-264,274-278
+notes/15-results-reader.md
+  s_1ac613afdd667e::t_9a9f117b13c06d 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb38786c68e93c45d85240fe863f60fd47b05f68",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
