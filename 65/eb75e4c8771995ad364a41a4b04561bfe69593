@@ -1,0 +1,16 @@
+src/solver_formatter.cpp
+  h_250041054ad857 12,117-196
+src/solver_formatter.h
+  h_250041054ad857 16,42-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65eb75e4c8771995ad364a41a4b04561bfe69593",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
