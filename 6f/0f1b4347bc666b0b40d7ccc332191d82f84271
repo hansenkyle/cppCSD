@@ -1,0 +1,19 @@
+ROADMAP.md
+  s_1ac613afdd667e::t_b32c00b25e7ecb 147,149-150,152,156,159,161,165,167,169,173-174,176,179,183-184,188,194-195,197-198,204-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f0f1b4347bc666b0b40d7ccc332191d82f84271",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
