@@ -1,0 +1,27 @@
+python/source_iteration.py
+  s_1ac613afdd667e::t_4aac119c0bf0d0 1-177
+python/bindings.cpp
+  s_1ac613afdd667e::t_2da4486e37896f 1-105,120-255
+  s_1ac613afdd667e::t_1bba056ab2c2f3 106-119
+python/test_bindings.py
+  s_1ac613afdd667e::t_2170623698e2e7 1-212
+CMakeLists.txt
+  s_1ac613afdd667e::t_de590c83337159 33,195-221
+  s_1ac613afdd667e::t_e481c0787bd95d 134-140,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fc4770a5a4943e2da19b1ccfdb2c593a55d9759",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
