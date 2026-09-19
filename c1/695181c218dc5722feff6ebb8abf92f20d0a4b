@@ -1,0 +1,14 @@
+notes/05-runs-filesystem.md
+  h_250041054ad857 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1695181c218dc5722feff6ebb8abf92f20d0a4b",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
