@@ -1,0 +1,14 @@
+notes/12-precision.md
+  h_250041054ad857 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54c6e2910ad84d2e91027ed49c74212503bd8833",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
