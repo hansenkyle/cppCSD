@@ -1,0 +1,47 @@
+src/krylov_iteration.cpp
+  s_1ac613afdd667e::t_18c0f0c73ac456 244-252
+  s_1ac613afdd667e::t_c425e28b9436e0 1-9,11,13,15-51,56,58,60-118,125-135,170,241-243,253-261,265-268
+  s_1ac613afdd667e::t_1f868af8dd0219 12,123-124,171-188,211-212,236-239
+  s_1ac613afdd667e::t_993172f35d5e7a 10,14,52-55,57,59,119-121,136-167,169,189-210,215-235,240,264
+  s_1ac613afdd667e::t_a621e2c0b8c38a 122,168,213-214,262-263
+src/cli.h
+  s_1ac613afdd667e::t_18c0f0c73ac456 46
+  s_1ac613afdd667e::t_926332b6b3b1f7 41-44,47
+  s_1ac613afdd667e::t_bd5d892cfa9457 45
+src/main.cpp
+  s_1ac613afdd667e::t_a621e2c0b8c38a 24,186-188
+  s_1ac613afdd667e::t_a5545f935ab93e 20-21,98-103,179-181,184,190-193,198-200,205-207,211
+  s_1ac613afdd667e::t_926332b6b3b1f7 22,175-178,182-183,185,189,194-197,201
+  s_1ac613afdd667e::t_d468b9d4e32c06 104-105
+src/krylov_iteration.h
+  s_1ac613afdd667e::t_993172f35d5e7a 11-12,50-52,54,57,92-94,97-103
+  s_1ac613afdd667e::t_c425e28b9436e0 1-10,13-49,81-91,95-96,104-108
+  s_1ac613afdd667e::t_18c0f0c73ac456 68-80
+  s_1ac613afdd667e::t_1f868af8dd0219 53,55-56,58-67
+CMakeLists.txt
+  s_1ac613afdd667e::t_a3475156b6c552 165
+  s_1ac613afdd667e::t_c425e28b9436e0 118
+src/cli.cpp
+  s_1ac613afdd667e::t_bd5d892cfa9457 98-101
+  s_1ac613afdd667e::t_926332b6b3b1f7 94-97
+  s_1ac613afdd667e::t_18c0f0c73ac456 102-104
+test/unit/krylov_iteration.test.cpp
+  s_1ac613afdd667e::t_bc047d0363ca4e 112-113,115-120,122-124,126,131,134-136,143-144
+  s_1ac613afdd667e::t_a3475156b6c552 1-111,114,121,125,127-130,132-133,137-142,145-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6af35b8056b2452ce2430ab4f550157e5d93287",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
