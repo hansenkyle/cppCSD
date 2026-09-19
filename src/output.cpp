@@ -71,6 +71,20 @@ void OutputTable::addRow(std::string name, Format format, std::vector<double> va
   entries_.push_back(Entry{std::move(name), format, std::move(values)});
 }
 
+void OutputTable::addTextColumn(std::string name, std::vector<std::string> values) {
+  if (orientation_ == Orientation::RowMajor) {
+    throw std::invalid_argument("OutputTable::addTextColumn: table already uses addRow "
+                                "(row-major); the two can't be mixed on one table");
+  }
+  orientation_ = Orientation::ColumnMajor;
+  if (static_cast<int>(values.size()) != n_entries_) {
+    throw std::invalid_argument("OutputTable::addTextColumn: '" + name + "' has " +
+                                std::to_string(values.size()) + " values, expected " +
+                                std::to_string(n_entries_));
+  }
+  entries_.push_back(Entry{std::move(name), Format{Notation::Integer, 0}, {}, std::move(values)});
+}
+
 std::string OutputTable::txtColumnMajor() const {
   const std::size_t num_columns = entries_.size();
   std::vector<std::vector<std::string>> formatted(num_columns);
@@ -78,12 +92,19 @@ std::string OutputTable::txtColumnMajor() const {
 
   for (std::size_t c = 0; c < num_columns; ++c) {
     const Entry& column = entries_[c];
-    formatted[c].reserve(column.values.size());
     std::size_t width = column.name.size();
-    for (double value : column.values) {
-      std::string text = formatValue(value, column.format);
-      width = std::max(width, text.size());
-      formatted[c].push_back(std::move(text));
+    if (column.isText()) {
+      formatted[c] = column.text;
+      for (const std::string& text : column.text) {
+        width = std::max(width, text.size());
+      }
+    } else {
+      formatted[c].reserve(column.values.size());
+      for (double value : column.values) {
+        std::string text = formatValue(value, column.format);
+        width = std::max(width, text.size());
+        formatted[c].push_back(std::move(text));
+      }
     }
     widths[c] = width + kColumnPadding;
   }
@@ -187,7 +208,8 @@ std::string OutputTable::csv() const {
       if (c > 0) {
         out << ",";
       }
-      out << formatValue(entries_[c].values[r], entries_[c].format);
+      const Entry& column = entries_[c];
+      out << (column.isText() ? column.text[r] : formatValue(column.values[r], column.format));
     }
     out << "\n";
   }

@@ -9,6 +9,7 @@
 
 #include <array>
 #include <ctime>
+#include <format>
 #include <iomanip>
 #include <sstream>
 
@@ -110,6 +111,86 @@ std::string formatResults(const Eigen::MatrixXd& scalar_flux,
     out << formatCornerGrid("Angular Flux - Group " + std::to_string(g), angular_flux[g],
                             deck.mesh.n_x, ordinateLabels(deck));
   }
+  return out.str();
+}
+
+std::string formatConvergence(const ConvergenceHistory& history) {
+  if (history.empty()) {
+    return "--- Convergence Summary ---\nno iterations recorded\n";
+  }
+
+  constexpr OutputTable::Format kIndex{OutputTable::Notation::Integer, 0};
+  constexpr OutputTable::Format kNorm{OutputTable::Notation::Scientific, 4};
+  constexpr OutputTable::Format kSeconds{OutputTable::Notation::Fixed, 3};
+
+  std::ostringstream out;
+
+  const std::vector<GroupSummary>& groups = history.groups();
+  const auto n_groups = static_cast<int>(groups.size());
+
+  std::vector<double> group_index(n_groups), iterations(n_groups), phi_norm(n_groups),
+      abs_diff(n_groups), rel_diff(n_groups), max_residual(n_groups), seconds(n_groups);
+  std::vector<std::string> status(n_groups);
+  for (int i = 0; i < n_groups; ++i) {
+    const GroupSummary& summary = groups[i];
+    group_index[i] = summary.group;
+    iterations[i] = summary.iterations;
+    phi_norm[i] = summary.phi_norm;
+    abs_diff[i] = summary.abs_diff;
+    rel_diff[i] = summary.rel_diff;
+    max_residual[i] = summary.max_residual;
+    seconds[i] = summary.seconds;
+    status[i] = summary.converged ? "converged" : "MAX_ITER";
+  }
+
+  OutputTable summary_table("Convergence Summary", n_groups);
+  summary_table.addColumn("group", kIndex, group_index);
+  summary_table.addColumn("iters", kIndex, iterations);
+  summary_table.addColumn("|phi|", kNorm, phi_norm);
+  summary_table.addColumn("|dphi|", kNorm, abs_diff);
+  summary_table.addColumn("|dphi|/|phi|", kNorm, rel_diff);
+  summary_table.addColumn("max|residual|", kNorm, max_residual);
+  summary_table.addColumn("seconds", kSeconds, seconds);
+  summary_table.addTextColumn("status", status);
+  out << summary_table.txt();
+
+  OutputMetadata totals("Convergence Totals");
+  totals.addEntry("Groups", std::to_string(n_groups));
+  totals.addEntry("Total iterations", std::to_string(history.totalIterations()));
+  totals.addEntry("Total solve time (s)", std::format("{:.3f}", history.totalSeconds()));
+  totals.addEntry("Worst residual", formatSci(history.worstResidual()));
+  totals.addEntry("All groups converged", history.allConverged() ? "yes" : "NO");
+  if (!history.allConverged()) {
+    std::string unconverged;
+    for (int group : history.unconvergedGroups()) {
+      unconverged += (unconverged.empty() ? "" : ", ") + std::to_string(group);
+    }
+    totals.addEntry("Unconverged groups", unconverged);
+  }
+  out << totals.txt();
+
+  const std::vector<IterationRecord>& records = history.records();
+  const auto n_records = static_cast<int>(records.size());
+  std::vector<double> record_group(n_records), record_iteration(n_records), record_phi(n_records),
+      record_abs(n_records), record_rel(n_records), record_res(n_records);
+  for (int i = 0; i < n_records; ++i) {
+    record_group[i] = records[i].group;
+    record_iteration[i] = records[i].iteration;
+    record_phi[i] = records[i].phi_norm;
+    record_abs[i] = records[i].abs_diff;
+    record_rel[i] = records[i].rel_diff;
+    record_res[i] = records[i].max_residual;
+  }
+
+  OutputTable history_table("Iteration History", n_records);
+  history_table.addColumn("group", kIndex, record_group);
+  history_table.addColumn("iter", kIndex, record_iteration);
+  history_table.addColumn("|phi|", kNorm, record_phi);
+  history_table.addColumn("|dphi|", kNorm, record_abs);
+  history_table.addColumn("|dphi|/|phi|", kNorm, record_rel);
+  history_table.addColumn("max|residual|", kNorm, record_res);
+  out << history_table.txt();
+
   return out.str();
 }
 

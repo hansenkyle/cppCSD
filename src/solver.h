@@ -17,6 +17,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/eigen.hpp>
 
+#include "convergence.h"
 #include "input_deck.h"
 
 using HighPrecision = boost::multiprecision::cpp_bin_float_50;
@@ -38,10 +39,27 @@ public:
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
   ///
+  /// Every iteration of every group is recorded into convergence(), which
+  /// survives the call and is what gets written to the results file.
+  ///
   /// @param epsilon Convergence criterion. Transport iteration stops when |phi_old - phi_new|_2 >
   /// |phi_new|_2*epsilon
+  /// @param max_iterations Per-group iteration cap. A group that hits it is marked unconverged
+  /// (logged as a warning) and the solve moves on to the next group rather than spinning forever.
   /// @return Eigen::MatrixXd. Scalar flux in all energy groups. [4nx by G]
-  Eigen::MatrixXd sourceIterate(double epsilon);
+  Eigen::MatrixXd sourceIterate(double epsilon, int max_iterations = kDefaultMaxIterations);
+
+  // Per-iteration convergence record from the most recent sourceIterate().
+  // Empty before the first solve.
+  const ConvergenceHistory& convergence() const { return convergence_; }
+
+  // When true, every iteration re-evaluates the largest residual in the
+  // group term-by-term and logs the breakdown. Extremely verbose (it was
+  // unconditionally on before this became a switch) -- for hunting a
+  // discretization bug, not for normal runs.
+  bool log_residual_terms = false;
+
+  static constexpr int kDefaultMaxIterations = 1000;
 
   /// @brief Calculate residuals (Ax-b) given a solution and all coefficients; checks that transport
   /// equation was solved correctly in a single cell. Fully independent from solver methods.
@@ -100,6 +118,10 @@ public:
   void writeResiduals(const std::filesystem::path& file_path,
                       const std::vector<Eigen::MatrixXd>& residuals) const;
 
+  // Appends the convergence blocks (per-group summary, then the full
+  // per-iteration history) for the most recent solve.
+  void writeConvergence(const std::filesystem::path& file_path) const;
+
   class Kernel {
     // contains mass matrices, etc.
     // functions include:
@@ -144,6 +166,7 @@ public:
 
 protected:
   Kernel kernel;
+  ConvergenceHistory convergence_;
 };
 
 #endif

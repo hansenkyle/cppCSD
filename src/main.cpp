@@ -39,7 +39,9 @@ int main(int argc, char** argv) {
   solver.writeInputDeckEcho(output.info_path);
 
   const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
+
+  solver.writeConvergence(output.results_path);
   solver.writeResults(output.results_path, phi, {});
 
-  return 0;
+  return solver.convergence().allConverged() ? 0 : 1;
 }

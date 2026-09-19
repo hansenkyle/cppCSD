@@ -13,6 +13,7 @@
 
 #include <Eigen/Dense>
 
+#include "convergence.h"
 #include "input_deck.h"
 
 // Renders Solver's output blocks (run metadata, results, residuals) to
@@ -37,6 +38,11 @@ std::string formatResults(const Eigen::MatrixXd& scalar_flux,
 // One "Angular Residual - Group N" block per entry in residuals (indexed
 // like InputDeck::Source).
 std::string formatResiduals(const std::vector<Eigen::MatrixXd>& residuals, const InputDeck& deck);
+
+// "Convergence Summary" (one row per energy group) followed by
+// "Iteration History" (one row per iteration of every group). Returns a
+// short note instead of tables if the history is empty.
+std::string formatConvergence(const ConvergenceHistory& history);
 
 } // namespace SolverFormatter
 
