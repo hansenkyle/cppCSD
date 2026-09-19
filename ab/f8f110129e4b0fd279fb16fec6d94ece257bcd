@@ -1,0 +1,23 @@
+scripts/compose_deck.py
+  s_1ac613afdd667e::t_ac601d20f17530 1-387
+docs/input-deck.md
+  s_1ac613afdd667e::t_492811df80fc90 3-5,9-14,16,21,24-25,29-30,36-38,45-46,49,59-188,191-250
+notes/03-input-ux.md
+  s_1ac613afdd667e::t_ef6b0021fd866e 1-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abf8f110129e4b0fd279fb16fec6d94ece257bcd",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
