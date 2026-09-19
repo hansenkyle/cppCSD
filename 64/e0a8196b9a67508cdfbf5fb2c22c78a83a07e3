@@ -1,0 +1,14 @@
+notes/10-python-bindings.md
+  h_250041054ad857 1-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64e0a8196b9a67508cdfbf5fb2c22c78a83a07e3",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
