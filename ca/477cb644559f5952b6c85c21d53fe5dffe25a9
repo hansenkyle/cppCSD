@@ -1,0 +1,31 @@
+test/method/al_slab/3g_3x/3g_3x.yaml
+  s_1ac613afdd667e::t_4f9d1ce95b4918 7
+test/method/al_slab/36g_100x/36g_100x.yaml
+  s_1ac613afdd667e::t_4f9d1ce95b4918 21-40
+test/method/al_slab/3g_3x/scaled/scaled.yaml
+  s_1ac613afdd667e::t_4f9d1ce95b4918 7
+test/method/al_slab/5g_5x/no_scatter/5g5x_noscatter.yaml
+  s_1ac613afdd667e::t_4f9d1ce95b4918 7
+test/method/al_slab/5g_5x/5g_5x.yaml
+  s_1ac613afdd667e::t_4f9d1ce95b4918 7
+scripts/check_decks.py
+  s_1ac613afdd667e::t_1a83a638345d8d 1-81
+scripts/run_all_methods.sh
+  s_1ac613afdd667e::t_8032d8cc449b3b 66-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca477cb644559f5952b6c85c21d53fe5dffe25a9",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
