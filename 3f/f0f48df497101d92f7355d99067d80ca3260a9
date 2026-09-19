@@ -1,25 +1,44 @@
 CMakeLists.txt
   h_250041054ad857 80,124
+  s_1ac613afdd667e::t_182f54b12f6bf3 80,124
 src/convergence.cpp
   h_250041054ad857 1-90
+  s_1ac613afdd667e::t_a6daf92db1092d 1-58,60-90
+  s_1ac613afdd667e::t_461851b98f4b16 59
 src/convergence.h
   h_250041054ad857 1-89
+  s_1ac613afdd667e::t_a6daf92db1092d 1-20,27-89
+  s_1ac613afdd667e::t_461851b98f4b16 21-26
 src/main.cpp
   h_250041054ad857 42-43,46
+  s_1ac613afdd667e::t_81a8dc50026353 42-43,46
 src/output.cpp
   h_250041054ad857 74-87,96-107,211-212
+  s_1ac613afdd667e::t_6af9ac63dc0bfa 74-87,96-107,211-212
 src/output.h
   h_250041054ad857 52-57,69-71,76-78
+  s_1ac613afdd667e::t_6af9ac63dc0bfa 52-57,69-71,76-78
 src/solver.cpp
   h_250041054ad857 13,141-147,150,162-169,174-176,181-194,196,198-211,549-552
+  s_1ac613afdd667e::t_461851b98f4b16 190-194
+  s_1ac613afdd667e::t_99db154ede4a0f 13,141-147,150,162-169,174-176,181-189,196,198-211,549-551
+  s_1ac613afdd667e::t_fe93566e8e7437 552
 src/solver.h
   h_250041054ad857 20,42-44,47-48,50-62,121-124,169
+  s_1ac613afdd667e::t_4e5e0cfa6fdfdd 20,42-44,47-48,50-62,121-124,169
 src/solver_formatter.cpp
   h_250041054ad857 12,117-196
+  s_1ac613afdd667e::t_461851b98f4b16 174-175
+  s_1ac613afdd667e::t_182f54b12f6bf3 12,117-173,176-193
+  s_1ac613afdd667e::t_f800e1726d1859 194-196
 src/solver_formatter.h
   h_250041054ad857 16,42-46
+  s_1ac613afdd667e::t_182f54b12f6bf3 16,42-45
+  s_1ac613afdd667e::t_edbfafb0d64f81 46
 test/unit/convergence.test.cpp
   h_250041054ad857 1-115
+  s_1ac613afdd667e::t_ca6096835d471d 1-106,108-115
+  s_1ac613afdd667e::t_a1a5f929422f0b 107
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -29,6 +48,16 @@ test/unit/convergence.test.cpp
   "humans": {
     "h_250041054ad857": {
       "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
     }
   }
 }
