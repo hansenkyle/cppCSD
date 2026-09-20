@@ -1,0 +1,37 @@
+src/logger.cpp
+  s_a8b8fe837c28ed::t_33e359a5eb2bdb 13
+  s_a8b8fe837c28ed::t_b0d41e15deb479 17-18,35-68,101-166
+src/solver.cpp
+  s_a8b8fe837c28ed::t_33e359a5eb2bdb 191-192,194-198,200,210-211,410-413
+  s_a8b8fe837c28ed::t_770a4994cc0bab 149-151,163,209,214-215,298-300,302,309,409,512-513
+src/logger.h
+  s_a8b8fe837c28ed::t_f3caa2d39229cc 11,15,17,23-57,62-63,76-79,85-100,106-125,128-142,144-145,147-148,151-157
+  s_a8b8fe837c28ed::t_90542878974d9e 158
+src/output_manager.cpp
+  s_a8b8fe837c28ed::t_931fb2469b64a0 67,69,77,100
+src/main.cpp
+  s_a8b8fe837c28ed::t_33e359a5eb2bdb 28-29
+src/input_deck.cpp
+  s_a8b8fe837c28ed::t_931fb2469b64a0 280,288,487,513
+  s_a8b8fe837c28ed::t_33e359a5eb2bdb 281-282,289-290
+test/unit/logger.test.cpp
+  s_a8b8fe837c28ed::t_acdff41645b471 10,33-51,66,72,79-80,82,84-85,104-106,118-119,195
+  s_a8b8fe837c28ed::t_0550dc156a25d7 69,134-187
+  s_a8b8fe837c28ed::t_82ee1f3ad03633 188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed961335483976db0001e93317a020d59487107e",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8fe837c28ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a543fc83-1912-44f4-9707-975575f72753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
