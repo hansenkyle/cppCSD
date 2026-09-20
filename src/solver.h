@@ -14,13 +14,13 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/eigen.hpp>
+#include <boost/multiprecision/float128.hpp>
 
 #include "convergence.h"
 #include "input_deck.h"
 
-using HighPrecision = boost::multiprecision::cpp_bin_float_50;
+using HighPrecision = boost::multiprecision::float128;
 
 class Solver {
 public:
