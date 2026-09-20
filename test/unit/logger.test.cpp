@@ -42,7 +42,7 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("log() writes a timestamped, leveled line to the log file") {
     const auto path = tempLogPath("basic");
-    Logger::configure(path, tempOutPath("basic"));
+    Logger::configure(path);
     Logger::instance().log(LogLevel::Info, "hello");
 
     const std::string contents = readFile(path);
@@ -54,7 +54,7 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("each call to log() appends and flushes immediately") {
     const auto path = tempLogPath("appends");
-    Logger::configure(path, tempOutPath("appends"));
+    Logger::configure(path);
 
     Logger::instance().log(LogLevel::Warn, "first");
     CHECK(readFile(path).find("[WARN] first") != std::string::npos);
@@ -68,13 +68,12 @@ TEST_SUITE("Logger") {
   TEST_CASE("configure() throws if the log file can't be opened") {
     const std::filesystem::path bad_path =
         tempLogPath("missing-dir-does-not-exist") / "sub" / "log";
-    CHECK_THROWS_AS(Logger::configure(bad_path, tempOutPath("missing-dir-does-not-exist")),
-                    std::runtime_error);
+    CHECK_THROWS_AS(Logger::configure(bad_path), std::runtime_error);
   }
 
   TEST_CASE("LDCSD_LOG_INFO/WARN/ERROR always write") {
     const auto path = tempLogPath("macros-always-on");
-    Logger::configure(path, tempOutPath("macros-always-on"));
+    Logger::configure(path);
 
     LDCSD_LOG_INFO("info message");
     LDCSD_LOG_WARN("warn message");
@@ -88,7 +87,7 @@ TEST_SUITE("Logger") {
 
   TEST_CASE("LDCSD_LOG_TRACE/DEBUG are compiled out unless LDCSD_ENABLE_DEBUG_LOGGING is set") {
     const auto path = tempLogPath("macros-trace-debug");
-    Logger::configure(path, tempOutPath("macros-trace-debug"));
+    Logger::configure(path);
 
     LDCSD_LOG_TRACE("trace message");
     LDCSD_LOG_DEBUG("debug message");
@@ -102,18 +101,9 @@ TEST_SUITE("Logger") {
 #endif
   }
 
-  TEST_CASE("print() appends to the out file") {
-    const auto out_path = tempOutPath("print");
-    Logger::configure(tempLogPath("print"), out_path);
-
-    LDCSD_PRINT("result line");
-
-    CHECK(readFile(out_path) == "result line\n");
-  }
-
   TEST_CASE("log()'s echo parameter defaults to false and does not affect the log file") {
     const auto path = tempLogPath("echo-default");
-    Logger::configure(path, tempOutPath("echo-default"));
+    Logger::configure(path);
 
     LDCSD_LOG_INFO("quiet message");
 

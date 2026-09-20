@@ -41,8 +41,7 @@ std::string timestamp() {
 
 } // namespace
 
-void Logger::configure(const std::filesystem::path& log_path,
-                       const std::filesystem::path& out_path) {
+void Logger::configure(const std::filesystem::path& log_path) {
   Logger& logger = instance();
   if (logger.stream_.is_open()) {
     logger.stream_.close();
@@ -50,14 +49,6 @@ void Logger::configure(const std::filesystem::path& log_path,
   logger.stream_.open(log_path);
   if (!logger.stream_.is_open()) {
     throw std::runtime_error("failed to open log file: " + log_path.string());
-  }
-
-  if (logger.out_stream_.is_open()) {
-    logger.out_stream_.close();
-  }
-  logger.out_stream_.open(out_path);
-  if (!logger.out_stream_.is_open()) {
-    throw std::runtime_error("failed to open out file: " + out_path.string());
   }
 }
 
@@ -68,10 +59,4 @@ void Logger::log(LogLevel level, const std::string& message, bool echo) {
   if (echo) {
     std::cout << line << "\n";
   }
-}
-
-void Logger::print(const std::string& message) {
-  std::cout << message << "\n";
-  out_stream_ << message << "\n";
-  out_stream_.flush();
 }

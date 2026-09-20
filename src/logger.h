@@ -30,24 +30,18 @@ public:
     return logger;
   }
 
-  // Opens log_path and out_path for writing. Throws std::runtime_error if
-  // either file can't be opened.
-  static void configure(const std::filesystem::path& log_path,
-                        const std::filesystem::path& out_path);
+  // Opens log_path  for writing. Throws std::runtime_error if
+  // it can't be opened.
+  static void configure(const std::filesystem::path& log_path);
 
   // Appends a level-tagged, timestamped line to the log file. If echo is
   // true, also prints that same line to stdout.
   void log(LogLevel level, const std::string& message, bool echo = false);
 
-  // The program's only stdout interface: prints message to stdout and
-  // appends it to the run's 'out' file, so nothing bypasses that record.
-  void print(const std::string& message);
-
 private:
   Logger() = default;
 
   std::ofstream stream_;
-  std::ofstream out_stream_;
 };
 
 #ifdef LDCSD_ENABLE_DEBUG_LOGGING
@@ -61,6 +55,5 @@ private:
 #define LDCSD_LOG_INFO(...) Logger::instance().log(LogLevel::Info, __VA_ARGS__)
 #define LDCSD_LOG_WARN(...) Logger::instance().log(LogLevel::Warn, __VA_ARGS__)
 #define LDCSD_LOG_ERROR(...) Logger::instance().log(LogLevel::Error, __VA_ARGS__)
-#define LDCSD_PRINT(message) Logger::instance().print(message)
 
 #endif
