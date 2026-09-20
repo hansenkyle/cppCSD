@@ -1,0 +1,14 @@
+src/output_manager.cpp
+  h_250041054ad857 102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "831a759bc8f8fda9729b60d3631db103382f56c0",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
