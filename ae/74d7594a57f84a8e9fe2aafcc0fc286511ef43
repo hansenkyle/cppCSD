@@ -1,0 +1,29 @@
+CMakeLists.txt
+  s_a8b8fe837c28ed::t_fc563504a13b6b 87,132
+src/main.cpp
+  s_a8b8fe837c28ed::t_fc563504a13b6b 15,37-38,42-43,54
+  s_a8b8fe837c28ed::t_fc62abefc2c4be 55
+src/terminal.cpp
+  s_a8b8fe837c28ed::t_63562c45fef363 128-130
+  s_a8b8fe837c28ed::t_3265530ade0e55 1-127,131-136
+src/terminal.h
+  s_a8b8fe837c28ed::t_0418847bb97318 1-39
+test/unit/terminal.test.cpp
+  s_a8b8fe837c28ed::t_35b37f8b6e8c75 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae74d7594a57f84a8e9fe2aafcc0fc286511ef43",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8fe837c28ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a543fc83-1912-44f4-9707-975575f72753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
