@@ -1,0 +1,24 @@
+src/cli.cpp
+  s_a8b8fe837c28ed::t_eb5877f715bb28 12-13,20
+src/version.h
+  s_a8b8fe837c28ed::t_39f6b9558920bf 41-49
+  s_a8b8fe837c28ed::t_2d8b2a65ee17af 1-40,50-52
+src/main.cpp
+  s_a8b8fe837c28ed::t_eb5877f715bb28 15,28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb8e9f8a6527b277d74b6b5d6fb131cad9859316",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8fe837c28ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a543fc83-1912-44f4-9707-975575f72753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
