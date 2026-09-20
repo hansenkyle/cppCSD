@@ -1,0 +1,16 @@
+src/main.cpp
+  h_250041054ad857 28
+src/terminal.h
+  h_250041054ad857 46,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7e5f5530004c0b05fed57516f87ce7c29b7d502",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
