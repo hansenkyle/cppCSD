@@ -35,10 +35,10 @@ public:
   // it can't be opened.
   static void configure(const std::filesystem::path& log_path);
 
-  // Appends a level-tagged, timestamped line to the log file. If echo is
-  // true, also prints that same line to stdout.
-  void log(Level level, const std::string& message, bool echo = false);
-  void log(Channel channel, Level level, const std::string& message, bool echo = false);
+  // Appends a level-tagged, timestamped line to the log file. The
+  // channel-less overload logs to Channel::General.
+  void log(Level level, const std::string& message);
+  void log(Channel channel, Level level, const std::string& message);
 
 private:
   Logger() = default;
@@ -46,17 +46,43 @@ private:
   std::ofstream stream_;
 };
 
+// Picks NAME based on how many variadic arguments were actually passed to
+// the calling macro: 1 argument (just a message) selects the DEFAULT slot,
+// 2 arguments (channel, message) selects the CH slot. Shared by every
+// LDCSD_LOG_* macro below so each level only has to name its two shapes.
+#define LDCSD_LOG_PICK_ARITY(_1, _2, NAME, ...) NAME
+
 #ifdef LDCSD_ENABLE_DEBUG_LOGGING
-#define LDCSD_LOG_TRACE(...) Logger::instance().log(Level::Trace, __VA_ARGS__)
-#define LDCSD_LOG_DEBUG(...) Logger::instance().log(Level::Debug, __VA_ARGS__)
+#define LDCSD_LOG_TRACE(...)                                                                       \
+  LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_TRACE_CH, LDCSD_LOG_TRACE_DEFAULT)(__VA_ARGS__)
+#define LDCSD_LOG_DEBUG(...)                                                                       \
+  LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_DEBUG_CH, LDCSD_LOG_DEBUG_DEFAULT)(__VA_ARGS__)
 #else
 #define LDCSD_LOG_TRACE(...) ((void)0)
 #define LDCSD_LOG_DEBUG(...) ((void)0)
 #endif
+#define LDCSD_LOG_TRACE_DEFAULT(message) Logger::instance().log(Level::Trace, message)
+#define LDCSD_LOG_TRACE_CH(channel, message) Logger::instance().log(channel, Level::Trace, message)
+#define LDCSD_LOG_DEBUG_DEFAULT(message) Logger::instance().log(Level::Debug, message)
+#define LDCSD_LOG_DEBUG_CH(channel, message) Logger::instance().log(channel, Level::Debug, message)
 
-#define LDCSD_LOG_INFO(...) Logger::instance().log(Level::Info, __VA_ARGS__)
-#define LDCSD_LOG_WARN(...) Logger::instance().log(Level::Warn, __VA_ARGS__)
-#define LDCSD_LOG_ERROR(...) Logger::instance().log(Level::Error, __VA_ARGS__)
-#define LDCSD_LOG(channel, level, ...) Logger::instance().log(channel, level, __VA_ARGS__)
+#define LDCSD_LOG_INFO(...)                                                                        \
+  LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_INFO_CH, LDCSD_LOG_INFO_DEFAULT)(__VA_ARGS__)
+#define LDCSD_LOG_INFO_DEFAULT(message) Logger::instance().log(Level::Info, message)
+#define LDCSD_LOG_INFO_CH(channel, message) Logger::instance().log(channel, Level::Info, message)
+
+#define LDCSD_LOG_WARN(...)                                                                        \
+  LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_WARN_CH, LDCSD_LOG_WARN_DEFAULT)(__VA_ARGS__)
+#define LDCSD_LOG_WARN_DEFAULT(message) Logger::instance().log(Level::Warn, message)
+#define LDCSD_LOG_WARN_CH(channel, message) Logger::instance().log(channel, Level::Warn, message)
+
+#define LDCSD_LOG_ERROR(...)                                                                       \
+  LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_ERROR_CH, LDCSD_LOG_ERROR_DEFAULT)(__VA_ARGS__)
+#define LDCSD_LOG_ERROR_DEFAULT(message) Logger::instance().log(Level::Error, message)
+#define LDCSD_LOG_ERROR_CH(channel, message) Logger::instance().log(channel, Level::Error, message)
+
+// Generic escape hatch when both channel and level are runtime values rather
+// than known at the call site (e.g. forwarding).
+#define LDCSD_LOG(channel, level, message) Logger::instance().log(channel, level, message)
 
 #endif

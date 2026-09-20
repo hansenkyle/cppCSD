@@ -9,7 +9,6 @@
 
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -62,21 +61,15 @@ void Logger::configure(const std::filesystem::path& log_path) {
   }
 }
 
-void Logger::log(Level level, const std::string& message, bool echo) {
+void Logger::log(Level level, const std::string& message) {
   const std::string line = "[" + timestamp() + "] [" + to_string(level) + "] " + message;
   stream_ << line << "\n";
   stream_.flush();
-  if (echo) {
-    std::cout << line << "\n";
-  }
 }
 
-void Logger::log(Channel channel, Level level, const std::string& message, bool echo) {
+void Logger::log(Channel channel, Level level, const std::string& message) {
   const std::string line =
       "[" + timestamp() + "] [" + to_string(level) + "] [" + to_string(channel) + "] " + message;
   stream_ << line << "\n";
   stream_.flush();
-  if (echo) {
-    std::cout << line << "\n";
-  }
 }

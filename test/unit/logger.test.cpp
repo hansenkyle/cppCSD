@@ -33,17 +33,17 @@ std::string readFile(const std::filesystem::path& path) {
 
 TEST_SUITE("Logger") {
   TEST_CASE("to_string names every level") {
-    CHECK(std::string(to_string(LogLevel::Trace)) == "TRACE");
-    CHECK(std::string(to_string(LogLevel::Debug)) == "DEBUG");
-    CHECK(std::string(to_string(LogLevel::Info)) == "INFO");
-    CHECK(std::string(to_string(LogLevel::Warn)) == "WARN");
-    CHECK(std::string(to_string(LogLevel::Error)) == "ERROR");
+    CHECK(std::string(to_string(Level::Trace)) == "TRACE");
+    CHECK(std::string(to_string(Level::Debug)) == "DEBUG");
+    CHECK(std::string(to_string(Level::Info)) == "INFO");
+    CHECK(std::string(to_string(Level::Warn)) == "WARN");
+    CHECK(std::string(to_string(Level::Error)) == "ERROR");
   }
 
   TEST_CASE("log() writes a timestamped, leveled line to the log file") {
     const auto path = tempLogPath("basic");
     Logger::configure(path);
-    Logger::instance().log(LogLevel::Info, "hello");
+    Logger::instance().log(Level::Info, "hello");
 
     const std::string contents = readFile(path);
     CHECK(contents.find("[INFO] hello") != std::string::npos);
@@ -56,10 +56,10 @@ TEST_SUITE("Logger") {
     const auto path = tempLogPath("appends");
     Logger::configure(path);
 
-    Logger::instance().log(LogLevel::Warn, "first");
+    Logger::instance().log(Level::Warn, "first");
     CHECK(readFile(path).find("[WARN] first") != std::string::npos);
 
-    Logger::instance().log(LogLevel::Error, "second");
+    Logger::instance().log(Level::Error, "second");
     const std::string contents = readFile(path);
     CHECK(contents.find("[WARN] first") != std::string::npos);
     CHECK(contents.find("[ERROR] second") != std::string::npos);
@@ -101,12 +101,15 @@ TEST_SUITE("Logger") {
 #endif
   }
 
-  TEST_CASE("log()'s echo parameter defaults to false and does not affect the log file") {
-    const auto path = tempLogPath("echo-default");
+  TEST_CASE("LDCSD_LOG_INFO(channel, message) tags the line with that channel") {
+    const auto path = tempLogPath("macros-channel");
     Logger::configure(path);
 
-    LDCSD_LOG_INFO("quiet message");
+    LDCSD_LOG_INFO("default-channel message");
+    LDCSD_LOG_INFO(Channel::Iteration, "iteration message");
 
-    CHECK(readFile(path).find("[INFO] quiet message") != std::string::npos);
+    const std::string contents = readFile(path);
+    CHECK(contents.find("[INFO] default-channel message") != std::string::npos);
+    CHECK(contents.find("[INFO] [ITERATION] iteration message") != std::string::npos);
   }
 }
