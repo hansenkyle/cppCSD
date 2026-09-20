@@ -14,8 +14,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include <boost/multiprecision/float128.hpp>
 #include <boost/multiprecision/eigen.hpp>
+#include <boost/multiprecision/float128.hpp>
 
 #include "convergence.h"
 #include "input_deck.h"
