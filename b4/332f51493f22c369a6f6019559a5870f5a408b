@@ -1,0 +1,30 @@
+src/version.h
+  s_c031cda224ecaa::t_f2b40677331b36 19
+src/solver_formatter.cpp
+  s_c031cda224ecaa::t_7c6262dfba6429 116-144,146-147,149,152-164,166,169-174,190-219
+  s_c031cda224ecaa::t_0dbdadf7f9659f 11,21-32,48-96,98-99,101-102,104-105,107-115,220-224,226,311-314,316-341
+test/unit/solver_formatter.test.cpp
+  s_c031cda224ecaa::t_7c6262dfba6429 55-56,59-97,102-108
+  s_c031cda224ecaa::t_65473ee19d5a70 45,47,51-54,109-114,117,123-130,133-135
+src/output.cpp
+  s_c031cda224ecaa::t_7c6262dfba6429 117-118,145-147,169-171,181
+  s_c031cda224ecaa::t_3706453a8282b9 21-45,113-116,190-191,194-195,198-206,209-217
+src/solver.h
+  s_c031cda224ecaa::t_80fd97e8fee53d 56-67,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4332f51493f22c369a6f6019559a5870f5a408b",
+  "prompts": {},
+  "sessions": {
+    "s_c031cda224ecaa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "190658a0-0208-4779-9d6c-3dccf4c072f9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
