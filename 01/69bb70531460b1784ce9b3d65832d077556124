@@ -1,0 +1,24 @@
+src/solver.cpp
+  s_a8b8fe837c28ed::t_4fd6821e9ed064 110,128-133,234-246,459-463,545-547,557-565
+  s_a8b8fe837c28ed::t_bb2220d2f7f47b 566
+src/solver.h
+  s_a8b8fe837c28ed::t_4fd6821e9ed064 164-165,171
+src/input_deck.cpp
+  s_a8b8fe837c28ed::t_a49365621a922d 11,811-852
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0169bb70531460b1784ce9b3d65832d077556124",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8fe837c28ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a543fc83-1912-44f4-9707-975575f72753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
