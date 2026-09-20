@@ -43,7 +43,7 @@ public:
     outfile << timestamp() << " " << message << "\n";
     std::cout << message << "\n";
   }
-  void PrintSilent(std::string& message); // write to outfile only, not stdout
+  void PrintSilent(const std::string& message) { outfile << timestamp() << " " << message << "\n"; }
 
 private:
   std::filesystem::path path;
@@ -59,5 +59,6 @@ private:
 };
 
 #define PRINT(...) Terminal::instance().Print(__VA_ARGS__)
+#define PRINT_SILENT(...) Terminal::instance().PrintSilent(__VA_ARGS__)
 
 #endif // TERMINAL_H
