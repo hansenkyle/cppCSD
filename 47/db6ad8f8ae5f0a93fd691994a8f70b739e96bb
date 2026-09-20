@@ -1,0 +1,27 @@
+test/method/al_slab/3g_3x/3g_3x.yaml
+  s_a8b8fe837c28ed::t_e33df60fc6d9a3 7
+test/method/al_slab/3g_3x/scaled/scaled.yaml
+  s_a8b8fe837c28ed::t_e33df60fc6d9a3 7
+test/method/al_slab/36g_100x/36g_100x.yaml
+  s_a8b8fe837c28ed::t_e33df60fc6d9a3 21-40
+test/method/al_slab/5g_5x/no_scatter/5g5x_noscatter.yaml
+  s_a8b8fe837c28ed::t_e33df60fc6d9a3 7
+test/method/al_slab/5g_5x/5g_5x.yaml
+  s_a8b8fe837c28ed::t_e33df60fc6d9a3 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47db6ad8f8ae5f0a93fd691994a8f70b739e96bb",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8fe837c28ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a543fc83-1912-44f4-9707-975575f72753",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
