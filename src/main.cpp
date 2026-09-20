@@ -27,6 +27,7 @@ int main(int argc, char** argv) {
   Logger::configure(output.log_path);
   Terminal::configure(output.out_path);
 
+  LDCSD_LOG(Channel::General, Level::Info, "General/info message");
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
 
   InputDeck deck;

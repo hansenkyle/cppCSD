@@ -13,9 +13,10 @@
 #include <fstream>
 #include <string>
 
-enum class LogLevel { Trace, Debug, Info, Warn, Error };
+enum class Level { Trace, Debug, Info, Warn, Error };
+enum class Channel { General, Iteration };
 
-const char* to_string(LogLevel level);
+const char* to_string(Level level);
 
 /// @class Logger
 /// @brief Minimal, serial logger, exposed as global singleton. Any file that includes @ref logger.h
@@ -36,7 +37,8 @@ public:
 
   // Appends a level-tagged, timestamped line to the log file. If echo is
   // true, also prints that same line to stdout.
-  void log(LogLevel level, const std::string& message, bool echo = false);
+  void log(Level level, const std::string& message, bool echo = false);
+  void log(Channel channel, Level level, const std::string& message, bool echo = false);
 
 private:
   Logger() = default;
@@ -45,15 +47,16 @@ private:
 };
 
 #ifdef LDCSD_ENABLE_DEBUG_LOGGING
-#define LDCSD_LOG_TRACE(...) Logger::instance().log(LogLevel::Trace, __VA_ARGS__)
-#define LDCSD_LOG_DEBUG(...) Logger::instance().log(LogLevel::Debug, __VA_ARGS__)
+#define LDCSD_LOG_TRACE(...) Logger::instance().log(Level::Trace, __VA_ARGS__)
+#define LDCSD_LOG_DEBUG(...) Logger::instance().log(Level::Debug, __VA_ARGS__)
 #else
 #define LDCSD_LOG_TRACE(...) ((void)0)
 #define LDCSD_LOG_DEBUG(...) ((void)0)
 #endif
 
-#define LDCSD_LOG_INFO(...) Logger::instance().log(LogLevel::Info, __VA_ARGS__)
-#define LDCSD_LOG_WARN(...) Logger::instance().log(LogLevel::Warn, __VA_ARGS__)
-#define LDCSD_LOG_ERROR(...) Logger::instance().log(LogLevel::Error, __VA_ARGS__)
+#define LDCSD_LOG_INFO(...) Logger::instance().log(Level::Info, __VA_ARGS__)
+#define LDCSD_LOG_WARN(...) Logger::instance().log(Level::Warn, __VA_ARGS__)
+#define LDCSD_LOG_ERROR(...) Logger::instance().log(Level::Error, __VA_ARGS__)
+#define LDCSD_LOG(channel, level, ...) Logger::instance().log(channel, level, __VA_ARGS__)
 
 #endif

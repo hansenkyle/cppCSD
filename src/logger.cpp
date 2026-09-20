@@ -13,18 +13,28 @@
 #include <sstream>
 #include <stdexcept>
 
-const char* to_string(LogLevel level) {
+const char* to_string(Level level) {
   switch (level) {
-  case LogLevel::Trace:
+  case Level::Trace:
     return "TRACE";
-  case LogLevel::Debug:
+  case Level::Debug:
     return "DEBUG";
-  case LogLevel::Info:
+  case Level::Info:
     return "INFO";
-  case LogLevel::Warn:
+  case Level::Warn:
     return "WARN";
-  case LogLevel::Error:
+  case Level::Error:
     return "ERROR";
+  }
+  return "UNKNOWN";
+}
+
+const char* to_string(Channel level) {
+  switch (level) {
+  case Channel::General:
+    return "GENERAL";
+  case Channel::Iteration:
+    return "ITERATION";
   }
   return "UNKNOWN";
 }
@@ -52,8 +62,18 @@ void Logger::configure(const std::filesystem::path& log_path) {
   }
 }
 
-void Logger::log(LogLevel level, const std::string& message, bool echo) {
+void Logger::log(Level level, const std::string& message, bool echo) {
   const std::string line = "[" + timestamp() + "] [" + to_string(level) + "] " + message;
+  stream_ << line << "\n";
+  stream_.flush();
+  if (echo) {
+    std::cout << line << "\n";
+  }
+}
+
+void Logger::log(Channel channel, Level level, const std::string& message, bool echo) {
+  const std::string line =
+      "[" + timestamp() + "] [" + to_string(level) + "] [" + to_string(channel) + "] " + message;
   stream_ << line << "\n";
   stream_.flush();
   if (echo) {
