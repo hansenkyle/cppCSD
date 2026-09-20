@@ -33,9 +33,9 @@ TEST_SUITE("OutputManager") {
     const OutputManager manager(deck_dir);
 
     CHECK(manager.run_dir == deck_dir / "runs" / "run_0001");
-    CHECK(manager.info_path == manager.run_dir / "info");
-    CHECK(manager.log_path == manager.run_dir / "log");
-    CHECK(manager.out_path == manager.run_dir / "out");
+    CHECK(manager.info_path == manager.run_dir / "info.txt");
+    CHECK(manager.log_path == manager.run_dir / "log.txt");
+    CHECK(manager.out_path == manager.run_dir / "out.txt");
     CHECK(std::filesystem::is_directory(manager.run_dir));
   }
 
