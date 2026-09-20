@@ -12,9 +12,11 @@
 #include "logger.h"
 #include "output_manager.h"
 #include "solver.h"
+#include "terminal.h"
 
 int main(int argc, char** argv) {
   int exit_code = 0;
+
   const std::optional<std::filesystem::path> yaml_path = parseArgs(argc, argv, exit_code);
   if (!yaml_path.has_value()) {
     return exit_code;
@@ -22,7 +24,8 @@ int main(int argc, char** argv) {
 
   const std::filesystem::path deck_dir = std::filesystem::absolute(*yaml_path).parent_path();
   const OutputManager output(deck_dir);
-
+  Terminal::configure(output.out_path);
+  PRINT("Sample message!");
   Logger::configure(output.log_path, output.out_path);
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
 
