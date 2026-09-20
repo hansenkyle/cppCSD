@@ -1,0 +1,20 @@
+src/logger.h
+  h_250041054ad857 34
+  h_250041054ad857 33,35
+src/logger.cpp
+  h_250041054ad857 44
+  h_250041054ad857 62
+test/unit/logger.test.cpp
+  h_250041054ad857 45,57,71,76,90,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1ed65c8d0eb2c2ada2c6f683f178ede70ac2ba1",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
