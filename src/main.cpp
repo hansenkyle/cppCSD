@@ -24,9 +24,9 @@ int main(int argc, char** argv) {
 
   const std::filesystem::path deck_dir = std::filesystem::absolute(*yaml_path).parent_path();
   const OutputManager output(deck_dir);
+  Logger::configure(output.log_path);
   Terminal::configure(output.out_path);
-  PRINT_SILENT("Sample message!");
-  Logger::configure(output.log_path, output.out_path);
+
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
 
   InputDeck deck;

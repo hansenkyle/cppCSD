@@ -27,23 +27,33 @@ public:
       terminal.outfile.close();
     }
     // open ofstream with new path
-    terminal.outfile.open(newpath);
-    // copy contents of old outfile to new one
-    std::ifstream in;
-    in.open(terminal.path);
-    terminal.outfile << in.rdbuf();
-    in.close();
-    // delete old outfile
-    std::filesystem::remove(terminal.path);
+    terminal.outfile.open(newpath, std::ios::app);
+    if (!terminal.outfile.is_open()) {
+      throw std::runtime_error("failed to open output file file: " + newpath.string());
+    }
+    // copy contents of old outfile to new one, if there was one (first-time
+    // configure() has no prior file, and reading from an unopened ifstream's
+    // rdbuf sets failbit on outfile, silently breaking all future writes)
+    std::ifstream in(terminal.path);
+    if (in.is_open()) {
+      terminal.outfile << in.rdbuf();
+      in.close();
+      // delete old outfile
+      std::filesystem::remove(terminal.path);
+    }
     // update this->outfile
     terminal.path = newpath;
   }
 
   void Print(const std::string& message) {
-    outfile << timestamp() << " " << message << "\n";
+    outfile << timestamp() << " : " << message << "\n";
     std::cout << message << "\n";
+    outfile.flush();
   }
-  void PrintSilent(const std::string& message) { outfile << timestamp() << " " << message << "\n"; }
+  void PrintSilent(const std::string& message) {
+    outfile << timestamp() << " : " << message << "\n";
+    outfile.flush();
+  }
 
 private:
   std::filesystem::path path;
