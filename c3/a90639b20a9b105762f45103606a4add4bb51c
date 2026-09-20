@@ -1,0 +1,28 @@
+src/main.cpp
+  h_250041054ad857 27,29
+src/terminal.h
+  h_250041054ad857 30-33,49,51,54-55
+  s_d1807e8268551f::t_e4f7d7f0425c96 34-43
+  h_250041054ad857 52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3a90639b20a9b105762f45103606a4add4bb51c",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d1807e8268551f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34c2f805-9ec3-4987-9297-f58e7a00af8f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
