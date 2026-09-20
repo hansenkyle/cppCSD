@@ -1,0 +1,14 @@
+test/unit/output_manager.test.cpp
+  h_250041054ad857 36-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ee284f8425e06beff0bceb9fd2becdfc380ba28",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
