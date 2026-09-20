@@ -1,0 +1,71 @@
+src/input_deck.cpp
+  s_1ac613afdd667e::t_9ab29eb499d85c 280-282,288-290,487,513
+src/logger.h
+  s_1ac613afdd667e::t_52329549478797 153
+  s_1ac613afdd667e::t_f07dea3fe741c0 11,15,17-18,24-60,65-66,79-82,88-99,105-119,122-137,139-140,142-143,146-152
+src/cli.h
+  s_c031cda224ecaa::t_0fa92f15997dff 18-19,25-26,34-36,52-63
+  s_1ac613afdd667e::t_44ca640b2bdd74 13-14,16-17,20-24,27-33,37-42,45-51
+test/unit/cli.test.cpp
+  s_c031cda224ecaa::t_02945203aa402b 11,31-37
+  s_1ac613afdd667e::t_97fe675eead20b 48,51-52,61,64-65,73,76,85,88,92-159,165,168
+  s_c031cda224ecaa::t_4a1071510244ba 38,172-206
+  s_c031cda224ecaa::t_6765e141dbe5ae 39
+src/solver.cpp
+  s_1ac613afdd667e::t_9ab29eb499d85c 149-151,163,176-177,192-193,207-210,298-300
+  s_1ac613afdd667e::t_e1a94274846fa9 302,309,409-413,512-513
+src/cli.cpp
+  s_1ac613afdd667e::t_44ca640b2bdd74 13-14,16-79,90
+  s_1ac613afdd667e::t_03d75f5d6e5d93 80-81,91
+  s_c031cda224ecaa::t_2c58d0b82fd713 11,92-114
+src/version.h
+  s_1ac613afdd667e::t_9e16f2a7468b63 1-58
+src/main.cpp
+  s_1ac613afdd667e::t_81e63daca9426d 15-16,20-21,25,29-30,44,46-47,49-53,56,58-59,64,75
+  s_c031cda224ecaa::t_0cfb438f2d6bb2 31-43,45,48,65,70
+  s_1ac613afdd667e::t_eeafb03cbdb339 76
+src/terminal.cpp
+  s_1ac613afdd667e::t_1b709049b48ed6 27-48,54-58,65-66,73,78,108
+  s_1ac613afdd667e::t_f10129c9a868a0 1-26,49-53,59-61,63-64,67-69,72,74-77,79-107,109-110
+  s_c031cda224ecaa::t_32c0a9ec9dca83 62,70-71
+src/output_manager.cpp
+  s_1ac613afdd667e::t_9ab29eb499d85c 67,69,77,100
+test/unit/logger.test.cpp
+  s_1ac613afdd667e::t_b18ac15686ef77 46,49,52,59,62,64-65,84-86,98-99,121-194,196-207
+  s_c031cda224ecaa::t_c440018b8a529d 195
+  s_1ac613afdd667e::t_eea0a5a21fbb15 60,120
+test/unit/terminal.test.cpp
+  s_1ac613afdd667e::t_a2ca50f3aa5181 1-56,58-64,66-84
+  s_c031cda224ecaa::t_329b1b17f78818 57,65
+CMakeLists.txt
+  s_1ac613afdd667e::t_f10129c9a868a0 87,132
+src/terminal.h
+  s_1ac613afdd667e::t_f10129c9a868a0 1-22,25-33,35,37,40-44
+  s_c031cda224ecaa::t_03eb3e51602bc0 23-24,34,36,38-39
+src/logger.cpp
+  s_1ac613afdd667e::t_8782787ed70fb1 10-11,34-59,62-75,86-105,126-147,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74c467aea38c9fe83a6d67d8a16353e96980257c",
+  "prompts": {},
+  "sessions": {
+    "s_1ac613afdd667e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e13fbe7-4911-46f6-89eb-1f4a6ed222ea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    },
+    "s_c031cda224ecaa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "190658a0-0208-4779-9d6c-3dccf4c072f9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}
