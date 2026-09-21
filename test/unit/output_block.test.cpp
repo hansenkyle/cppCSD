@@ -186,6 +186,20 @@ TEST_SUITE("VerticalTable") {
     CHECK(table.render_txt("{:.1f}") == expected);
   }
 
+  TEST_CASE("string and int columns render as-is, doubles still take the format") {
+    VerticalTable table("TEST");
+    table.add_column("group", std::vector<int>{0, 1});
+    table.add_column("status", std::vector<std::string>{"ok", "DIVERGED"});
+    table.add_column("phi", {0.5, 1.5});
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "group    status  phi\n"
+                                 "    0        ok  0.5\n"
+                                 "    1  DIVERGED  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
   TEST_CASE("an empty table still renders its title") {
     CHECK(VerticalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
   }
@@ -295,6 +309,25 @@ TEST_SUITE("HorizontalTable") {
     table.add_row("doubled", 2.0 * values);
 
     CHECK(table.render_txt("{:.1f}") == "doubled  2.0  4.0\n");
+  }
+
+  TEST_CASE("string and int rows render as-is, doubles still take the format") {
+    HorizontalTable table;
+    table.add_row("label", std::vector<std::string>{"a", "bb"});
+    table.add_row("count", std::vector<int>{1, 22});
+    table.add_row("x", {0.5, 1.5});
+
+    const std::string expected = "label    a   bb\n"
+                                 "count    1   22\n"
+                                 "x      0.5  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a single row can mix text and numeric cells") {
+    HorizontalTable table;
+    table.add_row("phi", {1.0, "n/a", 2.5});
+
+    CHECK(table.render_txt("{:.1f}") == "phi  1.0  n/a  2.5\n");
   }
 
   TEST_CASE("an empty table still renders its title") {

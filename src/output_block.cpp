@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <format>
+#include <utility>
 
 namespace {
 
@@ -78,6 +79,17 @@ std::string render_grid(const std::vector<std::vector<std::string>>& rows, std::
   return out;
 }
 
+// One cell as it displays: a numeric cell gets `format` applied now, a
+// text cell is already what it renders as.
+std::string render_cell(const Table::Cell& cell, std::string_view format) {
+  if (const std::string* text = std::get_if<std::string>(&cell)) {
+    return *text;
+  }
+
+  double value = std::get<double>(cell);
+  return std::vformat(format, std::make_format_args(value));
+}
+
 } // namespace
 
 void KeyValueOutput::add(std::string key, std::string value) {
@@ -105,13 +117,13 @@ std::string KeyValueOutput::render_txt(int tabs) const {
   return indent(out, tabs);
 }
 
-void Table::add_series(std::string name, std::vector<double> values) {
+void Table::add_series(std::string name, std::vector<Cell> values) {
   names_.push_back(std::move(name));
   series_.push_back(std::move(values));
 }
 
 void Table::add_series(std::string name, const Eigen::Ref<const Eigen::VectorXd>& values) {
-  add_series(std::move(name), std::vector<double>(values.begin(), values.end()));
+  add_series(std::move(name), std::vector<Cell>(values.begin(), values.end()));
 }
 
 std::string VerticalTable::render_txt(std::string_view format, int tabs) const {
@@ -120,7 +132,7 @@ std::string VerticalTable::render_txt(std::string_view format, int tabs) const {
   }
 
   std::size_t n_rows = 0;
-  for (const std::vector<double>& column : series_) {
+  for (const std::vector<Cell>& column : series_) {
     n_rows = std::max(n_rows, column.size());
   }
 
@@ -129,10 +141,9 @@ std::string VerticalTable::render_txt(std::string_view format, int tabs) const {
   for (std::size_t i = 0; i < n_rows; ++i) {
     std::vector<std::string> row;
     std::size_t filled = 0;
-    for (const std::vector<double>& column : series_) {
+    for (const std::vector<Cell>& column : series_) {
       if (i < column.size()) {
-        double value = column[i];
-        row.push_back(std::vformat(format, std::make_format_args(value)));
+        row.push_back(render_cell(column[i], format));
         filled = row.size();
       } else {
         row.emplace_back();
@@ -150,8 +161,8 @@ std::string HorizontalTable::render_txt(std::string_view format, int tabs) const
   std::vector<std::vector<std::string>> rows;
   for (std::size_t i = 0; i < series_.size(); ++i) {
     std::vector<std::string> row{names_[i]};
-    for (double value : series_[i]) {
-      row.push_back(std::vformat(format, std::make_format_args(value)));
+    for (const Cell& cell : series_[i]) {
+      row.push_back(render_cell(cell, format));
     }
     rows.push_back(std::move(row));
   }

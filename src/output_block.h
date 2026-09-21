@@ -10,7 +10,9 @@
 
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <Eigen/Core>
@@ -53,17 +55,39 @@ private:
   std::vector<std::pair<std::string, std::string>> entries_;
 };
 
-// Storage shared by the two table orientations: named series of doubles,
-// kept numeric until render time. Series need not all be the same length;
-// a short one simply runs out, and render time leaves the cells past its
-// end blank.
+// Storage shared by the two table orientations: named series of cells,
+// kept in insertion order. Series need not all be the same length; a short
+// one simply runs out, and render time leaves the cells past its end
+// blank.
 class Table : public OutputUnit {
 public:
   using OutputUnit::OutputUnit;
 
+  // A cell is either numeric -- held as a double so a format spec can be
+  // applied at render time -- or literal text. Strings and integers have
+  // nothing left to format, so they become text when they're added. Cells
+  // are per-value, not per-series, so one series can mix the two.
+  using Cell = std::variant<double, std::string>;
+
 protected:
-  // Appends a named series.
-  void add_series(std::string name, std::vector<double> values);
+  // Appends a named series. A braced list resolves here, so mixed literals
+  // -- {1.0, "n/a", 2.5} -- work directly.
+  void add_series(std::string name, std::vector<Cell> values);
+
+  // Same, from a vector of anything a Cell holds. Integers are stringified
+  // now; everything else converts to a Cell as-is.
+  template <typename T> void add_series(std::string name, const std::vector<T>& values) {
+    std::vector<Cell> cells;
+    cells.reserve(values.size());
+    for (const T& value : values) {
+      if constexpr (std::is_integral_v<T>) {
+        cells.emplace_back(std::to_string(value));
+      } else {
+        cells.emplace_back(value);
+      }
+    }
+    add_series(std::move(name), std::move(cells));
+  }
 
   // Same, from an Eigen vector. Ref<const> also binds to expressions that
   // aren't contiguous VectorXd -- a matrix row, a block, a coefficient-wise
@@ -71,7 +95,7 @@ protected:
   void add_series(std::string name, const Eigen::Ref<const Eigen::VectorXd>& values);
 
   std::vector<std::string> names_;
-  std::vector<std::vector<double>> series_;
+  std::vector<std::vector<Cell>> series_;
 };
 
 // Table with its names across the top and one row per index:
@@ -85,16 +109,21 @@ class VerticalTable : public Table {
 public:
   using Table::Table;
 
-  void add_column(std::string name, std::vector<double> values) {
+  void add_column(std::string name, std::vector<Cell> values) {
     add_series(std::move(name), std::move(values));
+  }
+
+  template <typename T> void add_column(std::string name, const std::vector<T>& values) {
+    add_series(std::move(name), values);
   }
 
   void add_column(std::string name, const Eigen::Ref<const Eigen::VectorXd>& values) {
     add_series(std::move(name), values);
   }
 
-  // `format` is the std::format spec applied to every value; `tabs`
-  // indents the whole block by that many four-space runs.
+  // `format` is the std::format spec applied to every numeric cell; text
+  // cells are already rendered. `tabs` indents the whole block by that
+  // many four-space runs.
   std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
@@ -104,16 +133,21 @@ class HorizontalTable : public Table {
 public:
   using Table::Table;
 
-  void add_row(std::string name, std::vector<double> values) {
+  void add_row(std::string name, std::vector<Cell> values) {
     add_series(std::move(name), std::move(values));
+  }
+
+  template <typename T> void add_row(std::string name, const std::vector<T>& values) {
+    add_series(std::move(name), values);
   }
 
   void add_row(std::string name, const Eigen::Ref<const Eigen::VectorXd>& values) {
     add_series(std::move(name), values);
   }
 
-  // `format` is the std::format spec applied to every value; `tabs`
-  // indents the whole block by that many four-space runs.
+  // `format` is the std::format spec applied to every numeric cell; text
+  // cells are already rendered. `tabs` indents the whole block by that
+  // many four-space runs.
   std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
