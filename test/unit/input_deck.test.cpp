@@ -20,6 +20,23 @@ Eigen::SparseMatrix<double> scatterMatrix(int G,
   return matrix;
 }
 
+// A Material with G groups: total/S sized G, S_b sized G + 1, scatter G x G.
+// Values are distinct so view functions can be pinned to a specific entry.
+Material makeMaterial(const std::string& name, int G, double offset) {
+  Material material;
+  material.name = name;
+  material.total = Eigen::VectorXd::LinSpaced(G, offset + 1.0, offset + G);
+  material.S = Eigen::VectorXd::LinSpaced(G, offset + 10.0, offset + 9.0 + G);
+  material.S_b = Eigen::VectorXd::LinSpaced(G + 1, offset + 100.0, offset + 100.0 + G);
+  material.scatter = Eigen::MatrixXd::Constant(G, G, offset);
+  for (int from = 0; from < G; ++from) {
+    for (int to = 0; to < G; ++to) {
+      material.scatter(from, to) = offset + from + 0.1 * to;
+    }
+  }
+  return material;
+}
+
 // A minimally-valid deck: n_x = 2 cells, G = 2 groups, M = 2 ordinates.
 InputDeck makeValidDeck() {
   InputDeck deck;
@@ -348,6 +365,160 @@ TEST_CASE("InputDeck::Xs::validate rejects a negative scatter entry") {
   xs.S_bound = Eigen::MatrixXd::Constant(3, 3, 1.0);
 
   CHECK_THROWS_AS(xs.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate accepts consistent sizes") {
+  const Material material = makeMaterial("water", 3, 0.0);
+
+  Material copy = material;
+  CHECK_NOTHROW(copy.validate());
+}
+
+TEST_CASE("Material::validate accepts a default-constructed material with a name") {
+  Material material; // defaults are the G = 1 shape
+  material.name = "void";
+
+  CHECK_NOTHROW(material.validate());
+}
+
+TEST_CASE("Material::validate rejects an unnamed material") {
+  Material material = makeMaterial("water", 2, 0.0);
+  material.name = "";
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate rejects total sized against the wrong number of groups") {
+  Material material = makeMaterial("water", 3, 0.0);
+  material.total = Eigen::VectorXd::Zero(2);
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate rejects S sized against the wrong number of groups") {
+  Material material = makeMaterial("water", 3, 0.0);
+  material.S = Eigen::VectorXd::Zero(4);
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate rejects S_b that is not one longer than S") {
+  Material material = makeMaterial("water", 3, 0.0);
+
+  SUBCASE("too short") { material.S_b = Eigen::VectorXd::Zero(3); }
+  SUBCASE("too long") { material.S_b = Eigen::VectorXd::Zero(5); }
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate rejects a non-square scatter matrix") {
+  Material material = makeMaterial("water", 3, 0.0);
+  material.scatter = Eigen::MatrixXd::Zero(3, 2);
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate rejects a square scatter matrix of the wrong order") {
+  Material material = makeMaterial("water", 3, 0.0);
+  material.scatter = Eigen::MatrixXd::Zero(2, 2);
+
+  CHECK_THROWS_AS(material.validate(), std::runtime_error);
+}
+
+TEST_CASE("Material::validate reports the offending sizes") {
+  Material material = makeMaterial("water", 3, 0.0);
+  material.total = Eigen::VectorXd::Zero(2);
+
+  CHECK_THROWS_WITH_AS(material.validate(),
+                       doctest::Contains("(tot, S, S_b, scat) = (2, 3, 4, 3x3)"),
+                       std::runtime_error);
+}
+
+TEST_CASE("InputDeck::Xs::set_materials rejects an invalid material") {
+  InputDeck::Xs xs;
+  Material material = makeMaterial("water", 2, 0.0);
+  material.name = "";
+
+  CHECK_THROWS_AS(xs.set_materials({material}, {0, 0}), std::runtime_error);
+}
+
+TEST_CASE("InputDeck::Xs::set_materials rejects an out-of-range material index") {
+  InputDeck::Xs xs;
+  const Material water = makeMaterial("water", 2, 0.0);
+
+  SUBCASE("past the end") {
+    CHECK_THROWS_AS(xs.set_materials({water}, {0, 1}), std::runtime_error);
+  }
+  SUBCASE("negative") { CHECK_THROWS_AS(xs.set_materials({water}, {-1}), std::runtime_error); }
+}
+
+TEST_CASE("InputDeck::Xs view functions read the cell's material") {
+  // Two materials over three cells: water, lead, water.
+  InputDeck::Xs xs;
+  const Material water = makeMaterial("water", 3, 0.0);
+  const Material lead = makeMaterial("lead", 3, 1000.0);
+  REQUIRE_NOTHROW(xs.set_materials({water, lead}, {0, 1, 0}));
+
+  SUBCASE("total_") {
+    CHECK(xs.total_(0, 0) == doctest::Approx(water.total(0)));
+    CHECK(xs.total_(2, 1) == doctest::Approx(lead.total(2)));
+    CHECK(xs.total_(1, 2) == doctest::Approx(water.total(1)));
+  }
+
+  SUBCASE("S_") {
+    CHECK(xs.S_(0, 0) == doctest::Approx(water.S(0)));
+    CHECK(xs.S_(2, 1) == doctest::Approx(lead.S(2)));
+  }
+
+  SUBCASE("S_b_ indexes the group's upper boundary") {
+    CHECK(xs.S_b_(0, 0) == doctest::Approx(water.S_b(0)));
+    CHECK(xs.S_b_(3, 1) == doctest::Approx(lead.S_b(3))); // last boundary, G + 1 of them
+  }
+
+  SUBCASE("S_up_ / S_down_ bracket the group") {
+    for (int g = 0; g < 3; ++g) {
+      CHECK(xs.S_up_(g, 1) == doctest::Approx(lead.S_b(g)));
+      CHECK(xs.S_down_(g, 1) == doctest::Approx(lead.S_b(g + 1)));
+    }
+    // the two views agree on a shared boundary: group g's lower edge is
+    // group g + 1's upper edge
+    CHECK(xs.S_down_(0, 1) == doctest::Approx(xs.S_up_(1, 1)));
+  }
+
+  SUBCASE("scatter_ by (from, to)") {
+    CHECK(xs.scatter_(0, 2, 0) == doctest::Approx(water.scatter(0, 2)));
+    CHECK(xs.scatter_(2, 0, 1) == doctest::Approx(lead.scatter(2, 0)));
+    CHECK(xs.scatter_(1, 1, 2) == doctest::Approx(water.scatter(1, 1)));
+  }
+
+  SUBCASE("scatter_ by cell returns the whole matrix") {
+    const Eigen::MatrixXd& cell1 = xs.scatter_(1);
+
+    REQUIRE(cell1.rows() == 3);
+    REQUIRE(cell1.cols() == 3);
+    CHECK(cell1 == lead.scatter);
+  }
+}
+
+TEST_CASE("InputDeck::Xs::scatter_(i) returns a mutable reference into the material list") {
+  InputDeck::Xs xs;
+  REQUIRE_NOTHROW(xs.set_materials({makeMaterial("water", 2, 0.0)}, {0, 0}));
+
+  xs.scatter_(0)(0, 1) = 42.0;
+
+  // cells 0 and 1 share material 0, so the write is visible through both
+  CHECK(xs.scatter_(0, 1, 0) == doctest::Approx(42.0));
+  CHECK(xs.scatter_(0, 1, 1) == doctest::Approx(42.0));
+}
+
+TEST_CASE("InputDeck::Xs::set_materials replaces any previous material data") {
+  InputDeck::Xs xs;
+  REQUIRE_NOTHROW(xs.set_materials({makeMaterial("water", 2, 0.0)}, {0, 0}));
+
+  const Material lead = makeMaterial("lead", 2, 1000.0);
+  REQUIRE_NOTHROW(xs.set_materials({lead}, {0}));
+
+  CHECK(xs.total_(0, 0) == doctest::Approx(lead.total(0)));
 }
 
 TEST_CASE("InputDeck::BoundaryConditions::operator[] views a group's up/down rows") {

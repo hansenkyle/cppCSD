@@ -81,6 +81,12 @@ public:
     double S_down_(int g, int i);
     double scatter_(int from, int to, int i);
     Eigen::MatrixXd& scatter_(int i);
+
+    // Replaces the per-material cross sections and the cell -> material map that
+    // the view functions above read from. Every material is validated, and every
+    // index must name a material in the list.
+    void set_materials(std::vector<Material> materials, std::vector<int> indices);
+
     Eigen::MatrixXd total;                            // group total xs, rows=G, cols=n_x
     std::vector<Eigen::SparseMatrix<double>> scatter; // [cell], each G x G
     Eigen::MatrixXd S;       // group-average stopping power, rows=G, cols=n_x

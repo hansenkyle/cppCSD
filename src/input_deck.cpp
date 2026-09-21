@@ -12,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <yaml-cpp/yaml.h>
@@ -262,6 +263,22 @@ void InputDeck::Energy::validate() {
       throw std::runtime_error("energy.dE[" + std::to_string(i) + "] must be positive");
     }
   }
+}
+
+void InputDeck::Xs::set_materials(std::vector<Material> materials, std::vector<int> indices) {
+  for (Material& material : materials) {
+    material.validate();
+  }
+  for (int index : indices) {
+    if (index < 0 || index >= static_cast<int>(materials.size())) {
+      throw std::runtime_error("material index " + std::to_string(index) +
+                               " is out of range for a material list of size " +
+                               std::to_string(materials.size()));
+    }
+  }
+
+  material_list = std::move(materials);
+  material_indices = std::move(indices);
 }
 
 double InputDeck::Xs::total_(int g, int i) { return material_list[material_indices[i]].total(g); }
