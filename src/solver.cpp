@@ -47,10 +47,7 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
   // prepare data (dE*sigma_s)
   double dE = input_deck.energy.dE(g);
   auto dx = input_deck.mesh.dx;
-  auto sigma_t = input_deck.xs.total(g, all);
-  auto S = input_deck.xs.S(g, all);
-  auto S_up = input_deck.xs.S_bound(g, all);
-  auto S_down = input_deck.xs.S_bound(g + 1, all);
+  InputDeck::Xs& xs = input_deck.xs;
   double bc_up, bc_down;
   Eigen::Vector2d q_up, q_down;
   Eigen::VectorXd sigmaSdEprime;
@@ -73,26 +70,28 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       q_up = q(seqN(i * 4, 2));
       q_down = q(seqN(i * 4 + 2, 2));
       phi = scalar_flux(seqN(i * 4, 4), all);
-      sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
       bc_up = input_deck.bc[g](0, m);
       bc_down = input_deck.bc[g](1, m);
 
-      psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+      psi(seqN(i * 4, 4), m) =
+          kernel.solveDirect(mu, dx[i], dE, xs.total(g, i), xs.S(g, i), xs.S_up(g, i),
+                             xs.S_down(g, i), psi_in_E(seqN(i * 4 + 2, 2), m), bc_down, bc_up, q_up,
+                             q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       // loop through all other cells
       for (i = 1; i < input_deck.mesh.n_x; i++) {
         // slice data
         q_up = q(seqN(i * 4, 2));
         q_down = q(seqN(i * 4 + 2, 2));
         phi = scalar_flux(seqN(i * 4, 4), all);
-        sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
         bc_up = psi((i - 1) * 4 + 1, m);
         bc_down = psi((i - 1) * 4 + 3, m);
 
-        psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-            bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+        psi(seqN(i * 4, 4), m) =
+            kernel.solveDirect(mu, dx[i], dE, xs.total(g, i), xs.S(g, i), xs.S_up(g, i),
+                               xs.S_down(g, i), psi_in_E(seqN(i * 4 + 2, 2), m), bc_down, bc_up,
+                               q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       }
       break;    // left-to-right
     case false: // right-to-left
@@ -103,13 +102,13 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
       q_up = q(seqN(i * 4, 2));
       q_down = q(seqN(i * 4 + 2, 2));
       phi = scalar_flux(seqN(i * 4, 4), all);
-      sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
       bc_up = input_deck.bc[g](0, m);
       bc_down = input_deck.bc[g](1, m);
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-          mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-          bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all),
-          print_condition_number);
+          mu, dx[i], dE, xs.total(g, i), xs.S(g, i), xs.S_up(g, i), xs.S_down(g, i),
+          psi_in_E(seqN(i * 4 + 2, 2), m), bc_down, bc_up, q_up, q_down, sigmaSdEprime,
+          phi({0, 1}, all), phi({2, 3}, all), print_condition_number);
 
       // loop through all other cells
       for (i = input_deck.mesh.n_x - 2; i > -1; i--) {
@@ -117,13 +116,14 @@ Eigen::MatrixXd Solver::transportSweep(int g, Eigen::MatrixXd psi_in_E,
         q_up = q(seqN(i * 4, 2));
         q_down = q(seqN(i * 4 + 2, 2));
         phi = scalar_flux(seqN(i * 4, 4), all);
-        sigmaSdEprime = input_deck.xs.scatter[i].col(g).cwiseProduct(input_deck.energy.dE);
+        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
         bc_up = psi((i + 1) * 4, m);
         bc_down = psi((i + 1) * 4 + 2, m);
 
-        psi(seqN(i * 4, 4), m) = kernel.solveDirect(
-            mu, dx[i], dE, sigma_t[i], S[i], S_up[i], S_down[i], psi_in_E(seqN(i * 4 + 2, 2), m),
-            bc_down, bc_up, q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
+        psi(seqN(i * 4, 4), m) =
+            kernel.solveDirect(mu, dx[i], dE, xs.total(g, i), xs.S(g, i), xs.S_up(g, i),
+                               xs.S_down(g, i), psi_in_E(seqN(i * 4 + 2, 2), m), bc_down, bc_up,
+                               q_up, q_down, sigmaSdEprime, phi({0, 1}, all), phi({2, 3}, all));
       }
       break;
     }
@@ -323,9 +323,7 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
   auto mu = input_deck.angle.mu;
   auto dx = input_deck.mesh.dx;
   auto dE = input_deck.energy.dE;
-  auto xs = input_deck.xs.total;
-  auto S = input_deck.xs.S;
-  auto S_bound = input_deck.xs.S_bound;
+  InputDeck::Xs& xs = input_deck.xs;
 
   Eigen::MatrixXd residuals = Eigen::MatrixXd::Zero(4 * nx, M);
 
@@ -350,7 +348,7 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
     auto phi_gprime_up = scalar(Eigen::seqN(4 * i, 2), Eigen::placeholders::all);
     auto phi_gprime_down = scalar(Eigen::seqN(4 * i + 2, 2), Eigen::placeholders::all);
 
-    auto sigma_s = input_deck.xs.scatter[i].col(g);
+    auto sigma_s = xs.scatter(i).col(g);
 
     // construct appropraite psi^b
     switch (mu[m] > 0) {
@@ -380,9 +378,10 @@ Eigen::MatrixXd Solver::calculateResiduals(int g, const Eigen::MatrixXd& angular
       break;
     }
 
-    return cellResidual(mu[m], dx[i], dE[g], xs(g, i), S(g, i), S_bound(g + 1, i), S_bound(g, i),
-                        psi_in_E, psi_b_up, psi_b_down, q_up, q_down, dE.cwiseProduct(sigma_s),
-                        phi_gprime_up, phi_gprime_down, psi_up, psi_down, verbose)
+    return cellResidual(mu[m], dx[i], dE[g], xs.total(g, i), xs.S(g, i), xs.S_down(g, i),
+                        xs.S_up(g, i), psi_in_E, psi_b_up, psi_b_down, q_up, q_down,
+                        dE.cwiseProduct(sigma_s), phi_gprime_up, phi_gprime_down, psi_up, psi_down,
+                        verbose)
         .cast<double>();
   };
 

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <Eigen/Dense>
-#include <Eigen/Sparse>
 
 #include <boost/multiprecision/eigen.hpp>
 #include <boost/multiprecision/float128.hpp>

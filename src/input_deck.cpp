@@ -21,7 +21,7 @@
 
 namespace {
 constexpr double kAngleWeightRelTol = 1e-4;
-void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
+void requireNonNegative(const Eigen::Ref<const Eigen::MatrixXd>& values, const std::string& name) {
   if (values.size() > 0 && values.minCoeff() < 0.0) {
     throw std::runtime_error(name + " must be non-negative");
   }
@@ -46,39 +46,25 @@ void requireSize(Eigen::Index actual, Eigen::Index expected, const std::string& 
   }
 }
 
-// One entry in a sparse group-to-group scattering matrix: group `from`
-// scatters into group `to` with the given macroscopic cross section.
-// Parsing scratch only -- collected into an Eigen::SparseMatrix (via
-// buildScatterMatrix) before being stored anywhere.
+// One entry in a group-to-group scattering matrix: group `from` scatters
+// into group `to` with the given macroscopic cross section. Parsing scratch
+// only -- collected into a dense matrix (via buildScatterMatrix) before
+// being stored anywhere.
 struct ScatterEntry {
   int from;
   int to;
   double value;
 };
 
-// Builds a G x G sparse matrix from a flat entry list, entry (from, to) ->
-// value.
-Eigen::SparseMatrix<double> buildScatterMatrix(const std::vector<ScatterEntry>& entries, int G) {
-  std::vector<Eigen::Triplet<double>> triplets;
-  triplets.reserve(entries.size());
+// Builds a G x G matrix from a flat entry list, entry (from, to) -> value;
+// every pair the list doesn't mention stays zero.
+Eigen::MatrixXd buildScatterMatrix(const std::vector<ScatterEntry>& entries, int G) {
+  Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(G, G);
   for (const ScatterEntry& entry : entries) {
-    triplets.emplace_back(entry.from, entry.to, entry.value);
+    matrix(entry.from, entry.to) = entry.value;
   }
-  Eigen::SparseMatrix<double> matrix(G, G);
-  matrix.setFromTriplets(triplets.begin(), triplets.end());
-  matrix.makeCompressed();
   return matrix;
 }
-
-// Per-material cross sections and stopping power, indexed by energy group.
-// Parsing scratch only -- material names and this data are never retained
-// on the InputDeck, only the per-cell tables/lists they expand into.
-struct Material_ {
-  Eigen::VectorXd sigma_t;                // size G
-  Eigen::SparseMatrix<double> scattering; // G x G, group-to-group
-  Eigen::VectorXd stopping_power_avg;     // size G
-  Eigen::VectorXd stopping_power_bnd;     // size G + 1
-};
 
 // Dense form: scattering is a list of G rows, each a list of G columns --
 // row = from group, column = to group. Zero entries are dropped so the
@@ -149,37 +135,23 @@ std::vector<ScatterEntry> parseScattering(const YAML::Node& node, const std::str
   return entries;
 }
 
-Material_ parseMaterial(const YAML::Node& node, const std::string& name, int G) {
-  Material_ material;
-  material.sigma_t = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
-  material.scattering =
+Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
+  Material material;
+  material.name = name;
+  material.total = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
+  material.scatter =
       buildScatterMatrix(parseScattering(requireNode(node, "scattering"), name, G), G);
 
   const YAML::Node stopping_power = requireNode(node, "stopping_power");
-  material.stopping_power_avg =
-      toVector(requireNode(stopping_power, "group_average").as<std::vector<double>>());
-  material.stopping_power_bnd =
-      toVector(requireNode(stopping_power, "group_boundary").as<std::vector<double>>());
+  material.S = toVector(requireNode(stopping_power, "group_average").as<std::vector<double>>());
+  material.S_b = toVector(requireNode(stopping_power, "group_boundary").as<std::vector<double>>());
 
-  requireSize(material.sigma_t.size(), G, "material '" + name + "' sigma_t");
-  requireSize(material.stopping_power_avg.size(), G,
-              "material '" + name + "' stopping_power.group_average");
-  requireSize(material.stopping_power_bnd.size(), G + 1,
-              "material '" + name + "' stopping_power.group_boundary");
+  requireSize(material.total.size(), G, "material '" + name + "' sigma_t");
+  requireSize(material.S.size(), G, "material '" + name + "' stopping_power.group_average");
+  requireSize(material.S_b.size(), G + 1, "material '" + name + "' stopping_power.group_boundary");
   return material;
 }
 
-// Expands a per-material, per-group field (selected via `field`) into a
-// per-group, per-cell table by looking up each cell's material.
-Eigen::MatrixXd expandByRegion(const std::vector<std::string>& region_materials,
-                               const std::map<std::string, Material_>& materials, Eigen::Index rows,
-                               Eigen::VectorXd Material_::* field) {
-  Eigen::MatrixXd table(rows, static_cast<Eigen::Index>(region_materials.size()));
-  for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
-    table.col(static_cast<Eigen::Index>(cell)) = materials.at(region_materials[cell]).*field;
-  }
-  return table;
-}
 // Parses one group's `source` entry: a list of M ordinate entries, each a
 // list of n_x per-cell {up_left, up_right, down_left, down_right} maps.
 // Returned as a (4 * n_x) x M matrix, rows 4*c..4*c+3 = that cell's four
@@ -281,23 +253,21 @@ void InputDeck::Xs::set_materials(std::vector<Material> materials, std::vector<i
   material_indices = std::move(indices);
 }
 
-double InputDeck::Xs::total_(int g, int i) { return material_list[material_indices[i]].total(g); }
+double InputDeck::Xs::total(int g, int i) { return material_list[material_indices[i]].total(g); }
 
-double InputDeck::Xs::S_(int g, int i) { return material_list[material_indices[i]].S(g); }
+double InputDeck::Xs::S(int g, int i) { return material_list[material_indices[i]].S(g); }
 
-double InputDeck::Xs::S_b_(int g, int i) { return material_list[material_indices[i]].S_b(g); }
+double InputDeck::Xs::S_b(int g, int i) { return material_list[material_indices[i]].S_b(g); }
 
-double InputDeck::Xs::S_up_(int g, int i) { return material_list[material_indices[i]].S_b(g); }
+double InputDeck::Xs::S_up(int g, int i) { return material_list[material_indices[i]].S_b(g); }
 
-double InputDeck::Xs::S_down_(int g, int i) {
-  return material_list[material_indices[i]].S_b(g + 1);
-}
+double InputDeck::Xs::S_down(int g, int i) { return material_list[material_indices[i]].S_b(g + 1); }
 
-double InputDeck::Xs::scatter_(int from, int to, int i) {
+double InputDeck::Xs::scatter(int from, int to, int i) {
   return material_list[material_indices[i]].scatter(from, to);
 }
 
-Eigen::MatrixXd& InputDeck::Xs::scatter_(int i) {
+Eigen::MatrixXd& InputDeck::Xs::scatter(int i) {
   return material_list[material_indices[i]].scatter;
 }
 
@@ -338,17 +308,25 @@ void InputDeck::Angle::validate() {
 }
 
 void InputDeck::Xs::validate() const {
-  requireNonNegative(total, "xs.total");
-  requireNonNegative(S, "xs.S");
-  requireNonNegative(S_bound, "xs.S_bound");
+  for (const Material& material : material_list) {
+    const std::string where = " for material '" + material.name + "'";
+    requireNonNegative(material.total, "xs.total" + where);
+    requireNonNegative(material.S, "xs.S" + where);
+    requireNonNegative(material.S_b, "xs.S_b" + where);
+    requireNonNegative(material.scatter, "xs.scatter" + where);
+  }
+}
 
-  for (const Eigen::SparseMatrix<double>& cell_scatter : scatter) {
-    for (int col = 0; col < cell_scatter.outerSize(); ++col) {
-      for (Eigen::SparseMatrix<double>::InnerIterator it(cell_scatter, col); it; ++it) {
-        if (it.value() < 0.0) {
-          throw std::runtime_error("xs.scatter value must be non-negative");
-        }
-      }
+void InputDeck::Xs::validateShape(int G, int n_x) const {
+  if (static_cast<int>(material_indices.size()) != n_x) {
+    throw std::runtime_error("xs covers " + std::to_string(material_indices.size()) +
+                             " cells, expected mesh.n_x = " + std::to_string(n_x));
+  }
+  for (const Material& material : material_list) {
+    if (material.total.size() != G) {
+      throw std::runtime_error("material '" + material.name + "' has " +
+                               std::to_string(material.total.size()) +
+                               " groups, expected energy.G = " + std::to_string(G));
     }
   }
 }
@@ -366,29 +344,7 @@ void InputDeck::validate() {
   xs.validate();
   source.validate();
 
-  if (xs.total.rows() != energy.G || xs.S.rows() != energy.G) {
-    throw std::runtime_error("xs.total/S must have energy.G = " + std::to_string(energy.G) +
-                             " rows");
-  }
-  if (xs.S_bound.rows() != energy.G + 1) {
-    throw std::runtime_error("xs.S_bound must have energy.G + 1 = " + std::to_string(energy.G + 1) +
-                             " rows");
-  }
-  if (xs.total.cols() != mesh.n_x || xs.S.cols() != mesh.n_x || xs.S_bound.cols() != mesh.n_x) {
-    throw std::runtime_error("xs.total/S/S_bound must have mesh.n_x = " + std::to_string(mesh.n_x) +
-                             " columns");
-  }
-  if (static_cast<int>(xs.scatter.size()) != mesh.n_x) {
-    throw std::runtime_error("xs.scatter must have mesh.n_x = " + std::to_string(mesh.n_x) +
-                             " cells");
-  }
-  for (int c = 0; c < mesh.n_x; ++c) {
-    if (xs.scatter[c].rows() != energy.G || xs.scatter[c].cols() != energy.G) {
-      throw std::runtime_error("xs.scatter[" + std::to_string(c) +
-                               "] must be energy.G x energy.G = " + std::to_string(energy.G) +
-                               " x " + std::to_string(energy.G));
-    }
-  }
+  xs.validateShape(energy.G, mesh.n_x);
 
   if (bc.values.rows() != 2 * energy.G) {
     throw std::runtime_error("bc.values must have 2 * energy.G = " + std::to_string(2 * energy.G) +
@@ -435,28 +391,29 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
                                std::to_string(mesh.n_x) + " (one per spatial cell)");
     }
 
-    std::map<std::string, Material_> materials;
+    // Materials keep the order they appear in the file; index_of turns the
+    // names in `regions` into positions in that list.
+    std::vector<Material> material_list;
+    std::map<std::string, int> index_of;
     const YAML::Node materials_node = requireNode(root, "materials");
     for (const auto& entry : materials_node) {
       const std::string name = entry.first.as<std::string>();
-      materials[name] = parseMaterial(entry.second, name, energy.G);
+      index_of[name] = static_cast<int>(material_list.size());
+      material_list.push_back(parseMaterial(entry.second, name, energy.G));
       LDCSD_LOG_DEBUG("parsed material '" + name + "'");
     }
+
+    std::vector<int> material_indices;
+    material_indices.reserve(region_materials.size());
     for (const std::string& name : region_materials) {
-      if (!materials.contains(name)) {
+      const auto found = index_of.find(name);
+      if (found == index_of.end()) {
         throw std::runtime_error("region references undefined material '" + name + "'");
       }
+      material_indices.push_back(found->second);
     }
 
-    xs.total = expandByRegion(region_materials, materials, energy.G, &Material_::sigma_t);
-    xs.S = expandByRegion(region_materials, materials, energy.G, &Material_::stopping_power_avg);
-    xs.S_bound =
-        expandByRegion(region_materials, materials, energy.G + 1, &Material_::stopping_power_bnd);
-
-    xs.scatter.resize(region_materials.size());
-    for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
-      xs.scatter[cell] = materials.at(region_materials[cell]).scattering;
-    }
+    xs.set_materials(std::move(material_list), std::move(material_indices));
 
     const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
     const std::vector<double> mu_raw =

@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <Eigen/Dense>
-#include <Eigen/Sparse>
 
 class Material {
 public:
@@ -28,7 +27,7 @@ public:
   void validate();
 };
 
-/// @brief Holds all problem data, cell-by cell. Energy structure, spatial mesh, cross sections,
+/// @brief Holds all problem data. Energy structure, spatial mesh, cross sections,
 /// angular quadrature, boundary conditions, external source
 /// @details Includes validation functions on every member struct. Callers are expected to validate
 /// all data before using it (i.e. Solver constructor). Validation checks for non-negativity,
@@ -72,30 +71,38 @@ public:
     void validate();
   };
 
-  /// @brief Cross sections and stopping power, per cell, per group.
+  /// @brief Cross sections and stopping power, stored per material with a cell -> material map.
+  /// @details Callers index by (group, cell) through the view functions below and never see the
+  /// material list; the indirection is a storage detail, not part of the interface.
   struct Xs {
-    double total_(int g, int i);
-    double S_(int g, int i);
-    double S_b_(int g, int i);
-    double S_up_(int g, int i);
-    double S_down_(int g, int i);
-    double scatter_(int from, int to, int i);
-    Eigen::MatrixXd& scatter_(int i);
+    // Group g's cross section / stopping power in cell i. S_up and S_down are
+    // the group's upper and lower energy boundary values -- S_up(g, i) is
+    // S_b(g, i) and S_down(g, i) is S_b(g + 1, i).
+    double total(int g, int i);
+    double S(int g, int i);
+    double S_b(int g, int i);
+    double S_up(int g, int i);
+    double S_down(int g, int i);
+
+    // Scattering from group `from` into group `to` in cell i, and cell i's
+    // whole G x G matrix (rows = from, columns = to).
+    double scatter(int from, int to, int i);
+    Eigen::MatrixXd& scatter(int i);
 
     // Replaces the per-material cross sections and the cell -> material map that
     // the view functions above read from. Every material is validated, and every
     // index must name a material in the list.
     void set_materials(std::vector<Material> materials, std::vector<int> indices);
 
-    Eigen::MatrixXd total;                            // group total xs, rows=G, cols=n_x
-    std::vector<Eigen::SparseMatrix<double>> scatter; // [cell], each G x G
-    Eigen::MatrixXd S;       // group-average stopping power, rows=G, cols=n_x
-    Eigen::MatrixXd S_bound; // stopping power at group boundaries, rows=G+1, cols=n_x
-
-    // Checks total/S/S_bound values are non-negative, and every scatter
-    // matrix entry is non-negative. Shape against mesh.n_x/energy.G is a
-    // cross-struct concern, checked by InputDeck::validate() instead.
+    // Checks every material's values are non-negative. Shape against
+    // mesh.n_x/energy.G is a cross-struct concern, checked by validateShape().
     void validate() const;
+
+    // Cross-struct shape check, called by InputDeck::validate(): the cell map
+    // covers exactly n_x cells and every material carries G groups. Only the
+    // group count is checked per material, because set_materials() has already
+    // established that a material's S, S_b and scatter agree with its total.
+    void validateShape(int G, int n_x) const;
 
   private:
     std::vector<Material> material_list;
@@ -130,9 +137,9 @@ public:
   // Reads and validates path_to_yaml, populating this deck's members.
   // Returns 0 if the file is valid; returns 1 early on the first error
   // found in the file (missing/malformed keys, undefined material
-  // references, mismatched sizes, etc.). Material names are used only to
-  // expand per-material YAML into the per-cell tables above; they are not
-  // retained on the deck.
+  // references, mismatched sizes, etc.). Each material named under
+  // `materials` becomes one entry in xs's material list, and `regions`
+  // becomes the cell -> material map into it.
   int read(const std::filesystem::path& path_to_yaml);
 
   /// @brief Calls each data member's own validate() and performs cross-struct checks (i.e. ensure

@@ -112,26 +112,33 @@ InputDeck makeResidualDeck() {
   deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
   deck.angle.w = Eigen::Vector2d(1.0, 1.0);
 
-  deck.xs.total = Eigen::MatrixXd(2, 2);
-  deck.xs.total << 1.3, 0.9, 0.7, 1.1;
-
+  // One material per cell, differing in every quantity, so a bug that reads
+  // the wrong cell's data shows up in the residual.
+  //
   // Nonzero scattering is what makes this test bite: the scattering source is
   // the only term that vanishes when phi == 0, so a bug in its assembly is
   // invisible on a first iteration and only shows up once phi is populated.
-  deck.xs.scatter.clear();
-  for (int i = 0; i < 2; ++i) {
-    Eigen::SparseMatrix<double> s(2, 2);
-    s.insert(0, 0) = 0.4 + 0.1 * i; // within-group, g0
-    s.insert(0, 1) = 0.3;           // downscatter g0 -> g1
-    s.insert(1, 1) = 0.5;           // within-group, g1
-    s.makeCompressed();
-    deck.xs.scatter.push_back(s);
-  }
+  Material left;
+  left.name = "left";
+  left.total = Eigen::Vector2d(1.3, 0.7);
+  left.S = Eigen::Vector2d(0.6, 0.35);
+  left.S_b = Eigen::Vector3d(0.7, 0.5, 0.3);
+  left.scatter = Eigen::MatrixXd::Zero(2, 2);
+  left.scatter(0, 0) = 0.4; // within-group, g0
+  left.scatter(0, 1) = 0.3; // downscatter g0 -> g1
+  left.scatter(1, 1) = 0.5; // within-group, g1
 
-  deck.xs.S = Eigen::MatrixXd(2, 2);
-  deck.xs.S << 0.6, 0.45, 0.35, 0.55;
-  deck.xs.S_bound = Eigen::MatrixXd(3, 2);
-  deck.xs.S_bound << 0.7, 0.5, 0.5, 0.4, 0.3, 0.6;
+  Material right;
+  right.name = "right";
+  right.total = Eigen::Vector2d(0.9, 1.1);
+  right.S = Eigen::Vector2d(0.45, 0.55);
+  right.S_b = Eigen::Vector3d(0.5, 0.4, 0.6);
+  right.scatter = Eigen::MatrixXd::Zero(2, 2);
+  right.scatter(0, 0) = 0.5;
+  right.scatter(0, 1) = 0.3;
+  right.scatter(1, 1) = 0.5;
+
+  deck.xs.set_materials({left, right}, {0, 1});
 
   deck.bc.values = Eigen::MatrixXd(4, 2);
   deck.bc.values << 1.1, 0.9, 1.3, 0.8, 0.7, 1.2, 0.6, 1.0;
@@ -194,10 +201,13 @@ InputDeck makeDeck() {
   deck.angle.M = 1;
   deck.angle.mu = Eigen::VectorXd::Constant(1, 0.5);
   deck.angle.w = Eigen::VectorXd::Constant(1, 2.0);
-  deck.xs.total = Eigen::MatrixXd::Constant(1, 1, 1.0);
-  deck.xs.scatter = {Eigen::SparseMatrix<double>(1, 1)};
-  deck.xs.S = Eigen::MatrixXd::Constant(1, 1, 1.0);
-  deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 1, 1.0);
+  Material material;
+  material.name = "uniform";
+  material.total = Eigen::VectorXd::Constant(1, 1.0);
+  material.S = Eigen::VectorXd::Constant(1, 1.0);
+  material.S_b = Eigen::VectorXd::Constant(2, 1.0);
+  material.scatter = Eigen::MatrixXd::Zero(1, 1);
+  deck.xs.set_materials({material}, {0});
   deck.bc.values = Eigen::MatrixXd::Constant(2, 1, 0.0);
   deck.source.values = {Eigen::MatrixXd::Constant(4, 1, 0.0)};
   deck.validate();
