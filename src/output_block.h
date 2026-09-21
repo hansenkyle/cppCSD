@@ -5,113 +5,91 @@
 // Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 // or without modification are permitted provided that the terms of the license are met.
 
-#ifndef OUTPUT_H
-#define OUTPUT_H
+#ifndef OUTPUT_BLOCK_H
+#define OUTPUT_BLOCK_H
 
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
-// A titled table of named, formatted values -- for solver output files
-// (e.g. solution.txt / solution.csv), not run metadata; see
-// docs/output-layout.md and OutputMetadata for that. txt()/csv() render the
-// table to a self-contained string that the caller appends to whatever file
-// they're assembling; OutputTable never touches the filesystem itself.
-//
-// A table is either column-major (addColumn: a named column of values, one
-// per row; rows are numbered 0..n_entries-1 implicitly) or row-major
-// (addRow: a named row of values, one per column; columns are numbered
-// 0..n_entries-1 in the header, each row prefixed with its name) --
-// row-major suits a "one row per variable, one column per index" layout
-// (e.g. cross sections tabulated one column per spatial cell). Orientation
-// is decided by whichever of addColumn()/addRow() is called first; mixing
-// the two on one table is an error.
-class OutputTable {
+// A titled block of output. Holds the title and builds the "[title]" +
+// blank line preamble that every render_txt() starts with; the derived
+// classes own the data and the body.
+class OutputUnit {
 public:
-  // How a value is rendered: as an integer, fixed-point, or scientific
-  // notation with `precision` digits after the decimal point (ignored for
-  // Integer).
-  enum class Notation { Integer, Fixed, Scientific };
-  struct Format {
-    Notation notation;
-    int precision;
-  };
+  explicit OutputUnit(std::string title = "") : title_(std::move(title)) {}
 
-  // Constructs a table with `n_entries` values along its indexed axis --
-  // rows for a column-major table, columns for a row-major one. n_entries
-  // must be positive.
-  OutputTable(std::string title, int n_entries);
+  void set_title(std::string title) { title_ = std::move(title); }
+  const std::string& title() const { return title_; }
 
-  // Appends a named column of n_entries values, one per row. Column-major;
-  // cannot be mixed with addRow() on the same table.
-  void addColumn(std::string name, Format format, std::vector<double> values);
-
-  // Appends a named row of n_entries values, one per column. Row-major;
-  // cannot be mixed with addColumn() on the same table.
-  void addRow(std::string name, Format format, std::vector<double> values);
-
-  // Appends a named column of n_entries already-rendered strings, one per
-  // row, aligned like any other column. For values that aren't numbers --
-  // a status word, a material name, a units label. Column-major, so it
-  // can't be mixed with addRow() either.
-  void addTextColumn(std::string name, std::vector<std::string> values);
-
-  // Renders as human-readable, whitespace-aligned text: a title line, then
-  // a right-justified header row and data rows (column-major), or a header
-  // row of numbered columns and left-labeled data rows (row-major). Column
-  // widths are computed from content, not hard-coded.
-  std::string txt() const;
-
-  // Renders as CSV: the title as a plain (uncommented) row, then
-  // comma-separated header and data rows.
-  std::string csv() const;
-
-private:
-  // A column or row of the table. Exactly one of `values` (numeric,
-  // rendered through `format`) and `text` (pre-rendered) is populated;
-  // `text` non-empty marks the entry as a text column.
-  struct Entry {
-    std::string name;
-    Format format;
-    std::vector<double> values;
-    std::vector<std::string> text;
-
-    bool isText() const { return !text.empty(); }
-  };
-  enum class Orientation { Unset, ColumnMajor, RowMajor };
-
-  std::string txtColumnMajor() const;
-  std::string txtRowMajor() const;
+protected:
+  std::string header() const { return "[" + title_ + "]\n\n"; }
 
   std::string title_;
-  int n_entries_;
-  Orientation orientation_ = Orientation::Unset;
-  std::vector<Entry> entries_;
 };
 
-// A titled list of key-value pairs (e.g. an output file header), in
-// insertion order.
-class OutputMetadata {
+// Key/value block, for metadata. Values are strings by the time they land
+// here -- there's no formatting to defer, unlike a table.
+class KeyValueOutput : public OutputUnit {
 public:
-  explicit OutputMetadata(std::string title);
+  using OutputUnit::OutputUnit;
 
-  // Appends one key: value pair.
-  void addEntry(std::string key, std::string value);
+  void add(std::string key, std::string value);
+  void add(std::string key, int value);
+  void add(int key, std::string value);
+  void add(int key, int value);
 
-  // Renders as "key : value" lines, with keys left-justified and values
-  // right-justified to widths computed from content.
-  std::string txt() const;
-
-  // Renders as plain "key,value" rows, unaligned.
-  std::string csv() const;
+  // "key  ....  value" per entry, in insertion order, with the dot runs
+  // sized so every value starts in the same column.
+  std::string render_txt() const;
 
 private:
-  struct Entry {
-    std::string key;
-    std::string value;
-  };
+  std::vector<std::pair<std::string, std::string>> entries_;
+};
 
-  std::string title_;
-  std::vector<Entry> entries_;
+// Storage shared by the two table orientations: named series of doubles,
+// all of the same length, kept numeric until render time.
+class Table : public OutputUnit {
+public:
+  using OutputUnit::OutputUnit;
+
+protected:
+  // Appends a named series. Throws std::invalid_argument if its length
+  // differs from the series already in the table.
+  void add_series(std::string name, std::vector<double> values);
+
+  std::vector<std::string> names_;
+  std::vector<std::vector<double>> series_;
+};
+
+// Table with its names across the top and one row per index:
+//
+//   x           scalar_flux  sigma_total
+//   1.0000e+00  1.2345e+12   1.5000e+12
+class VerticalTable : public Table {
+public:
+  using Table::Table;
+
+  void add_column(std::string name, std::vector<double> values) {
+    add_series(std::move(name), std::move(values));
+  }
+
+  // `format` is the std::format spec applied to every value.
+  std::string render_txt(std::string_view format = "{:.4e}") const;
+};
+
+// The same table rotated: names down the left, one row per series.
+class HorizontalTable : public Table {
+public:
+  using Table::Table;
+
+  void add_row(std::string name, std::vector<double> values) {
+    add_series(std::move(name), std::move(values));
+  }
+
+  // `format` is the std::format spec applied to every value.
+  std::string render_txt(std::string_view format = "{:.4e}") const;
 };
 
 #endif

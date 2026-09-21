@@ -8,242 +8,114 @@
 #include "output_block.h"
 
 #include <algorithm>
-#include <cmath>
-#include <iomanip>
-#include <sstream>
+#include <format>
 #include <stdexcept>
-#include <utility>
 
 namespace {
 
-constexpr std::size_t kColumnPadding = 2;
+constexpr std::size_t kColumnGap = 2;
+constexpr std::size_t kMinDots = 3;
 
-std::string formatValue(double value, const OutputTable::Format& format) {
-  std::ostringstream oss;
-  switch (format.notation) {
-  case OutputTable::Notation::Integer:
-    oss << std::llround(value);
-    break;
-  case OutputTable::Notation::Fixed:
-    oss << std::fixed << std::setprecision(format.precision) << value;
-    break;
-  case OutputTable::Notation::Scientific:
-    oss << std::scientific << std::setprecision(format.precision) << value;
-    break;
+// Renders a rectangular grid of already-stringified cells as whitespace-
+// aligned columns. The first `n_left` columns are row labels and are
+// left-justified; the rest hold values and are right-justified, so digits
+// line up under their header regardless of sign or width. Nothing is
+// padded past the last cell on a line, so no line carries trailing
+// whitespace.
+std::string render_grid(const std::vector<std::vector<std::string>>& rows, std::size_t n_left) {
+  if (rows.empty()) {
+    return "";
   }
-  return oss.str();
+
+  std::vector<std::size_t> widths(rows.front().size(), 0);
+  for (const std::vector<std::string>& row : rows) {
+    for (std::size_t c = 0; c < row.size(); ++c) {
+      widths[c] = std::max(widths[c], row[c].size());
+    }
+  }
+
+  std::string out;
+  for (const std::vector<std::string>& row : rows) {
+    for (std::size_t c = 0; c < row.size(); ++c) {
+      const std::string& cell = row[c];
+      const std::string fill(widths[c] - cell.size(), ' ');
+      const bool last = c + 1 == row.size();
+      if (c < n_left) {
+        out += last ? cell : cell + fill;
+      } else {
+        out += fill + cell;
+      }
+      if (!last) {
+        out += std::string(kColumnGap, ' ');
+      }
+    }
+    out += '\n';
+  }
+  return out;
 }
 
 } // namespace
 
-OutputTable::OutputTable(std::string title, int n_entries)
-    : title_(std::move(title)), n_entries_(n_entries) {
-  if (n_entries <= 0) {
-    throw std::invalid_argument("OutputTable: n_entries must be positive");
-  }
+void KeyValueOutput::add(std::string key, std::string value) {
+  entries_.emplace_back(std::move(key), std::move(value));
 }
 
-void OutputTable::addColumn(std::string name, Format format, std::vector<double> values) {
-  if (orientation_ == Orientation::RowMajor) {
-    throw std::invalid_argument("OutputTable::addColumn: table already uses addRow (row-major); "
-                                "the two can't be mixed on one table");
-  }
-  orientation_ = Orientation::ColumnMajor;
-  if (static_cast<int>(values.size()) != n_entries_) {
-    throw std::invalid_argument("OutputTable::addColumn: '" + name + "' has " +
-                                std::to_string(values.size()) + " values, expected " +
-                                std::to_string(n_entries_));
-  }
-  entries_.push_back(Entry{std::move(name), format, std::move(values)});
-}
+void KeyValueOutput::add(std::string key, int value) { add(std::move(key), std::to_string(value)); }
 
-void OutputTable::addRow(std::string name, Format format, std::vector<double> values) {
-  if (orientation_ == Orientation::ColumnMajor) {
-    throw std::invalid_argument("OutputTable::addRow: table already uses addColumn (column-major); "
-                                "the two can't be mixed on one table");
-  }
-  orientation_ = Orientation::RowMajor;
-  if (static_cast<int>(values.size()) != n_entries_) {
-    throw std::invalid_argument("OutputTable::addRow: '" + name + "' has " +
-                                std::to_string(values.size()) + " values, expected " +
-                                std::to_string(n_entries_));
-  }
-  entries_.push_back(Entry{std::move(name), format, std::move(values)});
-}
+void KeyValueOutput::add(int key, std::string value) { add(std::to_string(key), std::move(value)); }
 
-void OutputTable::addTextColumn(std::string name, std::vector<std::string> values) {
-  if (orientation_ == Orientation::RowMajor) {
-    throw std::invalid_argument("OutputTable::addTextColumn: table already uses addRow "
-                                "(row-major); the two can't be mixed on one table");
-  }
-  orientation_ = Orientation::ColumnMajor;
-  if (static_cast<int>(values.size()) != n_entries_) {
-    throw std::invalid_argument("OutputTable::addTextColumn: '" + name + "' has " +
-                                std::to_string(values.size()) + " values, expected " +
-                                std::to_string(n_entries_));
-  }
-  entries_.push_back(Entry{std::move(name), Format{Notation::Integer, 0}, {}, std::move(values)});
-}
+void KeyValueOutput::add(int key, int value) { add(std::to_string(key), std::to_string(value)); }
 
-std::string OutputTable::txtColumnMajor() const {
-  const std::size_t num_columns = entries_.size();
-  std::vector<std::vector<std::string>> formatted(num_columns);
-  std::vector<std::size_t> widths(num_columns);
-
-  for (std::size_t c = 0; c < num_columns; ++c) {
-    const Entry& column = entries_[c];
-    std::size_t width = column.name.size();
-    if (column.isText()) {
-      formatted[c] = column.text;
-      for (const std::string& text : column.text) {
-        width = std::max(width, text.size());
-      }
-    } else {
-      formatted[c].reserve(column.values.size());
-      for (double value : column.values) {
-        std::string text = formatValue(value, column.format);
-        width = std::max(width, text.size());
-        formatted[c].push_back(std::move(text));
-      }
-    }
-    widths[c] = width + kColumnPadding;
-  }
-
-  std::ostringstream out;
-  out << "--- " << title_ << " ---\n";
-  for (std::size_t c = 0; c < num_columns; ++c) {
-    out << std::setw(static_cast<int>(widths[c])) << entries_[c].name;
-  }
-  out << "\n";
-
-  for (int r = 0; r < n_entries_; ++r) {
-    for (std::size_t c = 0; c < num_columns; ++c) {
-      out << std::setw(static_cast<int>(widths[c])) << formatted[c][r];
-    }
-    out << "\n";
-  }
-  return out.str();
-}
-
-std::string OutputTable::txtRowMajor() const {
-  std::size_t label_width = 0;
-  for (const Entry& row : entries_) {
-    label_width = std::max(label_width, row.name.size());
-  }
-  label_width += kColumnPadding;
-
-  std::vector<std::vector<std::string>> formatted(entries_.size());
-  std::vector<std::size_t> widths(n_entries_);
-  for (int c = 0; c < n_entries_; ++c) {
-    widths[c] = std::to_string(c).size();
-  }
-  for (std::size_t r = 0; r < entries_.size(); ++r) {
-    const Entry& row = entries_[r];
-    formatted[r].reserve(n_entries_);
-    for (int c = 0; c < n_entries_; ++c) {
-      std::string text = formatValue(row.values[c], row.format);
-      widths[c] = std::max(widths[c], text.size());
-      formatted[r].push_back(std::move(text));
-    }
-  }
-  for (std::size_t c = 0; c < widths.size(); ++c) {
-    widths[c] += kColumnPadding;
-  }
-
-  std::ostringstream out;
-  out << "--- " << title_ << " ---\n";
-  out << std::setw(static_cast<int>(label_width)) << "";
-  for (int c = 0; c < n_entries_; ++c) {
-    out << std::setw(static_cast<int>(widths[c])) << c;
-  }
-  out << "\n";
-
-  for (std::size_t r = 0; r < entries_.size(); ++r) {
-    out << std::left << std::setw(static_cast<int>(label_width)) << entries_[r].name << std::right;
-    for (int c = 0; c < n_entries_; ++c) {
-      out << std::setw(static_cast<int>(widths[c])) << formatted[r][c];
-    }
-    out << "\n";
-  }
-  return out.str();
-}
-
-std::string OutputTable::txt() const {
-  if (orientation_ == Orientation::RowMajor) {
-    return txtRowMajor();
-  }
-  return txtColumnMajor();
-}
-
-std::string OutputTable::csv() const {
-  std::ostringstream out;
-  out << title_ << "\n";
-
-  if (orientation_ == Orientation::RowMajor) {
-    for (int c = 0; c < n_entries_; ++c) {
-      out << "," << c;
-    }
-    out << "\n";
-    for (const Entry& row : entries_) {
-      out << row.name;
-      for (int c = 0; c < n_entries_; ++c) {
-        out << "," << formatValue(row.values[c], row.format);
-      }
-      out << "\n";
-    }
-    return out.str();
-  }
-
-  const std::size_t num_columns = entries_.size();
-  for (std::size_t c = 0; c < num_columns; ++c) {
-    if (c > 0) {
-      out << ",";
-    }
-    out << entries_[c].name;
-  }
-  out << "\n";
-
-  for (int r = 0; r < n_entries_; ++r) {
-    for (std::size_t c = 0; c < num_columns; ++c) {
-      if (c > 0) {
-        out << ",";
-      }
-      const Entry& column = entries_[c];
-      out << (column.isText() ? column.text[r] : formatValue(column.values[r], column.format));
-    }
-    out << "\n";
-  }
-  return out.str();
-}
-
-OutputMetadata::OutputMetadata(std::string title) : title_(std::move(title)) {}
-
-void OutputMetadata::addEntry(std::string key, std::string value) {
-  entries_.push_back(Entry{std::move(key), std::move(value)});
-}
-
-std::string OutputMetadata::txt() const {
+std::string KeyValueOutput::render_txt() const {
   std::size_t key_width = 0;
-  std::size_t value_width = 0;
-  for (const Entry& entry : entries_) {
-    key_width = std::max(key_width, entry.key.size());
-    value_width = std::max(value_width, entry.value.size());
+  for (const auto& [key, value] : entries_) {
+    key_width = std::max(key_width, key.size());
   }
 
-  std::ostringstream out;
-  out << "--- " << title_ << " ---\n";
-  for (const Entry& entry : entries_) {
-    out << std::left << std::setw(static_cast<int>(key_width)) << entry.key << " : " << std::right
-        << std::setw(static_cast<int>(value_width)) << entry.value << "\n";
+  std::string out = header();
+  for (const auto& [key, value] : entries_) {
+    const std::size_t dots = key_width - key.size() + kMinDots;
+    out += key + std::string(kColumnGap, ' ') + std::string(dots, '.') +
+           std::string(kColumnGap, ' ') + value + '\n';
   }
-  return out.str();
+  return out;
 }
 
-std::string OutputMetadata::csv() const {
-  std::ostringstream out;
-  out << title_ << "\n";
-  for (const Entry& entry : entries_) {
-    out << entry.key << "," << entry.value << "\n";
+void Table::add_series(std::string name, std::vector<double> values) {
+  if (!series_.empty() && values.size() != series_.front().size()) {
+    throw std::invalid_argument("Table: '" + name + "' has " + std::to_string(values.size()) +
+                                " values, expected " + std::to_string(series_.front().size()));
   }
-  return out.str();
+  names_.push_back(std::move(name));
+  series_.push_back(std::move(values));
+}
+
+std::string VerticalTable::render_txt(std::string_view format) const {
+  if (series_.empty()) {
+    return header();
+  }
+
+  std::vector<std::vector<std::string>> rows;
+  rows.push_back(names_);
+  for (std::size_t i = 0; i < series_.front().size(); ++i) {
+    std::vector<std::string> row;
+    for (const std::vector<double>& column : series_) {
+      double value = column[i];
+      row.push_back(std::vformat(format, std::make_format_args(value)));
+    }
+    rows.push_back(std::move(row));
+  }
+  return header() + render_grid(rows, 0);
+}
+
+std::string HorizontalTable::render_txt(std::string_view format) const {
+  std::vector<std::vector<std::string>> rows;
+  for (std::size_t i = 0; i < series_.size(); ++i) {
+    std::vector<std::string> row{names_[i]};
+    for (double value : series_[i]) {
+      row.push_back(std::vformat(format, std::make_format_args(value)));
+    }
+    rows.push_back(std::move(row));
+  }
+  return header() + render_grid(rows, 1);
 }

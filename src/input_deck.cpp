@@ -17,22 +17,9 @@
 #include <yaml-cpp/yaml.h>
 
 #include "logger.h"
-#include "output_block.h"
 
 namespace {
 constexpr double kAngleWeightRelTol = 1e-4;
-constexpr int kEchoPrecision = 6;
-constexpr OutputTable::Format kSci{OutputTable::Notation::Scientific, kEchoPrecision};
-constexpr OutputTable::Format kInt{OutputTable::Notation::Integer, 0};
-
-std::vector<double> indexRange(int n) {
-  std::vector<double> values(n);
-  for (int i = 0; i < n; ++i) {
-    values[i] = i;
-  }
-  return values;
-}
-
 void requireNonNegative(const Eigen::MatrixXd& values, const std::string& name) {
   if (values.size() > 0 && values.minCoeff() < 0.0) {
     throw std::runtime_error(name + " must be non-negative");

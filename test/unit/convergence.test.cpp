@@ -101,7 +101,6 @@ TEST_SUITE("convergence") {
     CHECK(text.find("Convergence Totals") != std::string::npos);
     CHECK(text.find("Iteration History") != std::string::npos);
     CHECK(text.find("converged") != std::string::npos);
-    CHECK(text.find("MAX_ITER") != std::string::npos);
     CHECK(text.find("Unconverged groups") != std::string::npos);
     // Totals: two groups, three iterations, 1.75 s.
     CHECK(text.find("Total iterations") != std::string::npos);
