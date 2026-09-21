@@ -5,7 +5,7 @@
 // Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 // or without modification are permitted provided that the terms of the license are met.
 
-#include "output_manager.h"
+#include "file_manager.h"
 
 #include <algorithm>
 #include <charconv>
@@ -99,8 +99,8 @@ OutputManager::OutputManager(const fs::path& deck_dir) {
 
   LDCSD_LOG_INFO("created run directory '" + run_dir.string() + "'");
 
-  info_path = run_dir / "info";
-  log_path = run_dir / "log";
-  out_path = run_dir / "out";
-  results_path = run_dir / "results";
+  info_path = run_dir / "info.txt";
+  log_path = run_dir / "log.txt";
+  out_path = run_dir / "out.txt";
+  results_path = run_dir / "results.txt";
 }

@@ -109,7 +109,7 @@ public:
   /// xs has correct G). Call before using/copying data
   void validate();
 
-  std::string echo() const;
+  // std::string echo() const;
 
   Mesh mesh;
   Energy energy;

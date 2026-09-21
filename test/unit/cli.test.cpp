@@ -8,7 +8,10 @@
 #include "cli.h"
 
 #include <filesystem>
+#include <iostream>
 #include <optional>
+#include <sstream>
+#include <streambuf>
 #include <string>
 #include <vector>
 
@@ -26,6 +29,27 @@ std::vector<char*> makeArgv(std::vector<std::string>& storage) {
   }
   return argv;
 }
+
+// Swaps std::cout's and std::cerr's stream buffers for a discarded in-memory
+// one for the duration of its lifetime, so CLI11's usage and error text stays
+// out of the test log.
+class SuppressStdio {
+public:
+  SuppressStdio()
+      : old_out_(std::cout.rdbuf(sink_.rdbuf())), old_err_(std::cerr.rdbuf(sink_.rdbuf())) {}
+  ~SuppressStdio() {
+    std::cout.rdbuf(old_out_);
+    std::cerr.rdbuf(old_err_);
+  }
+
+  SuppressStdio(const SuppressStdio&) = delete;
+  SuppressStdio& operator=(const SuppressStdio&) = delete;
+
+private:
+  std::ostringstream sink_;
+  std::streambuf* old_out_;
+  std::streambuf* old_err_;
+};
 
 } // namespace
 
@@ -59,6 +83,7 @@ TEST_SUITE("parseArgs") {
     std::vector<std::string> storage = {"ldcsd"};
     std::vector<char*> argv = makeArgv(storage);
 
+    const SuppressStdio quiet;
     int exit_code = -1;
     const std::optional<std::filesystem::path> yaml_path =
         parseArgs(static_cast<int>(argv.size()), argv.data(), exit_code);
@@ -71,6 +96,7 @@ TEST_SUITE("parseArgs") {
     std::vector<std::string> storage = {"ldcsd", "deck.yaml", "extra.yaml"};
     std::vector<char*> argv = makeArgv(storage);
 
+    const SuppressStdio quiet;
     int exit_code = -1;
     const std::optional<std::filesystem::path> yaml_path =
         parseArgs(static_cast<int>(argv.size()), argv.data(), exit_code);
@@ -83,6 +109,7 @@ TEST_SUITE("parseArgs") {
     std::vector<std::string> storage = {"ldcsd", "--help"};
     std::vector<char*> argv = makeArgv(storage);
 
+    const SuppressStdio quiet;
     int exit_code = -1;
     const std::optional<std::filesystem::path> yaml_path =
         parseArgs(static_cast<int>(argv.size()), argv.data(), exit_code);

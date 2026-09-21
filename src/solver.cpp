@@ -146,7 +146,7 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
   // carries upscatter. The scalar flux is *not* reset between groups, so
   // group g starts from group g-1's converged answer (a warm start).
 
-  LDCSD_LOG_INFO("Begin source iteration", true);
+  LDCSD_LOG_INFO("Begin source iteration");
   convergence_ = ConvergenceHistory{};
 
   // initial guess (maybe provided)
@@ -201,13 +201,11 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
 
     if (converged) {
       LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
-                         std::to_string(iteration) + " iterations",
-                     true);
+                     std::to_string(iteration) + " iterations");
     } else {
       LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
-                         std::to_string(max_iterations) +
-                         "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff),
-                     true);
+                     std::to_string(max_iterations) +
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
     }
     psi_up = psi;
   }
@@ -527,26 +525,3 @@ void appendToFile(const std::filesystem::path& file_path, const std::string& tex
 }
 
 } // namespace
-
-void Solver::writeMetadata(const std::filesystem::path& file_path) const {
-  appendToFile(file_path, SolverFormatter::formatRunMetadata());
-}
-
-void Solver::writeInputDeckEcho(const std::filesystem::path& file_path) const {
-  appendToFile(file_path, input_deck.echo());
-}
-
-void Solver::writeResults(const std::filesystem::path& file_path,
-                          const Eigen::MatrixXd& scalar_flux,
-                          const std::vector<Eigen::MatrixXd>& angular_flux) const {
-  appendToFile(file_path, SolverFormatter::formatResults(scalar_flux, angular_flux, input_deck));
-}
-
-void Solver::writeResiduals(const std::filesystem::path& file_path,
-                            const std::vector<Eigen::MatrixXd>& residuals) const {
-  appendToFile(file_path, SolverFormatter::formatResiduals(residuals, input_deck));
-}
-
-void Solver::writeConvergence(const std::filesystem::path& file_path) const {
-  appendToFile(file_path, SolverFormatter::formatConvergence(convergence_));
-}

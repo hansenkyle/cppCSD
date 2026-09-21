@@ -8,13 +8,15 @@
 #include <optional>
 
 #include "cli.h"
+#include "file_manager.h"
 #include "input_deck.h"
 #include "logger.h"
-#include "output_manager.h"
 #include "solver.h"
+#include "terminal.h"
 
 int main(int argc, char** argv) {
   int exit_code = 0;
+
   const std::optional<std::filesystem::path> yaml_path = parseArgs(argc, argv, exit_code);
   if (!yaml_path.has_value()) {
     return exit_code;
@@ -22,8 +24,10 @@ int main(int argc, char** argv) {
 
   const std::filesystem::path deck_dir = std::filesystem::absolute(*yaml_path).parent_path();
   const OutputManager output(deck_dir);
+  Logger::configure(output.log_path);
+  Terminal::configure(output.out_path);
 
-  Logger::configure(output.log_path, output.out_path);
+  LDCSD_LOG(Channel::General, Level::Info, "General/info message");
   LDCSD_LOG_INFO("ldcsd starting, input deck: " + yaml_path->string());
 
   InputDeck deck;
@@ -35,13 +39,7 @@ int main(int argc, char** argv) {
   Solver solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
-  solver.writeMetadata(output.info_path);
-  solver.writeInputDeckEcho(output.info_path);
-
   const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
-
-  solver.writeConvergence(output.results_path);
-  solver.writeResults(output.results_path, phi, {});
 
   return solver.convergence().allConverged() ? 0 : 1;
 }

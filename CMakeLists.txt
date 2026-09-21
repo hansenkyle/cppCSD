@@ -79,9 +79,9 @@ FetchContent_MakeAvailable(CLI11)
 add_library(ldcsd_core STATIC
     src/convergence.cpp
     src/input_deck.cpp
-    src/output_manager.cpp
+    src/file_manager.cpp
     src/logger.cpp
-    src/output.cpp
+    src/output_block.cpp
     src/solver.cpp
     src/solver_formatter.cpp
     src/cli.cpp
@@ -123,9 +123,9 @@ if(LDCSD_BUILD_TESTS)
         test/unit/main.test.cpp
         test/unit/convergence.test.cpp
         test/unit/input_deck.test.cpp
-        test/unit/output_manager.test.cpp
+        test/unit/file_manager.test.cpp
         test/unit/logger.test.cpp
-        test/unit/output.test.cpp
+        test/unit/output_block.test.cpp
         test/unit/solver.test.cpp
         test/unit/solver_formatter.test.cpp
         test/unit/cli.test.cpp)
