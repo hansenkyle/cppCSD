@@ -1,0 +1,24 @@
+test/unit/cli.test.cpp
+  s_80d1fe52f83961::t_d0503f2785f3d9 11,13-14,33-53,86,99,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb3e95bfe7f45d3953887c5ac1b2f613b536716b",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_80d1fe52f83961": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c692f12-c32b-4e26-ba7f-0d489affafa1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
