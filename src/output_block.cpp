@@ -168,3 +168,14 @@ std::string HorizontalTable::render_txt(std::string_view format, int tabs) const
   }
   return indent(header() + render_grid(rows, 1), tabs);
 }
+
+std::string UnitGroup::render_txt(int tabs) const {
+  std::string out = header();
+  for (std::size_t i = 0; i < bodies_.size(); ++i) {
+    if (i > 0) {
+      out += '\n';
+    }
+    out += indent(bodies_[i], 1);
+  }
+  return indent(out, tabs);
+}

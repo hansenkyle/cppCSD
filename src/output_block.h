@@ -151,4 +151,28 @@ public:
   std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
+// One or more rendered units stacked into a single block, separated by
+// blank lines and indented one level under the group's own title. A group
+// is itself a unit, so groups nest -- each layer indents its contents one
+// step further than the layer above.
+class UnitGroup : public OutputUnit {
+public:
+  using OutputUnit::OutputUnit;
+
+  // Renders `unit` now and keeps the result. Extra arguments are passed
+  // through to the unit's own render_txt(), so a table can carry its
+  // format spec (e.g. add(table, "{:.2e}")). Anything with a render_txt()
+  // works, another UnitGroup included.
+  template <typename Unit, typename... Args> void add(const Unit& unit, Args&&... args) {
+    bodies_.push_back(unit.render_txt(std::forward<Args>(args)...));
+  }
+
+  // `tabs` indents the whole group by that many four-space runs, on top of
+  // the one level its contents already sit at.
+  std::string render_txt(int tabs = 0) const;
+
+private:
+  std::vector<std::string> bodies_;
+};
+
 #endif

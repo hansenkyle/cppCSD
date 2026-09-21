@@ -404,3 +404,59 @@ TEST_SUITE("OutputUnit") {
     CHECK(meta.render_txt(-1) == meta.render_txt());
   }
 }
+
+TEST_SUITE("UnitGroup") {
+  TEST_CASE("units are indented once and separated by a blank line") {
+    KeyValueOutput meta("Meta");
+    meta.add("n", 2);
+
+    HorizontalTable table;
+    table.add_row("x", {0.5, 1.5});
+
+    UnitGroup group("Group");
+    group.add(meta);
+    group.add(table, "{:.1f}");
+
+    const std::string expected = "[Group]\n"
+                                 "\n"
+                                 "    [Meta]\n"
+                                 "\n"
+                                 "    n  ...  2\n"
+                                 "\n"
+                                 "    x  0.5  1.5\n";
+    CHECK(group.render_txt() == expected);
+  }
+
+  TEST_CASE("a nested group indents another level") {
+    KeyValueOutput leaf;
+    leaf.add("k", "v");
+
+    UnitGroup inner("Inner");
+    inner.add(leaf);
+
+    UnitGroup outer("Outer");
+    outer.add(inner);
+
+    const std::string expected = "[Outer]\n"
+                                 "\n"
+                                 "    [Inner]\n"
+                                 "\n"
+                                 "        k  ...  v\n";
+    CHECK(outer.render_txt() == expected);
+  }
+
+  TEST_CASE("tabs indent the whole group on top of its own level") {
+    KeyValueOutput leaf;
+    leaf.add("k", "v");
+
+    UnitGroup group;
+    group.add(leaf);
+
+    CHECK(group.render_txt(1) == "        k  ...  v\n");
+  }
+
+  TEST_CASE("an empty group renders only its title") {
+    CHECK(UnitGroup("EMPTY").render_txt() == "[EMPTY]\n\n");
+    CHECK(UnitGroup().render_txt() == "");
+  }
+}
