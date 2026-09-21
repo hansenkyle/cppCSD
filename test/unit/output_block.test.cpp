@@ -7,8 +7,7 @@
 
 #include "output_block.h"
 
-#include <stdexcept>
-
+#include <Eigen/Core>
 #include <doctest.h>
 
 TEST_SUITE("KeyValueOutput") {
@@ -51,6 +50,16 @@ TEST_SUITE("KeyValueOutput") {
 
   TEST_CASE("an empty block still renders its title") {
     CHECK(KeyValueOutput("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled block renders only its entries") {
+    KeyValueOutput meta;
+    meta.add("A", "1");
+    meta.add("BB", "22");
+
+    const std::string expected = "A  ....  1\n"
+                                 "BB  ...  22\n";
+    CHECK(meta.render_txt() == expected);
   }
 
   TEST_CASE("tabs indent every line of the block by four spaces each") {
@@ -119,15 +128,77 @@ TEST_SUITE("VerticalTable") {
     CHECK(table.render_txt("{:.2f}") == expected);
   }
 
-  TEST_CASE("add_column rejects a column of a different length") {
+  TEST_CASE("a short column runs out partway down and leaves the rest of its cells blank") {
+    VerticalTable table("TEST");
+    table.add_column("x", {0.5, 1.5, 2.5});
+    table.add_column("y", {1.0});
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  x    y\n"
+                                 "0.5  1.0\n"
+                                 "1.5\n"
+                                 "2.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a gap in the middle of a row keeps the columns after it aligned") {
     VerticalTable table("TEST");
     table.add_column("x", {0.5, 1.5});
+    table.add_column("shortish", {1.0});
+    table.add_column("z", {2.0, 3.0});
 
-    CHECK_THROWS_AS(table.add_column("y", std::vector<double>{1.0}), std::invalid_argument);
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  x  shortish    z\n"
+                                 "0.5       1.0  2.0\n"
+                                 "1.5            3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_column accepts an Eigen vector") {
+    Eigen::VectorXd x(2);
+    x << 0.5, 1.5;
+
+    VerticalTable table("TEST");
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", x);
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  i    x\n"
+                                 "0.0  0.5\n"
+                                 "1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_column accepts a matrix row, which is not a contiguous vector") {
+    Eigen::MatrixXd m(2, 2);
+    m << 0.5, 1.5, 2.5, 3.5;
+
+    VerticalTable table;
+    table.add_column("row0", m.row(0));
+    table.add_column("col1", m.col(1));
+
+    const std::string expected = "row0  col1\n"
+                                 " 0.5   1.5\n"
+                                 " 1.5   3.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
   }
 
   TEST_CASE("an empty table still renders its title") {
     CHECK(VerticalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled table renders only its rows") {
+    VerticalTable table;
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", {0.5, 1.5});
+
+    const std::string expected = "  i    x\n"
+                                 "0.0  0.5\n"
+                                 "1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
   }
 
   TEST_CASE("tabs indent every line of the table by four spaces each") {
@@ -181,15 +252,63 @@ TEST_SUITE("HorizontalTable") {
     CHECK(table.render_txt("{:.2f}") == expected);
   }
 
-  TEST_CASE("add_row rejects a row of a different length") {
+  TEST_CASE("rows of different lengths each just end where their data does") {
     HorizontalTable table("TEST");
-    table.add_row("x", {0.5, 1.5});
+    table.add_row("x", {0.5, 1.5, 2.5});
+    table.add_row("yy", {2.0});
 
-    CHECK_THROWS_AS(table.add_row("y", std::vector<double>{1.0}), std::invalid_argument);
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "x   0.5  1.5  2.5\n"
+                                 "yy  2.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a longer row added after a short one still widens the shared columns") {
+    HorizontalTable table;
+    table.add_row("x", {0.5});
+    table.add_row("yy", {-20.0, 3.0});
+
+    const std::string expected = "x     0.5\n"
+                                 "yy  -20.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_row accepts an Eigen vector") {
+    Eigen::VectorXd values(2);
+    values << 1.2345e12, 1.5e12;
+
+    HorizontalTable table("TEST");
+    table.add_row("scalar_flux", values);
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "scalar_flux  1.2345e+12  1.5000e+12\n";
+    CHECK(table.render_txt() == expected);
+  }
+
+  TEST_CASE("add_row accepts an Eigen expression") {
+    Eigen::VectorXd values(2);
+    values << 1.0, 2.0;
+
+    HorizontalTable table;
+    table.add_row("doubled", 2.0 * values);
+
+    CHECK(table.render_txt("{:.1f}") == "doubled  2.0  4.0\n");
   }
 
   TEST_CASE("an empty table still renders its title") {
     CHECK(HorizontalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled table renders only its rows") {
+    HorizontalTable table;
+    table.add_row("x", {0.5, 1.5});
+    table.add_row("yy", {2.0, 3.0});
+
+    const std::string expected = "x   0.5  1.5\n"
+                                 "yy  2.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
   }
 
   TEST_CASE("tabs indent every line of the table by four spaces each") {
@@ -212,6 +331,29 @@ TEST_SUITE("OutputUnit") {
 
     CHECK(meta.title() == "LATER");
     CHECK(meta.render_txt() == "[LATER]\n\n");
+  }
+
+  TEST_CASE("set_title(\"\") drops the title line from a block that had one") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+    REQUIRE(meta.render_txt() == "[META]\n\nA  ...  1\n");
+
+    meta.set_title("");
+
+    CHECK(meta.render_txt() == "A  ...  1\n");
+  }
+
+  TEST_CASE("an untitled unit with no data renders nothing at all") {
+    CHECK(KeyValueOutput().render_txt() == "");
+    CHECK(VerticalTable().render_txt() == "");
+    CHECK(HorizontalTable().render_txt() == "");
+  }
+
+  TEST_CASE("tabs indent an untitled block's body, with no leading blank line") {
+    KeyValueOutput meta;
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(1) == "    A  ...  1\n");
   }
 
   TEST_CASE("the blank line under the title stays blank rather than becoming whitespace") {

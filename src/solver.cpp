@@ -530,3 +530,7 @@ void Solver::write_metadata(const std::filesystem::path& results_path,
   appendToFile(results_path,
                SolverFormatter::formatRunMetadata(input_deck, deck_path, "source iteration"));
 }
+
+void Solver::writeInputDeckEcho(const std::filesystem::path& results_path) const {
+  appendToFile(results_path, SolverFormatter::formatInputEcho(input_deck));
+}

@@ -104,9 +104,17 @@ public:
     // established that a material's S, S_b and scatter agree with its total.
     void validateShape(int G, int n_x) const;
 
+    std::vector<int> material_indices;
+    std::vector<std::string> material_names() const {
+      std::vector<std::string> names = {};
+      for (auto m : material_list) {
+        names.push_back(m.name);
+      }
+      return names;
+    }
+
   private:
     std::vector<Material> material_list;
-    std::vector<int> material_indices;
   };
 
   /// @brief Incoming angular flux at boundaries. Indexed by mu without knowledge of x

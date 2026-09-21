@@ -31,6 +31,8 @@ namespace SolverFormatter {
 std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
                               std::string method_name);
 
+std::string formatInputEcho(const InputDeck& deck);
+
 // "Scalar Flux" block, followed by one "Angular Flux - Group N" block per
 // entry in angular_flux (indexed like InputDeck::Source: one entry per
 // group, one ordinate per column).

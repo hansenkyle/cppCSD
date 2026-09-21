@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
   LDCSD_LOG_INFO("constructed Solver");
 
   solver.write_metadata(output.results_path, std::filesystem::absolute(*yaml_path));
+  solver.writeInputDeckEcho(output.results_path);
 
   const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
 

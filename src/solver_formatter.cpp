@@ -106,7 +106,23 @@ std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path
   metadata.add("n_cells", deck.mesh.n_x);
   metadata.add("n_angles", deck.angle.M);
   metadata.add("method", method_name);
-  return metadata.render_txt();
+  return metadata.render_txt() + "\n";
+}
+
+std::string formatInputEcho(const InputDeck& deck) {
+  std::string result = "[Input Echo]\n\n";
+  HorizontalTable spatialdata;
+  spatialdata.add_row("cell boundaries", deck.mesh.x_boundary);
+  spatialdata.add_row("dx", deck.mesh.dx);
+
+  HorizontalTable energydata;
+  energydata.add_row("group boundaries", deck.energy.E_boundary);
+  energydata.add_row("dE", deck.energy.dE);
+
+  result += spatialdata.render_txt("{:.2e}", 1) + "\n";
+  result += energydata.render_txt("{:.2e}", 1) + "\n";
+
+  return result;
 }
 
 std::string formatResults(const Eigen::MatrixXd& scalar_flux,
