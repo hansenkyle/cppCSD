@@ -1,0 +1,21 @@
+src/transport_operator.h
+  h_c6d403188ce57a 16,18,20-60,64
+src/transport_operator.cpp
+  h_c6d403188ce57a 10,12,15-223
+  h_c6d403188ce57a 11
+src/source_iteration.cpp
+  h_c6d403188ce57a 7-14
+src/source_iteration.h
+  h_c6d403188ce57a 11-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f9b33935116f3a6ea72cff6d5842b99590fbe96",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
