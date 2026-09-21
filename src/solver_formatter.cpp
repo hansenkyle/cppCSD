@@ -119,20 +119,38 @@ std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path
 
 std::string formatInputEcho(const InputDeck& deck) {
 
-  UnitGroup input_echo("Input Echo");
+  std::vector<int> x_index = intseq(deck.mesh.n_x);
+  std::vector<int> e_index = intseq(deck.energy.G);
+
+  UnitGroup input_echo("input echo");
 
   HorizontalTable spatialdata;
-  spatialdata.add_row("i", intseq(deck.mesh.n_x));
+  spatialdata.add_row("i", x_index);
   spatialdata.add_row("dx", deck.mesh.dx);
   spatialdata.add_row("material", deck.xs.material_names());
   spatialdata.add_row("cell bounds", deck.mesh.x_boundary);
 
   HorizontalTable energydata;
-  energydata.add_row("g", intseq(deck.energy.G));
+  energydata.add_row("g", e_index);
   energydata.add_row("dE", deck.energy.dE);
   energydata.add_row("group boundaries", deck.energy.E_boundary);
 
-  UnitGroup materials("Materials");
+  VerticalTable quadrature("angular quadrature");
+  quadrature.add_column("m", intseq(deck.angle.M));
+  quadrature.add_column("mu", deck.angle.mu);
+  quadrature.add_column("w", deck.angle.w);
+
+  VerticalTable boundary("boundary conditions");
+  boundary.add_column("m", intseq(deck.angle.M));
+  for (int gplusone : e_index) {
+    int g = gplusone - 1;
+    boundary.add_column("g" + std::to_string(gplusone) + "_up",
+                        deck.bc[g](0, Eigen::placeholders::all));
+    boundary.add_column("g" + std::to_string(gplusone) + "_down",
+                        deck.bc[g](1, Eigen::placeholders::all));
+  }
+
+  UnitGroup materials("materials");
 
   for (auto m : deck.xs.material_list) {
     // make material's own block
@@ -146,9 +164,9 @@ std::string formatInputEcho(const InputDeck& deck) {
 
     HorizontalTable scatter("scattering matrix (from, to)");
     scatter.add_row("", intseq(deck.energy.G));
-    for (int gp1 : intseq(deck.energy.G)) {
-      int g = gp1 - 1;
-      scatter.add_row(std::to_string(gp1), m.scatter(g, Eigen::placeholders::all));
+    for (int gplusone : intseq(deck.energy.G)) {
+      int g = gplusone - 1;
+      scatter.add_row(std::to_string(gplusone), m.scatter(g, Eigen::placeholders::all));
     }
 
     mat.add(xs_t_and_s, "{:.5e}");
@@ -160,6 +178,8 @@ std::string formatInputEcho(const InputDeck& deck) {
 
   input_echo.add(spatialdata, "{:.2e}");
   input_echo.add(energydata, "{:.2e}");
+  input_echo.add(quadrature, "{:.4e}");
+  input_echo.add(boundary, "{:.4e}");
   input_echo.add(materials);
 
   return input_echo.render_txt();
