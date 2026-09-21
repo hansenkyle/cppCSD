@@ -41,8 +41,9 @@ public:
   void add(int key, int value);
 
   // "key  ....  value" per entry, in insertion order, with the dot runs
-  // sized so every value starts in the same column.
-  std::string render_txt() const;
+  // sized so every value starts in the same column. `tabs` indents the
+  // whole block by that many four-space runs.
+  std::string render_txt(int tabs = 0) const;
 
 private:
   std::vector<std::pair<std::string, std::string>> entries_;
@@ -75,8 +76,9 @@ public:
     add_series(std::move(name), std::move(values));
   }
 
-  // `format` is the std::format spec applied to every value.
-  std::string render_txt(std::string_view format = "{:.4e}") const;
+  // `format` is the std::format spec applied to every value; `tabs`
+  // indents the whole block by that many four-space runs.
+  std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
 // The same table rotated: names down the left, one row per series.
@@ -88,8 +90,9 @@ public:
     add_series(std::move(name), std::move(values));
   }
 
-  // `format` is the std::format spec applied to every value.
-  std::string render_txt(std::string_view format = "{:.4e}") const;
+  // `format` is the std::format spec applied to every value; `tabs`
+  // indents the whole block by that many four-space runs.
+  std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
 #endif

@@ -15,6 +15,29 @@ namespace {
 
 constexpr std::size_t kColumnGap = 2;
 constexpr std::size_t kMinDots = 3;
+constexpr std::size_t kTabWidth = 4;
+
+// Prefixes every line of `text` with `tabs` four-space runs. Blank lines
+// are left as-is, so indenting a block never gives it a line made only of
+// whitespace.
+std::string indent(const std::string& text, int tabs) {
+  if (tabs <= 0) {
+    return text;
+  }
+
+  const std::string pad(kTabWidth * static_cast<std::size_t>(tabs), ' ');
+  std::string out;
+  for (std::size_t start = 0; start < text.size();) {
+    const std::size_t newline = text.find('\n', start);
+    const std::size_t stop = (newline == std::string::npos) ? text.size() : newline + 1;
+    if (text[start] != '\n') {
+      out += pad;
+    }
+    out.append(text, start, stop - start);
+    start = stop;
+  }
+  return out;
+}
 
 // Renders a rectangular grid of already-stringified cells as whitespace-
 // aligned columns. The first `n_left` columns are row labels and are
@@ -66,7 +89,7 @@ void KeyValueOutput::add(int key, std::string value) { add(std::to_string(key), 
 
 void KeyValueOutput::add(int key, int value) { add(std::to_string(key), std::to_string(value)); }
 
-std::string KeyValueOutput::render_txt() const {
+std::string KeyValueOutput::render_txt(int tabs) const {
   std::size_t key_width = 0;
   for (const auto& [key, value] : entries_) {
     key_width = std::max(key_width, key.size());
@@ -78,7 +101,7 @@ std::string KeyValueOutput::render_txt() const {
     out += key + std::string(kColumnGap, ' ') + std::string(dots, '.') +
            std::string(kColumnGap, ' ') + value + '\n';
   }
-  return out;
+  return indent(out, tabs);
 }
 
 void Table::add_series(std::string name, std::vector<double> values) {
@@ -90,9 +113,9 @@ void Table::add_series(std::string name, std::vector<double> values) {
   series_.push_back(std::move(values));
 }
 
-std::string VerticalTable::render_txt(std::string_view format) const {
+std::string VerticalTable::render_txt(std::string_view format, int tabs) const {
   if (series_.empty()) {
-    return header();
+    return indent(header(), tabs);
   }
 
   std::vector<std::vector<std::string>> rows;
@@ -105,10 +128,10 @@ std::string VerticalTable::render_txt(std::string_view format) const {
     }
     rows.push_back(std::move(row));
   }
-  return header() + render_grid(rows, 0);
+  return indent(header() + render_grid(rows, 0), tabs);
 }
 
-std::string HorizontalTable::render_txt(std::string_view format) const {
+std::string HorizontalTable::render_txt(std::string_view format, int tabs) const {
   std::vector<std::vector<std::string>> rows;
   for (std::size_t i = 0; i < series_.size(); ++i) {
     std::vector<std::string> row{names_[i]};
@@ -117,5 +140,5 @@ std::string HorizontalTable::render_txt(std::string_view format) const {
     }
     rows.push_back(std::move(row));
   }
-  return header() + render_grid(rows, 1);
+  return indent(header() + render_grid(rows, 1), tabs);
 }

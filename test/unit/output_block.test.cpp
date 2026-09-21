@@ -52,6 +52,18 @@ TEST_SUITE("KeyValueOutput") {
   TEST_CASE("an empty block still renders its title") {
     CHECK(KeyValueOutput("EMPTY").render_txt() == "[EMPTY]\n\n");
   }
+
+  TEST_CASE("tabs indent every line of the block by four spaces each") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+    meta.add("BB", "22");
+
+    const std::string expected = "        [META]\n"
+                                 "\n"
+                                 "        A  ....  1\n"
+                                 "        BB  ...  22\n";
+    CHECK(meta.render_txt(2) == expected);
+  }
 }
 
 TEST_SUITE("VerticalTable") {
@@ -117,6 +129,19 @@ TEST_SUITE("VerticalTable") {
   TEST_CASE("an empty table still renders its title") {
     CHECK(VerticalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
   }
+
+  TEST_CASE("tabs indent every line of the table by four spaces each") {
+    VerticalTable table("TEST");
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", {0.5, 1.5});
+
+    const std::string expected = "    [TEST]\n"
+                                 "\n"
+                                 "      i    x\n"
+                                 "    0.0  0.5\n"
+                                 "    1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}", 1) == expected);
+  }
 }
 
 TEST_SUITE("HorizontalTable") {
@@ -166,6 +191,18 @@ TEST_SUITE("HorizontalTable") {
   TEST_CASE("an empty table still renders its title") {
     CHECK(HorizontalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
   }
+
+  TEST_CASE("tabs indent every line of the table by four spaces each") {
+    HorizontalTable table("TEST");
+    table.add_row("x", {0.5, 1.5});
+    table.add_row("yy", {2.0, 3.0});
+
+    const std::string expected = "    [TEST]\n"
+                                 "\n"
+                                 "    x   0.5  1.5\n"
+                                 "    yy  2.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}", 1) == expected);
+  }
 }
 
 TEST_SUITE("OutputUnit") {
@@ -175,5 +212,20 @@ TEST_SUITE("OutputUnit") {
 
     CHECK(meta.title() == "LATER");
     CHECK(meta.render_txt() == "[LATER]\n\n");
+  }
+
+  TEST_CASE("the blank line under the title stays blank rather than becoming whitespace") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(1) == "    [META]\n\n    A  ...  1\n");
+  }
+
+  TEST_CASE("a non-positive tab count leaves the block unindented") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(0) == meta.render_txt());
+    CHECK(meta.render_txt(-1) == meta.render_txt());
   }
 }
