@@ -282,6 +282,61 @@ TEST_CASE("InputDeck::validate rejects a source group shaped against the wrong n
   CHECK_THROWS_AS(deck.validate(), std::runtime_error);
 }
 
+TEST_CASE("InputDeck::validate computes the source's angular moments") {
+  InputDeck deck = makeValidDeck();
+  deck.angle.mu = Eigen::Vector2d(-0.5, 0.5);
+  deck.angle.w = Eigen::Vector2d(0.8, 1.2);
+  // Group g, ordinate m: every row of the group holds the same value, so the
+  // moments are checked against a hand-computed quadrature sum per group.
+  deck.source.values[0] = Eigen::MatrixXd::Zero(8, 2);
+  deck.source.values[0].col(0).setConstant(2.0);
+  deck.source.values[0].col(1).setConstant(3.0);
+  deck.source.values[1] = Eigen::MatrixXd::Zero(8, 2);
+  deck.source.values[1].col(0).setConstant(10.0);
+  deck.source.values[1].col(1).setConstant(0.0);
+
+  deck.validate();
+
+  REQUIRE(deck.source.q0.size() == 2);
+  REQUIRE(deck.source.q1.size() == 2);
+  CHECK(deck.source.q0[0].size() == 8); // 4 * mesh.n_x
+  CHECK(deck.source.q1[0].size() == 8);
+
+  // q0 = sum_m w_m q_m, q1 = sum_m w_m mu_m q_m.
+  CHECK(deck.source.q0[0](0) == doctest::Approx(0.8 * 2.0 + 1.2 * 3.0));
+  CHECK(deck.source.q1[0](7) == doctest::Approx(0.8 * -0.5 * 2.0 + 1.2 * 0.5 * 3.0));
+  CHECK(deck.source.q0[1](3) == doctest::Approx(0.8 * 10.0));
+  CHECK(deck.source.q1[1](3) == doctest::Approx(0.8 * -0.5 * 10.0));
+}
+
+TEST_CASE("the source's first moment is negative when the source leans backward") {
+  InputDeck deck = makeValidDeck();
+  deck.source.values[0] = Eigen::MatrixXd::Zero(8, 2);
+  deck.source.values[0].col(0).setConstant(5.0); // mu = -0.5 only
+
+  deck.validate();
+
+  CHECK(deck.source.q0[0](0) > 0.0);
+  CHECK(deck.source.q1[0](0) < 0.0);
+}
+
+TEST_CASE("InputDeck::validate resizes the source moments when the group count shrinks") {
+  InputDeck deck = makeValidDeck();
+  deck.validate();
+  REQUIRE(deck.source.q0.size() == 2);
+
+  // Drop to a single group; the stale second entry must not survive.
+  deck.energy.G = 1;
+  deck.energy.E_boundary = Eigen::Vector2d(2.0, 1.0);
+  deck.xs.set_materials({makeMaterial("water", 1, 0.0)}, {0, 0});
+  deck.bc.values = Eigen::MatrixXd::Constant(2, 2, 0.0);
+  deck.source.values = {Eigen::MatrixXd::Constant(8, 2, 1.0)};
+  deck.validate();
+
+  CHECK(deck.source.q0.size() == 1);
+  CHECK(deck.source.q1.size() == 1);
+}
+
 TEST_CASE("InputDeck::Source::validate accepts non-negative values") {
   InputDeck::Source source;
   source.values = {Eigen::MatrixXd::Constant(4, 2, 1.0)};
