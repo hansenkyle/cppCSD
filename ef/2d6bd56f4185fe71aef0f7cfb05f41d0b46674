@@ -1,0 +1,22 @@
+src/solver.cpp
+  h_250041054ad857 531
+  h_250041054ad857 530
+src/solver_formatter.cpp
+  h_250041054ad857 100-101,108
+test/unit/solver_formatter.test.cpp
+  h_250041054ad857 43,45
+  h_250041054ad857 42
+src/solver_formatter.h
+  h_250041054ad857 31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef2d6bd56f4185fe71aef0f7cfb05f41d0b46674",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
