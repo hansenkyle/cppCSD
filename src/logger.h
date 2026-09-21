@@ -61,24 +61,29 @@ private:
 #define LDCSD_LOG_TRACE(...) ((void)0)
 #define LDCSD_LOG_DEBUG(...) ((void)0)
 #endif
-#define LDCSD_LOG_TRACE_DEFAULT(message) Logger::instance().log(Channel::General, Level::Trace, message)
+#define LDCSD_LOG_TRACE_DEFAULT(message)                                                           \
+  Logger::instance().log(Channel::General, Level::Trace, message)
 #define LDCSD_LOG_TRACE_CH(channel, message) Logger::instance().log(channel, Level::Trace, message)
-#define LDCSD_LOG_DEBUG_DEFAULT(message) Logger::instance().log(Channel::General, Level::Debug, message)
+#define LDCSD_LOG_DEBUG_DEFAULT(message)                                                           \
+  Logger::instance().log(Channel::General, Level::Debug, message)
 #define LDCSD_LOG_DEBUG_CH(channel, message) Logger::instance().log(channel, Level::Debug, message)
 
 #define LDCSD_LOG_INFO(...)                                                                        \
   LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_INFO_CH, LDCSD_LOG_INFO_DEFAULT)(__VA_ARGS__)
-#define LDCSD_LOG_INFO_DEFAULT(message) Logger::instance().log(Channel::General, Level::Info, message)
+#define LDCSD_LOG_INFO_DEFAULT(message)                                                            \
+  Logger::instance().log(Channel::General, Level::Info, message)
 #define LDCSD_LOG_INFO_CH(channel, message) Logger::instance().log(channel, Level::Info, message)
 
 #define LDCSD_LOG_WARN(...)                                                                        \
   LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_WARN_CH, LDCSD_LOG_WARN_DEFAULT)(__VA_ARGS__)
-#define LDCSD_LOG_WARN_DEFAULT(message) Logger::instance().log(Channel::General, Level::Warn, message)
+#define LDCSD_LOG_WARN_DEFAULT(message)                                                            \
+  Logger::instance().log(Channel::General, Level::Warn, message)
 #define LDCSD_LOG_WARN_CH(channel, message) Logger::instance().log(channel, Level::Warn, message)
 
 #define LDCSD_LOG_ERROR(...)                                                                       \
   LDCSD_LOG_PICK_ARITY(__VA_ARGS__, LDCSD_LOG_ERROR_CH, LDCSD_LOG_ERROR_DEFAULT)(__VA_ARGS__)
-#define LDCSD_LOG_ERROR_DEFAULT(message) Logger::instance().log(Channel::General, Level::Error, message)
+#define LDCSD_LOG_ERROR_DEFAULT(message)                                                           \
+  Logger::instance().log(Channel::General, Level::Error, message)
 #define LDCSD_LOG_ERROR_CH(channel, message) Logger::instance().log(channel, Level::Error, message)
 
 // Generic escape hatch when both channel and level are runtime values rather
