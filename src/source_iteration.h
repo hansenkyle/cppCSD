@@ -8,4 +8,17 @@
 #ifndef SOURCE_ITERATION_H
 #define SOURCE_ITERATION_H
 
+#include "input_deck.h"
+#include "method.h"
+#include "transport_operator.h"
+
+class SourceIteration : public Method {
+public:
+  SourceIteration(InputDeck input_deck);
+
+private:
+  InputDeck input_deck;
+  TransportOperator transport_operator;
+};
+
 #endif

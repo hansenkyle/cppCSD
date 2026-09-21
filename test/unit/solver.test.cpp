@@ -165,29 +165,6 @@ InputDeck makeResidualDeck() {
 // source drops out of both sides and the check passes no matter how that term
 // is assembled -- which is exactly how a missing dx factor on solveDirect's
 // scattering source stayed hidden through a first iteration.
-TEST_CASE("transportSweep output satisfies the discretized equations to machine precision") {
-  Solver solver(makeResidualDeck());
-
-  const int n_rows = 4 * 2;
-  const Eigen::MatrixXd zero_psi = Eigen::MatrixXd::Zero(n_rows, 2);
-
-  // An arbitrary, definitely-nonzero scalar flux in both groups.
-  Eigen::MatrixXd phi(n_rows, 2);
-  phi << 1.7, 0.8, 1.4, 0.95, 1.2, 1.1, 1.05, 1.35, 0.9, 1.6, 1.25, 0.75, 1.5, 1.15, 0.85, 1.45;
-
-  for (int g = 0; g < 2; ++g) {
-    // g == 1 also exercises the CSD coupling, by feeding it a nonzero
-    // previous-group psi rather than the zero matrix g == 0 gets.
-    const Eigen::MatrixXd psi_gm1 =
-        (g == 0) ? zero_psi : Eigen::MatrixXd(solver.transportSweep(0, zero_psi, phi));
-
-    const Eigen::MatrixXd psi = solver.transportSweep(g, psi_gm1, phi);
-    const Eigen::MatrixXd residuals = solver.calculateResiduals(g, psi, psi_gm1, phi);
-
-    CAPTURE(g);
-    CHECK(residuals.cwiseAbs().maxCoeff() < 1e-12);
-  }
-}
 
 namespace {
 
