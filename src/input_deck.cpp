@@ -264,6 +264,26 @@ void InputDeck::Energy::validate() {
   }
 }
 
+double InputDeck::Xs::total_(int g, int i) { return material_list[material_indices[i]].total(g); }
+
+double InputDeck::Xs::S_(int g, int i) { return material_list[material_indices[i]].S(g); }
+
+double InputDeck::Xs::S_b_(int g, int i) { return material_list[material_indices[i]].S_b(g); }
+
+double InputDeck::Xs::S_up_(int g, int i) { return material_list[material_indices[i]].S_b(g); }
+
+double InputDeck::Xs::S_down_(int g, int i) {
+  return material_list[material_indices[i]].S_b(g + 1);
+}
+
+double InputDeck::Xs::scatter_(int from, int to, int i) {
+  return material_list[material_indices[i]].scatter(from, to);
+}
+
+Eigen::MatrixXd& InputDeck::Xs::scatter_(int i) {
+  return material_list[material_indices[i]].scatter;
+}
+
 void InputDeck::Angle::validate() {
   if (M <= 0) {
     throw std::runtime_error("angle.M must be positive");

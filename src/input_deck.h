@@ -74,6 +74,13 @@ public:
 
   /// @brief Cross sections and stopping power, per cell, per group.
   struct Xs {
+    double total_(int g, int i);
+    double S_(int g, int i);
+    double S_b_(int g, int i);
+    double S_up_(int g, int i);
+    double S_down_(int g, int i);
+    double scatter_(int from, int to, int i);
+    Eigen::MatrixXd& scatter_(int i);
     Eigen::MatrixXd total;                            // group total xs, rows=G, cols=n_x
     std::vector<Eigen::SparseMatrix<double>> scatter; // [cell], each G x G
     Eigen::MatrixXd S;       // group-average stopping power, rows=G, cols=n_x
