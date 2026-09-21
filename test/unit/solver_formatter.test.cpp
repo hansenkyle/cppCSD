@@ -22,10 +22,13 @@ InputDeck makeDeck() {
   deck.angle.M = 1;
   deck.angle.mu = Eigen::VectorXd::Constant(1, 0.5);
   deck.angle.w = Eigen::VectorXd::Constant(1, 2.0);
-  deck.xs.total = Eigen::MatrixXd::Constant(1, 1, 1.0);
-  deck.xs.scatter = {Eigen::SparseMatrix<double>(1, 1)};
-  deck.xs.S = Eigen::MatrixXd::Constant(1, 1, 1.0);
-  deck.xs.S_bound = Eigen::MatrixXd::Constant(2, 1, 1.0);
+  Material material;
+  material.name = "uniform";
+  material.total = Eigen::VectorXd::Constant(1, 1.0);
+  material.S = Eigen::VectorXd::Constant(1, 1.0);
+  material.S_b = Eigen::VectorXd::Constant(2, 1.0);
+  material.scatter = Eigen::MatrixXd::Zero(1, 1);
+  deck.xs.set_materials({material}, {0});
   deck.bc.values = Eigen::MatrixXd::Constant(2, 1, 0.0);
   deck.source.values = {Eigen::MatrixXd::Constant(4, 1, 0.0)};
   deck.validate();

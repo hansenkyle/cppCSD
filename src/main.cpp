@@ -32,7 +32,6 @@ int main(int argc, char** argv) {
 
   InputDeck deck;
   if (deck.read(*yaml_path) != 0) {
-    // read() has already logged the specific failure.
     return 1;
   }
 
