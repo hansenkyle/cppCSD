@@ -83,6 +83,9 @@ add_library(ldcsd_core STATIC
     src/logger.cpp
     src/output_block.cpp
     src/solver.cpp
+    src/transport_operator.cpp
+    src/method.cpp
+    src/source_iteration.cpp
     src/solver_formatter.cpp
     src/cli.cpp
 )
@@ -127,6 +130,9 @@ if(LDCSD_BUILD_TESTS)
         test/unit/logger.test.cpp
         test/unit/output_block.test.cpp
         test/unit/solver.test.cpp
+        test/unit/transport_operator.test.cpp
+        test/unit/source_iteration.test.cpp
+        test/unit/method.test.cpp
         test/unit/solver_formatter.test.cpp
         test/unit/cli.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
