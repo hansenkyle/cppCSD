@@ -97,9 +97,13 @@ std::vector<std::string> ordinateLabels(const InputDeck& deck) {
 
 namespace SolverFormatter {
 
-std::string formatRunMetadata() {
-  KeyValueOutput metadata("Run Metadata");
-  metadata.add("Run time", timestamp());
+std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path) {
+  KeyValueOutput metadata("Run Info");
+  metadata.add("execution date/time", timestamp());
+  metadata.add("input deck path", deck_path.string());
+  metadata.add("n_groups", deck.energy.G);
+  metadata.add("n_cells", deck.mesh.n_x);
+  metadata.add("n_angles", deck.angle.M);
   return metadata.render_txt();
 }
 

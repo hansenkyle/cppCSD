@@ -8,6 +8,7 @@
 #ifndef SOLVER_FORMATTER_H
 #define SOLVER_FORMATTER_H
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -24,10 +25,10 @@
 // write schedule), not *how* it's laid out as text.
 namespace SolverFormatter {
 
-// "Run Metadata" block. Currently just the run's start time; will grow to
-// include solver configuration and convergence criteria once Solver
-// exposes them.
-std::string formatRunMetadata();
+// "run info" block: when the run happened, which deck it came from, and
+// the problem's dimensions. deck_path is recorded as-is, so the caller
+// decides whether it reads as absolute or relative.
+std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path);
 
 // "Scalar Flux" block, followed by one "Angular Flux - Group N" block per
 // entry in angular_flux (indexed like InputDeck::Source: one entry per
