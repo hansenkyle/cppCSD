@@ -1,0 +1,17 @@
+src/input_deck.h
+  h_c6d403188ce57a 110-111
+src/solver_formatter.cpp
+  h_c6d403188ce57a 96-103,121-123,125,127-128,131,133,135,136-152,154-155,157-163,165
+  h_c6d403188ce57a 134,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "820a40b1ba7ec08f8d766e58358dac108f38cc35",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
