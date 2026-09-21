@@ -1,0 +1,41 @@
+test/unit/solver.test.cpp
+  s_e171da6d080c0a::t_bc923422526399 115-117,121-141,204-210
+src/input_deck.cpp
+  s_e171da6d080c0a::t_a9d56b5ece4e55 256,258,260,262,264,266,311-329,347
+  s_e171da6d080c0a::t_fedbcb04acf70f 24,49-52,59-62,64,138-142,146-151
+  s_e171da6d080c0a::t_f9fc982959d461 394-397,401-402,405-407,409-410,413,416
+  s_e171da6d080c0a::t_7b1d3fbb6e38ad 270
+test/unit/input_deck.test.cpp
+  s_e171da6d080c0a::t_5c9ec912fbefed 42,107,109-112,114-115,234,236,241,243,300,308-309,311-314,317,322-325,327,329,424-427,430-432,435-437,440,442-443,447,450-453,456-457,465,469,472-473,483
+  s_e171da6d080c0a::t_7b1d3fbb6e38ad 302-303
+test/unit/solver_formatter.test.cpp
+  s_e171da6d080c0a::t_bc923422526399 25-31
+src/solver.cpp
+  s_e171da6d080c0a::t_7b1d3fbb6e38ad 77-80,91-94,110-111,123-126,383-384
+  s_e171da6d080c0a::t_6074c1be300961 50,73,87,105,109,119,326,351,381-382
+src/input_deck.h
+  s_e171da6d080c0a::t_6364929debe274 74-76,78-90,97-98,101-105
+  s_e171da6d080c0a::t_df00cf26cc819a 30,140-142
+  s_e171da6d080c0a::t_52ebe11d6fe315 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf7e7e97e38ac7c64cc529d273b3b5d09f058192",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e171da6d080c0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68aff2a8-8657-4cdb-bc35-78bd19987d6f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
