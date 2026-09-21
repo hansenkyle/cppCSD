@@ -17,22 +17,41 @@
 
 #include <Eigen/Core>
 
-// A block of output. Holds the title and builds the "[title]" + blank
-// line preamble that every render_txt() starts with; the derived classes
-// own the data and the body. The title is optional: an empty one renders
-// no preamble at all, so the block is just its body -- for a unit nested
-// under a heading something else already wrote.
+// A block of output. Holds the title and optional description, and builds
+// the preamble that every render_txt() starts with: "[title]", the
+// description directly beneath it, then one blank line before the body.
+// The derived classes own the data and the body. Both parts are optional:
+// with neither there's no preamble at all, so the block is just its body
+// -- for a unit nested under a heading something else already wrote.
 class OutputUnit {
 public:
-  explicit OutputUnit(std::string title = "") : title_(std::move(title)) {}
+  explicit OutputUnit(std::string title = "", std::string description = "")
+      : title_(std::move(title)), description_(std::move(description)) {}
 
   void set_title(std::string title) { title_ = std::move(title); }
   const std::string& title() const { return title_; }
 
+  void set_description(std::string description) { description_ = std::move(description); }
+  const std::string& description() const { return description_; }
+
 protected:
-  std::string header() const { return title_.empty() ? "" : "[" + title_ + "]\n\n"; }
+  std::string header() const {
+    if (title_.empty() && description_.empty()) {
+      return "";
+    }
+
+    std::string out;
+    if (!title_.empty()) {
+      out += "[" + title_ + "]\n";
+    }
+    if (!description_.empty()) {
+      out += description_ + "\n";
+    }
+    return out + "\n";
+  }
 
   std::string title_;
+  std::string description_;
 };
 
 // Key/value block, for metadata. Values are strings by the time they land

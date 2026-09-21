@@ -107,7 +107,7 @@ namespace SolverFormatter {
 
 std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
                               std::string method_name) {
-  KeyValueOutput metadata("Run Info");
+  KeyValueOutput metadata("run info");
   metadata.add("execution date/time", timestamp());
   metadata.add("input deck path", deck_path.string());
   metadata.add("n_groups", deck.energy.G);
@@ -150,6 +150,32 @@ std::string formatInputEcho(const InputDeck& deck) {
                         deck.bc[g](1, Eigen::placeholders::all));
   }
 
+  UnitGroup q0("source, zeroth moment", "q integrated over all angles, weight 1");
+  for (int gplusone : e_index) {
+    int g = gplusone - 1;
+    HorizontalTable q0g("g=" + std::to_string(gplusone));
+    q0g.add_row("i", x_index);
+    q0g.add_row("left,up", deck.source.q0[g](Eigen::seqN(0, deck.mesh.n_x, 4)));
+    q0g.add_row("right,up", deck.source.q0[g](Eigen::seqN(1, deck.mesh.n_x, 4)));
+    q0g.add_row("left,down", deck.source.q0[g](Eigen::seqN(2, deck.mesh.n_x, 4)));
+    q0g.add_row("right,down", deck.source.q0[g](Eigen::seqN(3, deck.mesh.n_x, 4)));
+
+    q0.add(q0g, "{:.4e}");
+  }
+
+  UnitGroup q1("source, first moment", "q integrated over all angles, weight mu");
+  for (int gplusone : e_index) {
+    int g = gplusone - 1;
+    HorizontalTable q1g("g=" + std::to_string(gplusone));
+    q1g.add_row("i", x_index);
+    q1g.add_row("left,up", deck.source.q1[g](Eigen::seqN(0, deck.mesh.n_x, 4)));
+    q1g.add_row("right,up", deck.source.q1[g](Eigen::seqN(1, deck.mesh.n_x, 4)));
+    q1g.add_row("left,down", deck.source.q1[g](Eigen::seqN(2, deck.mesh.n_x, 4)));
+    q1g.add_row("right,down", deck.source.q1[g](Eigen::seqN(3, deck.mesh.n_x, 4)));
+
+    q1.add(q1g, "{:.4e}");
+  }
+
   UnitGroup materials("materials");
 
   for (auto m : deck.xs.material_list) {
@@ -169,17 +195,19 @@ std::string formatInputEcho(const InputDeck& deck) {
       scatter.add_row(std::to_string(gplusone), m.scatter(g, Eigen::placeholders::all));
     }
 
-    mat.add(xs_t_and_s, "{:.5e}");
-    mat.add(scatter, "{:.5e}");
+    mat.add(xs_t_and_s, "{:.4e}");
+    mat.add(scatter, "{:.4e}");
 
     // add to materials block
     materials.add(mat);
   }
 
   input_echo.add(spatialdata, "{:.2e}");
-  input_echo.add(energydata, "{:.2e}");
+  input_echo.add(energydata, "{:.3e}");
   input_echo.add(quadrature, "{:.4e}");
   input_echo.add(boundary, "{:.4e}");
+  input_echo.add(q0);
+  input_echo.add(q1);
   input_echo.add(materials);
 
   return input_echo.render_txt();

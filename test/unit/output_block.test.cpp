@@ -460,3 +460,57 @@ TEST_SUITE("UnitGroup") {
     CHECK(UnitGroup().render_txt() == "");
   }
 }
+
+TEST_SUITE("OutputUnit description") {
+  TEST_CASE("the description sits directly under the title, above the blank line") {
+    KeyValueOutput meta("META", "counts for this run");
+    meta.add("A", "1");
+
+    const std::string expected = "[META]\n"
+                                 "counts for this run\n"
+                                 "\n"
+                                 "A  ...  1\n";
+    CHECK(meta.render_txt() == expected);
+  }
+
+  TEST_CASE("a unit with no description renders as before") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt() == "[META]\n\nA  ...  1\n");
+  }
+
+  TEST_CASE("a description without a title renders on its own") {
+    VerticalTable table;
+    table.set_description("no heading, just a note");
+    table.add_column("x", {0.5});
+
+    const std::string expected = "no heading, just a note\n"
+                                 "\n"
+                                 "  x\n"
+                                 "0.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("the description is indented along with the rest of the block") {
+    HorizontalTable table("T", "a note");
+    table.add_row("x", {0.5});
+
+    UnitGroup group("G", "outer note");
+    group.add(table, "{:.1f}");
+
+    const std::string expected = "[G]\n"
+                                 "outer note\n"
+                                 "\n"
+                                 "    [T]\n"
+                                 "    a note\n"
+                                 "\n"
+                                 "    x  0.5\n";
+    CHECK(group.render_txt() == expected);
+  }
+
+  TEST_CASE("an empty unit with neither title nor description has no preamble") {
+    CHECK(VerticalTable().render_txt() == "");
+    CHECK(UnitGroup().render_txt() == "");
+  }
+}
