@@ -17,7 +17,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "logger.h"
-#include "output.h"
+#include "output_block.h"
 
 namespace {
 constexpr double kAngleWeightRelTol = 1e-4;

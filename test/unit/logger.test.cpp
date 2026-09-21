@@ -40,29 +40,29 @@ TEST_SUITE("Logger") {
     CHECK(std::string(to_string(Level::Error)) == "ERROR");
   }
 
-  TEST_CASE("log() writes a timestamped, leveled line to the log file") {
+  TEST_CASE("log() writes a timestamped, channel- and level-tagged line to the log file") {
     const auto path = tempLogPath("basic");
     Logger::configure(path);
-    Logger::instance().log(Level::Info, "hello");
+    Logger::instance().log(Channel::General, Level::Info, "hello");
 
     const std::string contents = readFile(path);
-    CHECK(contents.find("[INFO] hello") != std::string::npos);
+    CHECK(contents.find("[INFO] [GENERAL] hello") != std::string::npos);
     // "[YYYY-MM-DD HH:MM:SS] " prefix.
     CHECK(contents.substr(0, 1) == "[");
-    CHECK(contents.find("] [INFO] hello") != std::string::npos);
+    CHECK(contents.find("] [INFO] [GENERAL] hello") != std::string::npos);
   }
 
   TEST_CASE("each call to log() appends and flushes immediately") {
     const auto path = tempLogPath("appends");
     Logger::configure(path);
 
-    Logger::instance().log(Level::Warn, "first");
-    CHECK(readFile(path).find("[WARN] first") != std::string::npos);
+    Logger::instance().log(Channel::General, Level::Warn, "first");
+    CHECK(readFile(path).find("[WARN] [GENERAL] first") != std::string::npos);
 
-    Logger::instance().log(Level::Error, "second");
+    Logger::instance().log(Channel::General, Level::Error, "second");
     const std::string contents = readFile(path);
-    CHECK(contents.find("[WARN] first") != std::string::npos);
-    CHECK(contents.find("[ERROR] second") != std::string::npos);
+    CHECK(contents.find("[WARN] [GENERAL] first") != std::string::npos);
+    CHECK(contents.find("[ERROR] [GENERAL] second") != std::string::npos);
   }
 
   TEST_CASE("configure() throws if the log file can't be opened") {
@@ -80,9 +80,9 @@ TEST_SUITE("Logger") {
     LDCSD_LOG_ERROR("error message");
 
     const std::string contents = readFile(path);
-    CHECK(contents.find("[INFO] info message") != std::string::npos);
-    CHECK(contents.find("[WARN] warn message") != std::string::npos);
-    CHECK(contents.find("[ERROR] error message") != std::string::npos);
+    CHECK(contents.find("[INFO] [GENERAL] info message") != std::string::npos);
+    CHECK(contents.find("[WARN] [GENERAL] warn message") != std::string::npos);
+    CHECK(contents.find("[ERROR] [GENERAL] error message") != std::string::npos);
   }
 
   TEST_CASE("LDCSD_LOG_TRACE/DEBUG are compiled out unless LDCSD_ENABLE_DEBUG_LOGGING is set") {
@@ -94,8 +94,8 @@ TEST_SUITE("Logger") {
 
     const std::string contents = readFile(path);
 #ifdef LDCSD_ENABLE_DEBUG_LOGGING
-    CHECK(contents.find("[TRACE] trace message") != std::string::npos);
-    CHECK(contents.find("[DEBUG] debug message") != std::string::npos);
+    CHECK(contents.find("[TRACE] [GENERAL] trace message") != std::string::npos);
+    CHECK(contents.find("[DEBUG] [GENERAL] debug message") != std::string::npos);
 #else
     CHECK(contents.empty());
 #endif
@@ -109,7 +109,7 @@ TEST_SUITE("Logger") {
     LDCSD_LOG_INFO(Channel::Iteration, "iteration message");
 
     const std::string contents = readFile(path);
-    CHECK(contents.find("[INFO] default-channel message") != std::string::npos);
+    CHECK(contents.find("[INFO] [GENERAL] default-channel message") != std::string::npos);
     CHECK(contents.find("[INFO] [ITERATION] iteration message") != std::string::npos);
   }
 }

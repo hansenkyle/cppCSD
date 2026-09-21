@@ -5,7 +5,7 @@
 // Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
 // or without modification are permitted provided that the terms of the license are met.
 
-#include "output_manager.h"
+#include "file_manager.h"
 
 #include <fstream>
 

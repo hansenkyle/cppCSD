@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "output.h"
+#include "output_block.h"
 
 namespace {
 

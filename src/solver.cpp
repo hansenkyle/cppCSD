@@ -146,7 +146,7 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
   // carries upscatter. The scalar flux is *not* reset between groups, so
   // group g starts from group g-1's converged answer (a warm start).
 
-  LDCSD_LOG_INFO("Begin source iteration", true);
+  LDCSD_LOG_INFO("Begin source iteration");
   convergence_ = ConvergenceHistory{};
 
   // initial guess (maybe provided)
@@ -201,13 +201,11 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
 
     if (converged) {
       LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
-                         std::to_string(iteration) + " iterations",
-                     true);
+                     std::to_string(iteration) + " iterations");
     } else {
       LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
-                         std::to_string(max_iterations) +
-                         "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff),
-                     true);
+                     std::to_string(max_iterations) +
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
     }
     psi_up = psi;
   }

@@ -8,9 +8,9 @@
 #include <optional>
 
 #include "cli.h"
+#include "file_manager.h"
 #include "input_deck.h"
 #include "logger.h"
-#include "output_manager.h"
 #include "solver.h"
 #include "terminal.h"
 

@@ -61,12 +61,6 @@ void Logger::configure(const std::filesystem::path& log_path) {
   }
 }
 
-void Logger::log(Level level, const std::string& message) {
-  const std::string line = "[" + timestamp() + "] [" + to_string(level) + "] " + message;
-  stream_ << line << "\n";
-  stream_.flush();
-}
-
 void Logger::log(Channel channel, Level level, const std::string& message) {
   const std::string line =
       "[" + timestamp() + "] [" + to_string(level) + "] [" + to_string(channel) + "] " + message;
