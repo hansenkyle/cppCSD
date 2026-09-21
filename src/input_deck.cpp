@@ -72,7 +72,7 @@ Eigen::SparseMatrix<double> buildScatterMatrix(const std::vector<ScatterEntry>& 
 // Per-material cross sections and stopping power, indexed by energy group.
 // Parsing scratch only -- material names and this data are never retained
 // on the InputDeck, only the per-cell tables/lists they expand into.
-struct Material {
+struct Material_ {
   Eigen::VectorXd sigma_t;                // size G
   Eigen::SparseMatrix<double> scattering; // G x G, group-to-group
   Eigen::VectorXd stopping_power_avg;     // size G
@@ -148,8 +148,8 @@ std::vector<ScatterEntry> parseScattering(const YAML::Node& node, const std::str
   return entries;
 }
 
-Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
-  Material material;
+Material_ parseMaterial(const YAML::Node& node, const std::string& name, int G) {
+  Material_ material;
   material.sigma_t = toVector(requireNode(node, "sigma_t").as<std::vector<double>>());
   material.scattering =
       buildScatterMatrix(parseScattering(requireNode(node, "scattering"), name, G), G);
@@ -171,8 +171,8 @@ Material parseMaterial(const YAML::Node& node, const std::string& name, int G) {
 // Expands a per-material, per-group field (selected via `field`) into a
 // per-group, per-cell table by looking up each cell's material.
 Eigen::MatrixXd expandByRegion(const std::vector<std::string>& region_materials,
-                               const std::map<std::string, Material>& materials, Eigen::Index rows,
-                               Eigen::VectorXd Material::* field) {
+                               const std::map<std::string, Material_>& materials, Eigen::Index rows,
+                               Eigen::VectorXd Material_::* field) {
   Eigen::MatrixXd table(rows, static_cast<Eigen::Index>(region_materials.size()));
   for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {
     table.col(static_cast<Eigen::Index>(cell)) = materials.at(region_materials[cell]).*field;
@@ -203,6 +203,27 @@ Eigen::MatrixXd parseSourceGroup(const YAML::Node& group_node, const std::string
   return values;
 }
 } // namespace
+
+void Material::validate() {
+  // check that name exists
+  if (name == "") {
+    throw std::runtime_error("Material name must be provided");
+  }
+  // check that all vectors are same size
+  int t_size = total.size();
+  int s_size = S.size();
+  int sb_size = S_b.size();
+  int scatter_rows = scatter.rows();
+  int scatter_cols = scatter.cols();
+
+  if (!(t_size == s_size and s_size == sb_size - 1 and s_size == scatter_rows and
+        scatter_rows == scatter_cols)) {
+    throw std::runtime_error("Material data sizes do not match. (tot, S, S_b, scat) = (" +
+                             std::to_string(t_size) + ", " + std::to_string(s_size) + ", " +
+                             std::to_string(sb_size) + ", " + std::to_string(scatter_rows) + "x" +
+                             std::to_string(scatter_cols) + ").");
+  }
+}
 
 void InputDeck::Mesh::validate() {
   if (n_x <= 0) {
@@ -377,7 +398,7 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
                                std::to_string(mesh.n_x) + " (one per spatial cell)");
     }
 
-    std::map<std::string, Material> materials;
+    std::map<std::string, Material_> materials;
     const YAML::Node materials_node = requireNode(root, "materials");
     for (const auto& entry : materials_node) {
       const std::string name = entry.first.as<std::string>();
@@ -390,10 +411,10 @@ int InputDeck::read(const std::filesystem::path& path_to_yaml) {
       }
     }
 
-    xs.total = expandByRegion(region_materials, materials, energy.G, &Material::sigma_t);
-    xs.S = expandByRegion(region_materials, materials, energy.G, &Material::stopping_power_avg);
+    xs.total = expandByRegion(region_materials, materials, energy.G, &Material_::sigma_t);
+    xs.S = expandByRegion(region_materials, materials, energy.G, &Material_::stopping_power_avg);
     xs.S_bound =
-        expandByRegion(region_materials, materials, energy.G + 1, &Material::stopping_power_bnd);
+        expandByRegion(region_materials, materials, energy.G + 1, &Material_::stopping_power_bnd);
 
     xs.scatter.resize(region_materials.size());
     for (std::size_t cell = 0; cell < region_materials.size(); ++cell) {

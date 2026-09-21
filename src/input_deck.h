@@ -15,6 +15,19 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+class Material {
+public:
+  std::string name = "";
+  Eigen::VectorXd total = Eigen::VectorXd::Zero(1);
+  Eigen::VectorXd S = Eigen::VectorXd::Zero(1);
+  Eigen::VectorXd S_b = Eigen::VectorXd::Zero(2);
+  Eigen::MatrixXd scatter = Eigen::MatrixXd::Zero(1, 1);
+
+  // checks all vectors are the same size (and scatter is square).
+  // no knowledge of energy group structure, this is done by InputDeck::validate.
+  void validate();
+};
+
 /// @brief Holds all problem data, cell-by cell. Energy structure, spatial mesh, cross sections,
 /// angular quadrature, boundary conditions, external source
 /// @details Includes validation functions on every member struct. Callers are expected to validate
@@ -70,6 +83,10 @@ public:
     // matrix entry is non-negative. Shape against mesh.n_x/energy.G is a
     // cross-struct concern, checked by InputDeck::validate() instead.
     void validate() const;
+
+  private:
+    std::vector<Material> material_list;
+    std::vector<int> material_indices;
   };
 
   /// @brief Incoming angular flux at boundaries. Indexed by mu without knowledge of x
