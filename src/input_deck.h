@@ -104,9 +104,15 @@ public:
     // established that a material's S, S_b and scatter agree with its total.
     void validateShape(int G, int n_x) const;
 
-  private:
-    std::vector<Material> material_list;
     std::vector<int> material_indices;
+    std::vector<std::string> material_names() const {
+      std::vector<std::string> names = {};
+      for (auto i : material_indices) {
+        names.push_back(material_list[i].name);
+      }
+      return names;
+    }
+    std::vector<Material> material_list;
   };
 
   /// @brief Incoming angular flux at boundaries. Indexed by mu without knowledge of x
@@ -128,6 +134,13 @@ public:
   /// using [group](cell/moment, angle)
   struct Source {
     std::vector<Eigen::MatrixXd> values; // size G, each 4 * mesh.n_x rows x angle.M cols
+
+    // Zeroth and first angular moments of the source: q0 = sum_m w_m q_m and
+    // q1 = sum_m w_m mu_m q_m, one entry per group, each 4 * mesh.n_x long.
+    // Derived from values and the angular quadrature by InputDeck::validate(),
+    // since that's what sees both structs.
+    std::vector<Eigen::VectorXd> q0;
+    std::vector<Eigen::VectorXd> q1;
 
     // Checks every entry is non-negative. Shape against angle.M/mesh.n_x/energy.G is a
     // cross-struct concern, checked by InputDeck::validate() instead.

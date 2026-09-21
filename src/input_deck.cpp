@@ -358,12 +358,21 @@ void InputDeck::validate() {
   if (static_cast<int>(source.values.size()) != energy.G) {
     throw std::runtime_error("source must have energy.G = " + std::to_string(energy.G) + " groups");
   }
+
+  // Angular moments of the source, integrated over the quadrature. They pair
+  // the source with the angle struct, so they're derived here rather than in
+  // Source::validate(), which sees only its own values.
+  const Eigen::VectorXd w_mu = angle.w.cwiseProduct(angle.mu);
+  source.q0.resize(energy.G);
+  source.q1.resize(energy.G);
   for (int g = 0; g < energy.G; ++g) {
     if (source.values[g].rows() != 4 * mesh.n_x || source.values[g].cols() != angle.M) {
       throw std::runtime_error("source group " + std::to_string(g) +
                                " must be shaped 4 * mesh.n_x = " + std::to_string(4 * mesh.n_x) +
                                " rows x angle.M = " + std::to_string(angle.M) + " columns");
     }
+    source.q0[g] = source.values[g] * angle.w;
+    source.q1[g] = source.values[g] * w_mu;
   }
 }
 

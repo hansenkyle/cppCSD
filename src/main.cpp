@@ -38,6 +38,11 @@ int main(int argc, char** argv) {
   Solver solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
+  solver.write_metadata(output.results_path, std::filesystem::absolute(*yaml_path));
+  solver.writeInputDeckEcho(output.results_path);
+  solver.writeResults(output.results_path, Eigen::MatrixXd::Zero(1, 1),
+                      {Eigen::MatrixXd::Zero(1, 1)});
+
   const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
 
   return solver.convergence().allConverged() ? 0 : 1;

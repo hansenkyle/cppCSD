@@ -9,26 +9,51 @@
 
 #include <algorithm>
 #include <format>
-#include <stdexcept>
+#include <utility>
 
 namespace {
 
 constexpr std::size_t kColumnGap = 2;
 constexpr std::size_t kMinDots = 3;
+constexpr std::size_t kTabWidth = 4;
 
-// Renders a rectangular grid of already-stringified cells as whitespace-
-// aligned columns. The first `n_left` columns are row labels and are
-// left-justified; the rest hold values and are right-justified, so digits
-// line up under their header regardless of sign or width. Nothing is
-// padded past the last cell on a line, so no line carries trailing
+// Prefixes every line of `text` with `tabs` four-space runs. Blank lines
+// are left as-is, so indenting a block never gives it a line made only of
 // whitespace.
+std::string indent(const std::string& text, int tabs) {
+  if (tabs <= 0) {
+    return text;
+  }
+
+  const std::string pad(kTabWidth * static_cast<std::size_t>(tabs), ' ');
+  std::string out;
+  for (std::size_t start = 0; start < text.size();) {
+    const std::size_t newline = text.find('\n', start);
+    const std::size_t stop = (newline == std::string::npos) ? text.size() : newline + 1;
+    if (text[start] != '\n') {
+      out += pad;
+    }
+    out.append(text, start, stop - start);
+    start = stop;
+  }
+  return out;
+}
+
+// Renders a grid of already-stringified cells as whitespace-aligned
+// columns. The first `n_left` columns are row labels and are
+// left-justified; the rest hold values and are right-justified, so digits
+// line up under their header regardless of sign or width. Rows may be of
+// different lengths -- each column is sized from whichever rows reach it.
+// Nothing is padded past the last cell on a line, so no line carries
+// trailing whitespace.
 std::string render_grid(const std::vector<std::vector<std::string>>& rows, std::size_t n_left) {
   if (rows.empty()) {
     return "";
   }
 
-  std::vector<std::size_t> widths(rows.front().size(), 0);
+  std::vector<std::size_t> widths;
   for (const std::vector<std::string>& row : rows) {
+    widths.resize(std::max(widths.size(), row.size()), 0);
     for (std::size_t c = 0; c < row.size(); ++c) {
       widths[c] = std::max(widths[c], row[c].size());
     }
@@ -54,6 +79,17 @@ std::string render_grid(const std::vector<std::vector<std::string>>& rows, std::
   return out;
 }
 
+// One cell as it displays: a numeric cell gets `format` applied now, a
+// text cell is already what it renders as.
+std::string render_cell(const Table::Cell& cell, std::string_view format) {
+  if (const std::string* text = std::get_if<std::string>(&cell)) {
+    return *text;
+  }
+
+  double value = std::get<double>(cell);
+  return std::vformat(format, std::make_format_args(value));
+}
+
 } // namespace
 
 void KeyValueOutput::add(std::string key, std::string value) {
@@ -66,7 +102,7 @@ void KeyValueOutput::add(int key, std::string value) { add(std::to_string(key), 
 
 void KeyValueOutput::add(int key, int value) { add(std::to_string(key), std::to_string(value)); }
 
-std::string KeyValueOutput::render_txt() const {
+std::string KeyValueOutput::render_txt(int tabs) const {
   std::size_t key_width = 0;
   for (const auto& [key, value] : entries_) {
     key_width = std::max(key_width, key.size());
@@ -78,44 +114,68 @@ std::string KeyValueOutput::render_txt() const {
     out += key + std::string(kColumnGap, ' ') + std::string(dots, '.') +
            std::string(kColumnGap, ' ') + value + '\n';
   }
-  return out;
+  return indent(out, tabs);
 }
 
-void Table::add_series(std::string name, std::vector<double> values) {
-  if (!series_.empty() && values.size() != series_.front().size()) {
-    throw std::invalid_argument("Table: '" + name + "' has " + std::to_string(values.size()) +
-                                " values, expected " + std::to_string(series_.front().size()));
-  }
+void Table::add_series(std::string name, std::vector<Cell> values) {
   names_.push_back(std::move(name));
   series_.push_back(std::move(values));
 }
 
-std::string VerticalTable::render_txt(std::string_view format) const {
+void Table::add_series(std::string name, const Eigen::Ref<const Eigen::VectorXd>& values) {
+  add_series(std::move(name), std::vector<Cell>(values.begin(), values.end()));
+}
+
+std::string VerticalTable::render_txt(std::string_view format, int tabs) const {
   if (series_.empty()) {
-    return header();
+    return indent(header(), tabs);
+  }
+
+  std::size_t n_rows = 0;
+  for (const std::vector<Cell>& column : series_) {
+    n_rows = std::max(n_rows, column.size());
   }
 
   std::vector<std::vector<std::string>> rows;
   rows.push_back(names_);
-  for (std::size_t i = 0; i < series_.front().size(); ++i) {
+  for (std::size_t i = 0; i < n_rows; ++i) {
     std::vector<std::string> row;
-    for (const std::vector<double>& column : series_) {
-      double value = column[i];
-      row.push_back(std::vformat(format, std::make_format_args(value)));
+    std::size_t filled = 0;
+    for (const std::vector<Cell>& column : series_) {
+      if (i < column.size()) {
+        row.push_back(render_cell(column[i], format));
+        filled = row.size();
+      } else {
+        row.emplace_back();
+      }
     }
+    // A column that has run out contributes a blank cell, but trailing
+    // blanks would render as trailing whitespace -- drop them instead.
+    row.resize(filled);
     rows.push_back(std::move(row));
   }
-  return header() + render_grid(rows, 0);
+  return indent(header() + render_grid(rows, 0), tabs);
 }
 
-std::string HorizontalTable::render_txt(std::string_view format) const {
+std::string HorizontalTable::render_txt(std::string_view format, int tabs) const {
   std::vector<std::vector<std::string>> rows;
   for (std::size_t i = 0; i < series_.size(); ++i) {
     std::vector<std::string> row{names_[i]};
-    for (double value : series_[i]) {
-      row.push_back(std::vformat(format, std::make_format_args(value)));
+    for (const Cell& cell : series_[i]) {
+      row.push_back(render_cell(cell, format));
     }
     rows.push_back(std::move(row));
   }
-  return header() + render_grid(rows, 1);
+  return indent(header() + render_grid(rows, 1), tabs);
+}
+
+std::string UnitGroup::render_txt(int tabs) const {
+  std::string out = header();
+  for (std::size_t i = 0; i < bodies_.size(); ++i) {
+    if (i > 0) {
+      out += '\n';
+    }
+    out += indent(bodies_[i], 1);
+  }
+  return indent(out, tabs);
 }

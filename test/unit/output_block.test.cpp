@@ -7,8 +7,7 @@
 
 #include "output_block.h"
 
-#include <stdexcept>
-
+#include <Eigen/Core>
 #include <doctest.h>
 
 TEST_SUITE("KeyValueOutput") {
@@ -51,6 +50,28 @@ TEST_SUITE("KeyValueOutput") {
 
   TEST_CASE("an empty block still renders its title") {
     CHECK(KeyValueOutput("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled block renders only its entries") {
+    KeyValueOutput meta;
+    meta.add("A", "1");
+    meta.add("BB", "22");
+
+    const std::string expected = "A  ....  1\n"
+                                 "BB  ...  22\n";
+    CHECK(meta.render_txt() == expected);
+  }
+
+  TEST_CASE("tabs indent every line of the block by four spaces each") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+    meta.add("BB", "22");
+
+    const std::string expected = "        [META]\n"
+                                 "\n"
+                                 "        A  ....  1\n"
+                                 "        BB  ...  22\n";
+    CHECK(meta.render_txt(2) == expected);
   }
 }
 
@@ -107,15 +128,104 @@ TEST_SUITE("VerticalTable") {
     CHECK(table.render_txt("{:.2f}") == expected);
   }
 
-  TEST_CASE("add_column rejects a column of a different length") {
+  TEST_CASE("a short column runs out partway down and leaves the rest of its cells blank") {
+    VerticalTable table("TEST");
+    table.add_column("x", {0.5, 1.5, 2.5});
+    table.add_column("y", {1.0});
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  x    y\n"
+                                 "0.5  1.0\n"
+                                 "1.5\n"
+                                 "2.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a gap in the middle of a row keeps the columns after it aligned") {
     VerticalTable table("TEST");
     table.add_column("x", {0.5, 1.5});
+    table.add_column("shortish", {1.0});
+    table.add_column("z", {2.0, 3.0});
 
-    CHECK_THROWS_AS(table.add_column("y", std::vector<double>{1.0}), std::invalid_argument);
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  x  shortish    z\n"
+                                 "0.5       1.0  2.0\n"
+                                 "1.5            3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_column accepts an Eigen vector") {
+    Eigen::VectorXd x(2);
+    x << 0.5, 1.5;
+
+    VerticalTable table("TEST");
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", x);
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "  i    x\n"
+                                 "0.0  0.5\n"
+                                 "1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_column accepts a matrix row, which is not a contiguous vector") {
+    Eigen::MatrixXd m(2, 2);
+    m << 0.5, 1.5, 2.5, 3.5;
+
+    VerticalTable table;
+    table.add_column("row0", m.row(0));
+    table.add_column("col1", m.col(1));
+
+    const std::string expected = "row0  col1\n"
+                                 " 0.5   1.5\n"
+                                 " 1.5   3.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("string and int columns render as-is, doubles still take the format") {
+    VerticalTable table("TEST");
+    table.add_column("group", std::vector<int>{0, 1});
+    table.add_column("status", std::vector<std::string>{"ok", "DIVERGED"});
+    table.add_column("phi", {0.5, 1.5});
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "group    status  phi\n"
+                                 "    0        ok  0.5\n"
+                                 "    1  DIVERGED  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
   }
 
   TEST_CASE("an empty table still renders its title") {
     CHECK(VerticalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled table renders only its rows") {
+    VerticalTable table;
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", {0.5, 1.5});
+
+    const std::string expected = "  i    x\n"
+                                 "0.0  0.5\n"
+                                 "1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("tabs indent every line of the table by four spaces each") {
+    VerticalTable table("TEST");
+    table.add_column("i", {0.0, 1.0});
+    table.add_column("x", {0.5, 1.5});
+
+    const std::string expected = "    [TEST]\n"
+                                 "\n"
+                                 "      i    x\n"
+                                 "    0.0  0.5\n"
+                                 "    1.0  1.5\n";
+    CHECK(table.render_txt("{:.1f}", 1) == expected);
   }
 }
 
@@ -156,15 +266,94 @@ TEST_SUITE("HorizontalTable") {
     CHECK(table.render_txt("{:.2f}") == expected);
   }
 
-  TEST_CASE("add_row rejects a row of a different length") {
+  TEST_CASE("rows of different lengths each just end where their data does") {
     HorizontalTable table("TEST");
+    table.add_row("x", {0.5, 1.5, 2.5});
+    table.add_row("yy", {2.0});
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "x   0.5  1.5  2.5\n"
+                                 "yy  2.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a longer row added after a short one still widens the shared columns") {
+    HorizontalTable table;
+    table.add_row("x", {0.5});
+    table.add_row("yy", {-20.0, 3.0});
+
+    const std::string expected = "x     0.5\n"
+                                 "yy  -20.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_row accepts an Eigen vector") {
+    Eigen::VectorXd values(2);
+    values << 1.2345e12, 1.5e12;
+
+    HorizontalTable table("TEST");
+    table.add_row("scalar_flux", values);
+
+    const std::string expected = "[TEST]\n"
+                                 "\n"
+                                 "scalar_flux  1.2345e+12  1.5000e+12\n";
+    CHECK(table.render_txt() == expected);
+  }
+
+  TEST_CASE("add_row accepts an Eigen expression") {
+    Eigen::VectorXd values(2);
+    values << 1.0, 2.0;
+
+    HorizontalTable table;
+    table.add_row("doubled", 2.0 * values);
+
+    CHECK(table.render_txt("{:.1f}") == "doubled  2.0  4.0\n");
+  }
+
+  TEST_CASE("string and int rows render as-is, doubles still take the format") {
+    HorizontalTable table;
+    table.add_row("label", std::vector<std::string>{"a", "bb"});
+    table.add_row("count", std::vector<int>{1, 22});
     table.add_row("x", {0.5, 1.5});
 
-    CHECK_THROWS_AS(table.add_row("y", std::vector<double>{1.0}), std::invalid_argument);
+    const std::string expected = "label    a   bb\n"
+                                 "count    1   22\n"
+                                 "x      0.5  1.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a single row can mix text and numeric cells") {
+    HorizontalTable table;
+    table.add_row("phi", {1.0, "n/a", 2.5});
+
+    CHECK(table.render_txt("{:.1f}") == "phi  1.0  n/a  2.5\n");
   }
 
   TEST_CASE("an empty table still renders its title") {
     CHECK(HorizontalTable("EMPTY").render_txt() == "[EMPTY]\n\n");
+  }
+
+  TEST_CASE("an untitled table renders only its rows") {
+    HorizontalTable table;
+    table.add_row("x", {0.5, 1.5});
+    table.add_row("yy", {2.0, 3.0});
+
+    const std::string expected = "x   0.5  1.5\n"
+                                 "yy  2.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("tabs indent every line of the table by four spaces each") {
+    HorizontalTable table("TEST");
+    table.add_row("x", {0.5, 1.5});
+    table.add_row("yy", {2.0, 3.0});
+
+    const std::string expected = "    [TEST]\n"
+                                 "\n"
+                                 "    x   0.5  1.5\n"
+                                 "    yy  2.0  3.0\n";
+    CHECK(table.render_txt("{:.1f}", 1) == expected);
   }
 }
 
@@ -175,5 +364,153 @@ TEST_SUITE("OutputUnit") {
 
     CHECK(meta.title() == "LATER");
     CHECK(meta.render_txt() == "[LATER]\n\n");
+  }
+
+  TEST_CASE("set_title(\"\") drops the title line from a block that had one") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+    REQUIRE(meta.render_txt() == "[META]\n\nA  ...  1\n");
+
+    meta.set_title("");
+
+    CHECK(meta.render_txt() == "A  ...  1\n");
+  }
+
+  TEST_CASE("an untitled unit with no data renders nothing at all") {
+    CHECK(KeyValueOutput().render_txt() == "");
+    CHECK(VerticalTable().render_txt() == "");
+    CHECK(HorizontalTable().render_txt() == "");
+  }
+
+  TEST_CASE("tabs indent an untitled block's body, with no leading blank line") {
+    KeyValueOutput meta;
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(1) == "    A  ...  1\n");
+  }
+
+  TEST_CASE("the blank line under the title stays blank rather than becoming whitespace") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(1) == "    [META]\n\n    A  ...  1\n");
+  }
+
+  TEST_CASE("a non-positive tab count leaves the block unindented") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt(0) == meta.render_txt());
+    CHECK(meta.render_txt(-1) == meta.render_txt());
+  }
+}
+
+TEST_SUITE("UnitGroup") {
+  TEST_CASE("units are indented once and separated by a blank line") {
+    KeyValueOutput meta("Meta");
+    meta.add("n", 2);
+
+    HorizontalTable table;
+    table.add_row("x", {0.5, 1.5});
+
+    UnitGroup group("Group");
+    group.add(meta);
+    group.add(table, "{:.1f}");
+
+    const std::string expected = "[Group]\n"
+                                 "\n"
+                                 "    [Meta]\n"
+                                 "\n"
+                                 "    n  ...  2\n"
+                                 "\n"
+                                 "    x  0.5  1.5\n";
+    CHECK(group.render_txt() == expected);
+  }
+
+  TEST_CASE("a nested group indents another level") {
+    KeyValueOutput leaf;
+    leaf.add("k", "v");
+
+    UnitGroup inner("Inner");
+    inner.add(leaf);
+
+    UnitGroup outer("Outer");
+    outer.add(inner);
+
+    const std::string expected = "[Outer]\n"
+                                 "\n"
+                                 "    [Inner]\n"
+                                 "\n"
+                                 "        k  ...  v\n";
+    CHECK(outer.render_txt() == expected);
+  }
+
+  TEST_CASE("tabs indent the whole group on top of its own level") {
+    KeyValueOutput leaf;
+    leaf.add("k", "v");
+
+    UnitGroup group;
+    group.add(leaf);
+
+    CHECK(group.render_txt(1) == "        k  ...  v\n");
+  }
+
+  TEST_CASE("an empty group renders only its title") {
+    CHECK(UnitGroup("EMPTY").render_txt() == "[EMPTY]\n\n");
+    CHECK(UnitGroup().render_txt() == "");
+  }
+}
+
+TEST_SUITE("OutputUnit description") {
+  TEST_CASE("the description sits directly under the title, above the blank line") {
+    KeyValueOutput meta("META", "counts for this run");
+    meta.add("A", "1");
+
+    const std::string expected = "[META]\n"
+                                 "counts for this run\n"
+                                 "\n"
+                                 "A  ...  1\n";
+    CHECK(meta.render_txt() == expected);
+  }
+
+  TEST_CASE("a unit with no description renders as before") {
+    KeyValueOutput meta("META");
+    meta.add("A", "1");
+
+    CHECK(meta.render_txt() == "[META]\n\nA  ...  1\n");
+  }
+
+  TEST_CASE("a description without a title renders on its own") {
+    VerticalTable table;
+    table.set_description("no heading, just a note");
+    table.add_column("x", {0.5});
+
+    const std::string expected = "no heading, just a note\n"
+                                 "\n"
+                                 "  x\n"
+                                 "0.5\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("the description is indented along with the rest of the block") {
+    HorizontalTable table("T", "a note");
+    table.add_row("x", {0.5});
+
+    UnitGroup group("G", "outer note");
+    group.add(table, "{:.1f}");
+
+    const std::string expected = "[G]\n"
+                                 "outer note\n"
+                                 "\n"
+                                 "    [T]\n"
+                                 "    a note\n"
+                                 "\n"
+                                 "    x  0.5\n";
+    CHECK(group.render_txt() == expected);
+  }
+
+  TEST_CASE("an empty unit with neither title nor description has no preamble") {
+    CHECK(VerticalTable().render_txt() == "");
+    CHECK(UnitGroup().render_txt() == "");
   }
 }
