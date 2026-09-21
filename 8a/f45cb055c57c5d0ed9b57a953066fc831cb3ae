@@ -1,0 +1,37 @@
+test/unit/output_block.test.cpp
+  s_5621b48beed580::t_6114717292d24f 14-24,27-38,41-45,47-49,52-53,55,57-64,66-68,71-73,75-77,79,82-88,92-93,110-112,114,117-120,122-132,135-137,139-142,159-161,163,166-167,169,171-174,176-177
+  s_5621b48beed580::t_40dfae7338b5fe 91
+  s_5621b48beed580::t_8e03bdb82a9133 65,78,89-90
+  s_5621b48beed580::t_e29e64e5961874 95-107,145-156
+src/output_block.h
+  h_250041054ad857 19,26,34,49
+  s_5621b48beed580::t_45bca20ac9fcee 8-9,12-13,16-18,21,23-25,27,32-33,36,38-41,43-45,48,51-92
+src/output_block.cpp
+  s_5621b48beed580::t_b859e9a5c2d804 11,16-17,19,26-27,30-34,37-39,42,52,54,57,59-60,67,69-72,75-79,81,84-90,93-95,98-106,111-118
+  s_5621b48beed580::t_2aa9937b2f26b0 63,65
+  s_5621b48beed580::t_65a9ae74d688a6 20-25,40-41,43-46,48-49,108,120
+src/solver_formatter.cpp
+  s_5621b48beed580::t_8e0de33a123050 101-103,128-129,139,142-158,164,166,181-188
+  s_5621b48beed580::t_c52fd3ab989547 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8af45cb055c57c5d0ed9b57a953066fc831cb3ae",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_5621b48beed580": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fdf5788-8598-4639-9db1-a200bc82a966",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
