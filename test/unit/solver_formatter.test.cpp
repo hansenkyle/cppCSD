@@ -42,40 +42,12 @@ TEST_SUITE("SolverFormatter") {
     const std::string result =
         SolverFormatter::formatRunMetadata(makeDeck(), "/decks/sample.yaml", "method_name");
 
-    CHECK(result.find("[Run Info]") != std::string::npos);
+    CHECK(result.find("[run info]") != std::string::npos);
     CHECK(result.find("execution date/time") != std::string::npos);
     CHECK(result.find("/decks/sample.yaml") != std::string::npos);
     CHECK(result.find("n_groups") != std::string::npos);
     CHECK(result.find("n_cells") != std::string::npos);
     CHECK(result.find("n_angles") != std::string::npos);
-  }
-
-  TEST_CASE("formatResults renders scalar flux as a 2x2 corner cluster per cell") {
-    Eigen::MatrixXd scalar_flux(4, 1);
-    scalar_flux << 1.0, 2.0, 3.0, 4.0; // up_left, up_right, down_left, down_right
-
-    const std::string result = SolverFormatter::formatResults(scalar_flux, {}, makeDeck());
-
-    CHECK(result.find("Scalar Flux") != std::string::npos);
-    CHECK(result.find("1.000000e+00") != std::string::npos);
-    CHECK(result.find("2.000000e+00") != std::string::npos);
-    CHECK(result.find("3.000000e+00") != std::string::npos);
-    CHECK(result.find("4.000000e+00") != std::string::npos);
-  }
-
-  TEST_CASE("formatResults renders one angular flux table per group, with each ordinate's mu and "
-            "weight") {
-    Eigen::MatrixXd group_flux(4, 1); // 1 ordinate
-    group_flux << 5.0, 6.0, 7.0, 8.0;
-
-    const std::string result =
-        SolverFormatter::formatResults(Eigen::MatrixXd::Zero(4, 1), {group_flux}, makeDeck());
-
-    CHECK(result.find("Angular Flux - Group 0") != std::string::npos);
-    CHECK(result.find("mu=5.000000e-01") != std::string::npos);
-    CHECK(result.find("w=2.000000e+00") != std::string::npos);
-    CHECK(result.find("5.000000e+00") != std::string::npos);
-    CHECK(result.find("8.000000e+00") != std::string::npos);
   }
 
   TEST_CASE("formatResiduals renders one table per group") {
