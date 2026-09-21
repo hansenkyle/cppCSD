@@ -121,6 +121,7 @@ std::string formatInputEcho(const InputDeck& deck) {
 
   std::vector<int> x_index = intseq(deck.mesh.n_x);
   std::vector<int> e_index = intseq(deck.energy.G);
+  std::vector<int> m_index = intseq(deck.angle.M);
 
   UnitGroup input_echo("input echo");
 
@@ -136,12 +137,12 @@ std::string formatInputEcho(const InputDeck& deck) {
   energydata.add_row("group boundaries", deck.energy.E_boundary);
 
   VerticalTable quadrature("angular quadrature");
-  quadrature.add_column("m", intseq(deck.angle.M));
+  quadrature.add_column("m", m_index);
   quadrature.add_column("mu", deck.angle.mu);
   quadrature.add_column("w", deck.angle.w);
 
   VerticalTable boundary("boundary conditions");
-  boundary.add_column("m", intseq(deck.angle.M));
+  boundary.add_column("m", m_index);
   for (int gplusone : e_index) {
     int g = gplusone - 1;
     boundary.add_column("g" + std::to_string(gplusone) + "_up",
@@ -215,13 +216,28 @@ std::string formatInputEcho(const InputDeck& deck) {
 
 std::string formatResults(const Eigen::MatrixXd& scalar_flux,
                           const std::vector<Eigen::MatrixXd>& angular_flux, const InputDeck& deck) {
-  std::ostringstream out;
-  out << formatCornerGrid("Scalar Flux", scalar_flux, deck.mesh.n_x, groupLabels(deck.energy.G));
-  for (std::size_t g = 0; g < angular_flux.size(); ++g) {
-    out << formatCornerGrid("Angular Flux - Group " + std::to_string(g), angular_flux[g],
-                            deck.mesh.n_x, ordinateLabels(deck));
+  std::vector<int> x_index = intseq(deck.mesh.n_x);
+  std::vector<int> e_index = intseq(deck.energy.G);
+  std::vector<int> m_index = intseq(deck.angle.M);
+  UnitGroup solution("solution");
+
+  VerticalTable cell_ave_scalar("cell-average scalar flux",
+                                "averaged over both energy and space in each cell");
+  cell_ave_scalar.add_column("g", e_index);
+  // cell_ave_scalar.add_column("i=1",)
+
+  UnitGroup cell_ave_angular("cell-average scalar flux",
+                             "averaged over both energy and space in each cell");
+  for (auto gplusone : e_index) {
+    int g = gplusone - 1;
+    VerticalTable psi_g("g = " + std::to_string(gplusone));
+    psi_g.add_column("m", m_index);
+    cell_ave_angular.add(psi_g, "{:.4e}");
   }
-  return out.str();
+
+  solution.add(cell_ave_scalar, "{:.4e}");
+  solution.add(cell_ave_angular);
+  return solution.render_txt();
 }
 
 std::string formatConvergence(const ConvergenceHistory& history) {

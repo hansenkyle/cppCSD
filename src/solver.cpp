@@ -534,3 +534,9 @@ void Solver::write_metadata(const std::filesystem::path& results_path,
 void Solver::writeInputDeckEcho(const std::filesystem::path& results_path) const {
   appendToFile(results_path, SolverFormatter::formatInputEcho(input_deck));
 }
+
+void Solver::writeResults(const std::filesystem::path& results_path,
+                          const Eigen::MatrixXd& scalar_flux,
+                          const std::vector<Eigen::MatrixXd>& angular_flux) const {
+  appendToFile(results_path, SolverFormatter::formatResults(scalar_flux, angular_flux, input_deck));
+}

@@ -110,10 +110,10 @@ public:
   // Appends an echo of input_deck (InputDeck::echo()).
   void writeInputDeckEcho(const std::filesystem::path& results_path) const;
 
-  // // Appends the results block: scalar flux, then angular flux. angular_flux
-  // // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
-  // void writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
-  //                   const std::vector<Eigen::MatrixXd>& angular_flux) const;
+  // Appends the results block: scalar flux, then angular flux. angular_flux
+  // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
+  void writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
+                    const std::vector<Eigen::MatrixXd>& angular_flux) const;
 
   // // Appends the residuals block (one table per group, indexed like
   // // InputDeck::Source).
