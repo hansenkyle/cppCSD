@@ -1,0 +1,14 @@
+src/solver_formatter.cpp
+  h_c6d403188ce57a 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f0d07852dea0ec2d4f7808d02af201873ad8f07",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
