@@ -527,5 +527,6 @@ void appendToFile(const std::filesystem::path& file_path, const std::string& tex
 
 void Solver::write_metadata(const std::filesystem::path& results_path,
                             const std::filesystem::path& deck_path) const {
-  appendToFile(results_path, SolverFormatter::formatRunMetadata(input_deck, deck_path));
+  appendToFile(results_path,
+               SolverFormatter::formatRunMetadata(input_deck, deck_path, "source iteration"));
 }

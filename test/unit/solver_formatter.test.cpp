@@ -39,9 +39,10 @@ InputDeck makeDeck() {
 
 TEST_SUITE("SolverFormatter") {
   TEST_CASE("formatRunMetadata renders the run time, deck path and problem dimensions") {
-    const std::string result = SolverFormatter::formatRunMetadata(makeDeck(), "/decks/sample.yaml");
+    const std::string result =
+        SolverFormatter::formatRunMetadata(makeDeck(), "/decks/sample.yaml", "method_name");
 
-    CHECK(result.find("[run info]") != std::string::npos);
+    CHECK(result.find("[Run Info]") != std::string::npos);
     CHECK(result.find("execution date/time") != std::string::npos);
     CHECK(result.find("/decks/sample.yaml") != std::string::npos);
     CHECK(result.find("n_groups") != std::string::npos);

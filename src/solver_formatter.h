@@ -28,7 +28,8 @@ namespace SolverFormatter {
 // "run info" block: when the run happened, which deck it came from, and
 // the problem's dimensions. deck_path is recorded as-is, so the caller
 // decides whether it reads as absolute or relative.
-std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path);
+std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
+                              std::string method_name);
 
 // "Scalar Flux" block, followed by one "Angular Flux - Group N" block per
 // entry in angular_flux (indexed like InputDeck::Source: one entry per
