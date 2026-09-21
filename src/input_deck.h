@@ -107,13 +107,11 @@ public:
     std::vector<int> material_indices;
     std::vector<std::string> material_names() const {
       std::vector<std::string> names = {};
-      for (auto m : material_list) {
-        names.push_back(m.name);
+      for (auto i : material_indices) {
+        names.push_back(material_list[i].name);
       }
       return names;
     }
-
-  private:
     std::vector<Material> material_list;
   };
 

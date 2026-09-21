@@ -93,6 +93,14 @@ std::vector<std::string> ordinateLabels(const InputDeck& deck) {
   return labels;
 }
 
+std::vector<int> intseq(int stop, int start = 1) {
+  std::vector<int> result = {};
+  for (int i = start; i < (stop + 1); i++) {
+    result.push_back(i);
+  }
+  return result;
+}
+
 } // namespace
 
 namespace SolverFormatter {
@@ -110,19 +118,51 @@ std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path
 }
 
 std::string formatInputEcho(const InputDeck& deck) {
-  std::string result = "[Input Echo]\n\n";
+
+  UnitGroup input_echo("Input Echo");
+
   HorizontalTable spatialdata;
-  spatialdata.add_row("cell boundaries", deck.mesh.x_boundary);
+  spatialdata.add_row("i", intseq(deck.mesh.n_x));
   spatialdata.add_row("dx", deck.mesh.dx);
+  spatialdata.add_row("material", deck.xs.material_names());
+  spatialdata.add_row("cell bounds", deck.mesh.x_boundary);
 
   HorizontalTable energydata;
-  energydata.add_row("group boundaries", deck.energy.E_boundary);
+  energydata.add_row("g", intseq(deck.energy.G));
   energydata.add_row("dE", deck.energy.dE);
+  energydata.add_row("group boundaries", deck.energy.E_boundary);
 
-  result += spatialdata.render_txt("{:.2e}", 1) + "\n";
-  result += energydata.render_txt("{:.2e}", 1) + "\n";
+  UnitGroup materials("Materials");
 
-  return result;
+  for (auto m : deck.xs.material_list) {
+    // make material's own block
+    UnitGroup mat(m.name);
+    // add total xs
+    HorizontalTable xs_t_and_s("cross sections and stopping power");
+    xs_t_and_s.add_row("g", intseq(deck.energy.G));
+    xs_t_and_s.add_row("sigma_total", m.total);
+    xs_t_and_s.add_row("grp. avg. stoping power", m.S);
+    xs_t_and_s.add_row("grp. bound. stopping power", m.S_b);
+
+    HorizontalTable scatter("scattering matrix (from, to)");
+    scatter.add_row("", intseq(deck.energy.G));
+    for (int gp1 : intseq(deck.energy.G)) {
+      int g = gp1 - 1;
+      scatter.add_row(std::to_string(gp1), m.scatter(g, Eigen::placeholders::all));
+    }
+
+    mat.add(xs_t_and_s, "{:.5e}");
+    mat.add(scatter, "{:.5e}");
+
+    // add to materials block
+    materials.add(mat);
+  }
+
+  input_echo.add(spatialdata, "{:.2e}");
+  input_echo.add(energydata, "{:.2e}");
+  input_echo.add(materials);
+
+  return input_echo.render_txt();
 }
 
 std::string formatResults(const Eigen::MatrixXd& scalar_flux,
