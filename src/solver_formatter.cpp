@@ -235,8 +235,26 @@ std::string formatResults(const Eigen::MatrixXd& scalar_flux,
     cell_ave_angular.add(psi_g, "{:.4e}");
   }
 
+  VerticalTable energy_spectrum("energy spectrum", "averaged over x, not E");
+  energy_spectrum.add_column("i", x_index);
+
+  std::vector<int> backwardsg = {};
+  for (int g = deck.energy.G; g > 0; g--) {
+    backwardsg.push_back(g);
+  }
+
+  VerticalTable multigroup("multigroup scalar flux", "averaged over E, not x");
+  multigroup.add_column("g", e_index);
+
+  for (auto gplusone : backwardsg) {
+    energy_spectrum.add_column("g=" + std::to_string(gplusone) + ",down", x_index);
+    energy_spectrum.add_column("g=" + std::to_string(gplusone) + ",up", x_index);
+  }
+
   solution.add(cell_ave_scalar, "{:.4e}");
   solution.add(cell_ave_angular);
+  solution.add(energy_spectrum, "{:.4e}");
+  solution.add(multigroup, "{:.4e}");
   return solution.render_txt();
 }
 
