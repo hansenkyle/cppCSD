@@ -1,0 +1,21 @@
+src/solver.cpp
+  h_c6d403188ce57a 537-542
+src/solver_formatter.cpp
+  h_c6d403188ce57a 124,140,145,219-235,237-240
+src/solver.h
+  h_c6d403188ce57a 113-115
+  h_c6d403188ce57a 116
+src/main.cpp
+  h_c6d403188ce57a 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24a3a5ff9e495076de176f7f9ee128c498be0e59",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
