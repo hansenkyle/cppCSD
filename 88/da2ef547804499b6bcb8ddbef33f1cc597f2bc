@@ -1,0 +1,35 @@
+src/solver_formatter.h
+  s_55872932b503fc::t_62cba953e732eb 11,28-31
+src/solver.h
+  s_55872932b503fc::t_9f5cfd9eeeb14e 104-108
+src/main.cpp
+  s_55872932b503fc::t_9f5cfd9eeeb14e 41-42
+test/unit/solver_formatter.test.cpp
+  s_55872932b503fc::t_d12ab8b2b2ce8a 41-42,44-49
+src/solver_formatter.cpp
+  s_55872932b503fc::t_62cba953e732eb 100,102-106
+  h_250041054ad857 101
+src/solver.cpp
+  s_55872932b503fc::t_9f5cfd9eeeb14e 527-531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88da2ef547804499b6bcb8ddbef33f1cc597f2bc",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_55872932b503fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9127a19f-5a09-4364-b098-1fc3d528f00b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
