@@ -1,0 +1,14 @@
+src/source_iteration.h
+  h_c6d403188ce57a 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78421cec78e83fd926782dba5d2c40da7e2ddd0f",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
