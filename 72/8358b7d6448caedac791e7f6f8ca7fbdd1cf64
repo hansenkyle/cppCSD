@@ -1,0 +1,15 @@
+src/source_iteration.cpp
+  h_c6d403188ce57a 108,160-171,197-199,201-202,204-205
+  h_c6d403188ce57a 109-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "728358b7d6448caedac791e7f6f8ca7fbdd1cf64",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
