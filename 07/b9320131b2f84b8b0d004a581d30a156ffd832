@@ -1,0 +1,18 @@
+src/solver.cpp
+  h_c6d403188ce57a 174
+src/transport_operator.h
+  h_c6d403188ce57a 22
+src/transport_operator.cpp
+  h_c6d403188ce57a 14-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07b9320131b2f84b8b0d004a581d30a156ffd832",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
