@@ -1,0 +1,33 @@
+src/source_iteration.h
+  h_c6d403188ce57a 59
+  s_388be6948f8d48::t_edac3613dd0f79 57
+src/source_iteration.cpp
+  h_c6d403188ce57a 10,18,37,93,96,100-144,147-158,160
+  h_c6d403188ce57a 99,159
+src/main.cpp
+  h_c6d403188ce57a 46
+  h_c6d403188ce57a 47
+src/method.cpp
+  h_c6d403188ce57a 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6bb9091a3a21250a6892abf7103d324b94f8b44",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_388be6948f8d48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f20f39d-5a48-4a52-9ba3-bd9e4021b7e3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
