@@ -39,7 +39,7 @@ public:
     int n_x = 0;                // number of spatial cells
     Eigen::VectorXd x_boundary; // cell boundary locations, strictly ascending, size n_x + 1
     Eigen::VectorXd dx;         // cell widths, derived from x_boundary by validate(), size n_x
-
+    Eigen::VectorXd x_center;
     // Checks n_x > 0, x_boundary.size() == n_x + 1, and x_boundary strictly
     // ascending. Populates dx as the consecutive differences of x_boundary.
     void validate();
