@@ -11,7 +11,7 @@
 #include "file_manager.h"
 #include "input_deck.h"
 #include "logger.h"
-#include "solver.h"
+#include "source_iteration.h"
 #include "terminal.h"
 
 int main(int argc, char** argv) {
@@ -35,15 +35,15 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  Solver solver(deck);
+  SourceIteration solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
-  solver.write_metadata(output.results_path, std::filesystem::absolute(*yaml_path));
-  solver.writeInputDeckEcho(output.results_path);
-  solver.writeResults(output.results_path, Eigen::MatrixXd::Zero(1, 1),
-                      {Eigen::MatrixXd::Zero(1, 1)});
+  solver.writeMetadata(output.results_path);
+  solver.writeInputEcho(output.results_path);
 
-  const Eigen::MatrixXd phi = solver.sourceIterate(1e-8);
+  solver.solve(1e-8);
 
-  return solver.convergence().allConverged() ? 0 : 1;
+  solver.writeResults(output.results_path);
+
+  return 0;
 }

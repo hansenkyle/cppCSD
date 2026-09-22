@@ -170,6 +170,106 @@ public:
   std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
 };
 
+// Table labelled on both axes: column names across the top, row names down
+// the left, and a rectangular block of cells between them. Vertical and
+// HorizontalTable each name one axis and leave the other implicit, which
+// makes a matrix awkward -- it has to be fed in a series at a time with an
+// index series faked up as the first one. This takes the whole matrix at
+// once instead, so anything shaped like [corners x groups] renders with one
+// call and only the labels change between quantities.
+//
+// Row labels are optional: pass none and the label column disappears,
+// leaving headers over bare data.
+//
+// Either axis can also be labelled at more than one level, for a quantity
+// whose index is really a pair -- a cell and the half it belongs to, a
+// group and a direction. set_data() supplies the first (and often only)
+// level; add_column_label()/add_row_label() each stack one more level on
+// top, so a matrix of half-cell values is built up as
+//
+//   table.set_data(data, {"1", "1", "2", "2"}, {"i=1"});
+//   table.add_column_label({"up", "down", "up", "down"});
+//
+// and reads as
+//
+//   i \ g   1    1    2    2
+//           up   down up   down
+//   1       ...
+class MatrixTable : public Table {
+public:
+  using Table::Table;
+
+  // Replaces the table's contents. One row per row of `data`, one column
+  // per column, with a single level of labels on each axis. Either label
+  // vector may be shorter than its axis (or empty); the entries past its
+  // end are left blank. Also drops any levels a previous set_data() or
+  // add_column_label()/add_row_label() left behind, so the table starts
+  // clean each time.
+  void set_data(const std::vector<std::vector<Cell>>& data, std::vector<std::string> column_labels,
+                std::vector<std::string> row_labels = {});
+
+  // Same, from an Eigen matrix. Ref<const> also binds to expressions that
+  // aren't a contiguous MatrixXd -- a block, a transpose, a coefficient-wise
+  // expression -- by evaluating them into a temporary first.
+  void set_data(const Eigen::Ref<const Eigen::MatrixXd>& data,
+                std::vector<std::string> column_labels, std::vector<std::string> row_labels = {});
+
+  // Stacks another level of column labels under the ones set_data() (and
+  // any earlier add_column_label() calls) already gave, one entry per
+  // column. Short of the full column count (or empty) leaves the rest of
+  // this level blank, the same as set_data()'s column_labels.
+  void add_column_label(std::vector<std::string> labels);
+
+  // Same, for another level of row labels, one entry per row, spreading
+  // into an extra label column to the right of the existing ones.
+  void add_row_label(std::vector<std::string> labels);
+
+  // Text for the top-left cell, above the row labels -- in the last header
+  // row when the columns are labelled at several levels, so it always sits
+  // directly above the labels it names. Blank by default, and ignored when
+  // there are no row labels.
+  void set_corner_label(std::string label);
+
+  // Same, but filling the whole corner block instead of just its one cell:
+  // `corner` is indexed [header row][label column], outermost first on
+  // each axis to match add_column_label()/add_row_label(). The block is
+  // exactly as many header rows as there are column levels by as many
+  // label columns as there are row levels, so how big `corner` needs to be
+  // depends on however many add_column_label()/add_row_label() calls end
+  // up made -- render_txt() is where that's finally known, so a mismatch
+  // is reported there (as a std::runtime_error) rather than here.
+  //
+  // A separate name from set_corner_label() rather than an overload of it:
+  // a doubly-nested single string, {{"c"}}, is ambiguous as an argument
+  // between the two -- list-initialization lets it collapse down to a
+  // plain std::string just as validly as it can build a 1x1 grid, so
+  // overload resolution can't pick between them.
+  void set_corner_grid(std::vector<std::vector<std::string>> corner);
+
+  const std::vector<std::vector<std::string>>& corner_label() const { return corner_; }
+
+  // `format` is the std::format spec applied to every numeric cell; text
+  // cells are already rendered. `tabs` indents the whole block by that
+  // many four-space runs.
+  std::string render_txt(std::string_view format = "{:.4e}", int tabs = 0) const;
+
+private:
+  // One entry per level, outermost (topmost/leftmost) first; each level
+  // holds one label per column or row. A single-level axis is just one
+  // entry here. How many header rows and label columns that works out to
+  // is simply how many levels there are.
+  std::vector<std::vector<std::string>> column_levels_;
+  std::vector<std::vector<std::string>> row_levels_;
+
+  // Always stored as a grid, [header row][label column]. The plain-string
+  // overload stores a 1x1 grid too, but sets corner_is_single_cell_ so
+  // render_txt() places it in the corner block's bottom-left cell
+  // regardless of the block's actual size, rather than requiring it to
+  // fill the block exactly the way set_corner_grid() does.
+  std::vector<std::vector<std::string>> corner_;
+  bool corner_is_single_cell_ = true;
+};
+
 // One or more rendered units stacked into a single block, separated by
 // blank lines and indented one level under the group's own title. A group
 // is itself a unit, so groups nest -- each layer indents its contents one
