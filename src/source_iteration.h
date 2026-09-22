@@ -27,7 +27,8 @@ class SourceIteration : public Method {
 public:
   // constructor from input deck (copy)
   SourceIteration(InputDeck input_deck)
-      : Method("source iteration", input_deck), transport_operator(input_deck) {}
+      : Method("source iteration", input_deck), transport_operator(input_deck),
+        convergence_(input_deck.energy.G) {}
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
   ///

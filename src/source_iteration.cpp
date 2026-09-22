@@ -63,7 +63,7 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       const double phi_norm = phi_g.norm();
       converged = abs_diff <= phi_norm * epsilon;
 
-      convergence_.record(IterationRecord{g, iteration, phi_norm, abs_diff, 0.0, max_residual});
+      // convergence_.record(IterationRecord{g, iteration, phi_norm, abs_diff, 0.0, max_residual});
 
       const int max_cell = static_cast<int>(max_row) / 4;
       const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
@@ -78,7 +78,7 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
     phi.col(g) = phi_g;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
-    convergence_.finishGroup(g, converged, elapsed.count());
+    // convergence_.finishGroup(g, converged, elapsed.count());
 
     if (converged) {
       LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
