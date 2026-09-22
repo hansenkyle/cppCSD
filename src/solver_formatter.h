@@ -25,8 +25,6 @@
 // write schedule), not *how* it's laid out as text.
 namespace SolverFormatter {
 
-std::string formatInputEcho(const InputDeck& deck);
-
 // "Scalar Flux" block, followed by one "Angular Flux - Group N" block per
 // entry in angular_flux (indexed like InputDeck::Source: one entry per
 // group, one ordinate per column).

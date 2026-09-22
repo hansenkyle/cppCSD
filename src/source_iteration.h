@@ -50,12 +50,6 @@ public:
 
   static constexpr int kDefaultMaxIterations = 1000;
 
-  // Appends the "run info" block -- run time, deck path, problem
-  // dimensions -- to the results file. deck_path is only recorded, never
-  // read, so it can be whatever spelling the caller wants shown.
-  void write_metadata(const std::filesystem::path& results_path,
-                      const std::filesystem::path& deck_path) const;
-
   // Appends an echo of input_deck (InputDeck::echo()).
   void writeInputDeckEcho(const std::filesystem::path& results_path) const;
 

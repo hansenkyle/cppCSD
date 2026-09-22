@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   LDCSD_LOG_INFO("constructed Solver");
 
   solver.writeMetadata(output.results_path);
-  solver.writeInputDeckEcho(output.results_path);
+  solver.writeInputEcho(output.results_path);
   solver.writeResults(output.results_path, Eigen::MatrixXd::Zero(1, 1),
                       {Eigen::MatrixXd::Zero(1, 1)});
 

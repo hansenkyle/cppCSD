@@ -100,16 +100,6 @@ void appendToFile(const std::filesystem::path& file_path, const std::string& tex
   out << text;
 }
 
-// void SourceIteration::write_metadata(const std::filesystem::path& results_path,
-//                             const std::filesystem::path& deck_path) const {
-//   appendToFile(results_path,
-//                SolverFormatter::formatRunMetadata(input_deck, deck_path, "source iteration"));
-// }
-
-void SourceIteration::writeInputDeckEcho(const std::filesystem::path& results_path) const {
-  appendToFile(results_path, SolverFormatter::formatInputEcho(input_deck));
-}
-
 void SourceIteration::writeResults(const std::filesystem::path& results_path,
                                    const Eigen::MatrixXd& scalar_flux,
                                    const std::vector<Eigen::MatrixXd>& angular_flux) const {
