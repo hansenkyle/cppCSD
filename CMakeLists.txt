@@ -82,7 +82,6 @@ add_library(ldcsd_core STATIC
     src/file_manager.cpp
     src/logger.cpp
     src/output_block.cpp
-    src/solver.cpp
     src/transport_operator.cpp
     src/method.cpp
     src/source_iteration.cpp
@@ -129,7 +128,6 @@ if(LDCSD_BUILD_TESTS)
         test/unit/file_manager.test.cpp
         test/unit/logger.test.cpp
         test/unit/output_block.test.cpp
-        test/unit/solver.test.cpp
         test/unit/transport_operator.test.cpp
         test/unit/source_iteration.test.cpp
         test/unit/method.test.cpp

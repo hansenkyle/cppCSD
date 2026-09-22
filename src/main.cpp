@@ -11,7 +11,7 @@
 #include "file_manager.h"
 #include "input_deck.h"
 #include "logger.h"
-#include "solver.h"
+#include "source_iteration.h"
 #include "terminal.h"
 
 int main(int argc, char** argv) {
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  Solver solver(deck);
+  SourceIteration solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
   solver.writeMetadata(output.results_path);
