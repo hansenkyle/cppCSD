@@ -42,7 +42,8 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
     const auto group_start = std::chrono::steady_clock::now();
 
     int iteration = 0;
-    double abs_diff = 0.0;
+    double abs_diff_l2 = 0.0;
+    Eigen::VectorXd abs_diff;
     bool converged = false;
 
     while (!converged && iteration < max_iterations) {
@@ -59,16 +60,18 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       // compute new phi
       phi_g = transport_operator.integrateAngle(psi);
 
-      abs_diff = (phi_g - phi.col(g)).norm();
+      abs_diff = (phi_g - phi.col(g));
+      abs_diff_l2 = (phi_g - phi.col(g)).norm();
       const double phi_norm = phi_g.norm();
-      converged = abs_diff <= phi_norm * epsilon;
+      converged = abs_diff_l2 <= phi_norm * epsilon;
 
-      // convergence_.record(IterationRecord{g, iteration, phi_norm, abs_diff, 0.0, max_residual});
+      convergence_.log_group(g,
+                             IterationRecord(abs_diff.norm(), abs_diff.lpNorm<Eigen::Infinity>()));
 
       const int max_cell = static_cast<int>(max_row) / 4;
       const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
       LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
-                     ": |dphi| = " + std::format("{:.4e}", abs_diff) +
+                     ": |dphi| = " + std::format("{:.4e}", abs_diff_l2) +
                      ", |phi| = " + std::format("{:.4e}", phi_norm) +
                      ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
                      std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
@@ -78,15 +81,15 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
     phi.col(g) = phi_g;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
-    // convergence_.finishGroup(g, converged, elapsed.count());
+    convergence_.time_group(g, elapsed.count());
 
     if (converged) {
-      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
+      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_l2) + " in " +
                      std::to_string(iteration) + " iterations");
     } else {
       LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
                      std::to_string(max_iterations) +
-                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff_l2));
     }
     psi_up = psi;
     solution.angular_flux[g] = psi;
