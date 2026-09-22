@@ -21,10 +21,7 @@
 void SourceIteration::solve(double epsilon, int max_iterations) {
   // Solve the transport equation in all groups via source iteration.
   //
-  // Groups are solved in a single downward pass and never revisited: that's
-  // correct for pure CSD plus downscatter, and silently wrong if a deck ever
-  // carries upscatter. The scalar flux is *not* reset between groups, so
-  // group g starts from group g-1's converged answer (a warm start).
+  // No iteration over energy groups, assume downscatter only
 
   LDCSD_LOG_INFO("Begin source iteration");
 
@@ -34,6 +31,9 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
 
   Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
   Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+
+  result.angular_flux = std::vector<Eigen::MatrixXd>(
+      input_deck.energy.G, Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M));
 
   // for each E:
   for (int g = 0; g < input_deck.energy.G; g++) {
@@ -88,7 +88,10 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
                      "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
     }
     psi_up = psi;
+    result.angular_flux[g] = psi;
   }
+
+  result.scalar_flux = phi;
 }
 
 void appendToFile(const std::filesystem::path& file_path, const std::string& text) {

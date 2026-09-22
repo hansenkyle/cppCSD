@@ -16,7 +16,6 @@
 
 struct MethodResult {
   Eigen::MatrixXd scalar_flux;
-  Eigen::MatrixXd current;
   std::vector<Eigen::MatrixXd> angular_flux;
 };
 
@@ -31,7 +30,6 @@ public:
 
   // virtual void writeInputDeckEcho() = 0;
   // virtual void writeResults(const std::filesystem::path& file_path) const;
-  MethodResult result;
 
 protected:
   Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}

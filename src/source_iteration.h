@@ -58,14 +58,7 @@ public:
   void writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
                     const std::vector<Eigen::MatrixXd>& angular_flux) const;
 
-  // // Appends the residuals block (one table per group, indexed like
-  // // InputDeck::Source).
-  // void writeResiduals(const std::filesystem::path& file_path,
-  //                     const std::vector<Eigen::MatrixXd>& residuals) const;
-
-  // // Appends the convergence blocks (per-group summary, then the full
-  // // per-iteration history) for the most recent solve.
-  // void writeConvergence(const std::filesystem::path& file_path) const;
+  MethodResult result;
 
 protected:
   TransportOperator transport_operator;
