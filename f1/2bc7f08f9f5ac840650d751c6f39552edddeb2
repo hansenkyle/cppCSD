@@ -1,0 +1,22 @@
+src/source_iteration.h
+  h_c6d403188ce57a 30-31
+src/source_iteration.cpp
+  h_c6d403188ce57a 66,81
+test/unit/convergence.test.cpp
+  h_c6d403188ce57a 12
+src/convergence.h
+  h_c6d403188ce57a 15-19,24-29
+src/convergence.cpp
+  h_c6d403188ce57a 10,12-14,17-20,23-25,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f12bc7f08f9f5ac840650d751c6f39552edddeb2",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
