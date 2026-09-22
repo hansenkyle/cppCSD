@@ -98,6 +98,30 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
 
 void SourceIteration::writeResults(const std::filesystem::path& results_path) const {
 
+  auto vint_to_vstring = [](std::vector<int> ivec) {
+    std::vector<std::string> result = {};
+    for (auto i : ivec) {
+      result.push_back(std::to_string(i));
+    }
+    return result;
+  };
+
+  auto vdoub_to_string = [](std::vector<double> dvec, std::string fmt = "{:.2e}") {
+    std::vector<std::string> result = {};
+    for (auto i : dvec) {
+      result.push_back(std::vformat(fmt, std::make_format_args(i)));
+    }
+    return result;
+  };
+
+  auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
+    std::vector<std::string> result;
+    for (Eigen::Index i = 0; i < dvec.size(); i++) {
+      result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
+    }
+    return result;
+  };
+
   auto int_label_seq = [](int max) {
     auto intview = std::views::iota(1, max + 1) |
                    std::views::transform([](int x) { return std::to_string(x); });
@@ -126,21 +150,30 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   auto gseq = int_label_seq(input_deck.energy.G);
   auto mseq = int_label_seq(input_deck.angle.M);
 
+  auto x_center = evdoub_to_string(input_deck.mesh.x_center);
+  auto mu = evdoub_to_string(input_deck.angle.mu);
+
   UnitGroup sol_block("solution");
 
   // cell-average scalar flux
   MatrixTable scalar("cell-average scalar flux", "averaged over each space-energy cell");
-  scalar.set_data(solution.scalar_flux.transpose(), iseq, gseq);
-  scalar.set_corner_label("g \\ i");
+  scalar.set_data(solution.cell_average_scalar().transpose(), x_center, gseq);
+  scalar.add_column_label(iseq);
+
+  std::vector<std::vector<std::string>> labels = {{"x_i"}, {"g \\ i"}};
+  scalar.set_corner_grid(labels);
 
   // cell-average angular flux
+  labels = {{"", "x_i"}, {"mu", "m \\i"}};
   UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
   for (int g = 0; g < input_deck.energy.G; g++) {
     std::cout << g << "\n";
     int gplusone = g + 1;
     MatrixTable group("g = " + std::to_string(gplusone));
-    group.set_data(solution.angular_flux[g].transpose(), iseq, mseq);
-    group.set_corner_label("m \\ i");
+    group.set_data(solution.cell_average_angular()[g].transpose(), x_center, mu);
+    group.add_column_label(iseq);
+    group.add_row_label(mseq);
+    group.set_corner_grid(labels);
     angular.add(group, "{:.4e}");
   }
 
@@ -149,8 +182,9 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   multigroup.set_corner_label("g \\ i (L/R)");
 
   MatrixTable spectrum("energy spectrum", "averaged over space, not energy");
-  spectrum.set_data(solution.spectrum(), interleave(gseq), iseq);
-  spectrum.set_corner_label("i \\ g (up/down)");
+  spectrum.set_data(solution.spectrum(), interleave(gseq), x_center);
+  spectrum.add_row_label(iseq);
+  spectrum.set_corner_grid({{"x_i", "i \\ g"}});
 
   sol_block.add(scalar, "{:.4e}");
   sol_block.add(angular);
