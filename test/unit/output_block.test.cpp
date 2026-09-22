@@ -619,7 +619,7 @@ TEST_SUITE("UnitGroup") {
                                  "\n"
                                  "    n  ...  2\n"
                                  "\n"
-                                 "    x  0.5  1.5\n";
+                                 "    x  0.5  1.5\n\n";
     CHECK(group.render_txt() == expected);
   }
 
@@ -637,7 +637,7 @@ TEST_SUITE("UnitGroup") {
                                  "\n"
                                  "    [Inner]\n"
                                  "\n"
-                                 "        k  ...  v\n";
+                                 "        k  ...  v\n\n\n";
     CHECK(outer.render_txt() == expected);
   }
 
@@ -648,12 +648,12 @@ TEST_SUITE("UnitGroup") {
     UnitGroup group;
     group.add(leaf);
 
-    CHECK(group.render_txt(1) == "        k  ...  v\n");
+    CHECK(group.render_txt(1) == "        k  ...  v\n\n");
   }
 
   TEST_CASE("an empty group renders only its title") {
-    CHECK(UnitGroup("EMPTY").render_txt() == "[EMPTY]\n\n");
-    CHECK(UnitGroup().render_txt() == "");
+    CHECK(UnitGroup("EMPTY").render_txt() == "[EMPTY]\n\n\n");
+    CHECK(UnitGroup().render_txt() == "\n");
   }
 }
 
@@ -701,12 +701,12 @@ TEST_SUITE("OutputUnit description") {
                                  "    [T]\n"
                                  "    a note\n"
                                  "\n"
-                                 "    x  0.5\n";
+                                 "    x  0.5\n\n";
     CHECK(group.render_txt() == expected);
   }
 
   TEST_CASE("an empty unit with neither title nor description has no preamble") {
     CHECK(VerticalTable().render_txt() == "");
-    CHECK(UnitGroup().render_txt() == "");
+    CHECK(UnitGroup().render_txt() == "\n");
   }
 }
