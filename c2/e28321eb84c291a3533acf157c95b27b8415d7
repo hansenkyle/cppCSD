@@ -1,0 +1,18 @@
+src/method.h
+  h_c6d403188ce57a 30-31
+src/main.cpp
+  h_c6d403188ce57a 42
+src/method.cpp
+  h_c6d403188ce57a 23-30,40,49-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2e28321eb84c291a3533acf157c95b27b8415d7",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
