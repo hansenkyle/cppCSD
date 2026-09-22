@@ -30,6 +30,58 @@ std::vector<int> intseq(int stop, int start = 1) {
 }
 } // namespace
 
+Eigen::MatrixXd MethodResult::spectrum() const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+  int I = scalar_flux.rows() / 4;
+  int G = scalar_flux.cols();
+
+  // average over each spatial cell
+  Eigen::MatrixXd xave =
+      (scalar_flux(seqN(0, 2 * I, 2), all) + scalar_flux(seqN(1, 2 * I, 2), all)) / 2;
+  // transform (2x by G) to (x by 2g)
+  Eigen::MatrixXd result = Eigen::MatrixXd::Zero(I, 2 * G);
+  for (int i = 0; i < I; i++) {
+    for (int g = 0; g < G; g++) {
+      result(i, seqN(g * 2, 2)) = xave(seqN(2 * i, 2), g).transpose();
+    }
+  }
+  return result;
+}
+
+Eigen::MatrixXd MethodResult::multigroup() const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+
+  int I = scalar_flux.rows() / 4;
+  int G = scalar_flux.cols();
+
+  Eigen::MatrixXd left = (scalar_flux(seqN(0, I, 4), all) + scalar_flux(seqN(2, I, 4), all)) / 2;
+  Eigen::MatrixXd right = (scalar_flux(seqN(1, I, 4), all) + scalar_flux(seqN(3, I, 4), all)) / 2;
+
+  Eigen::MatrixXd result = Eigen::MatrixXd::Zero(2 * I, G);
+  for (int g = 0; g < G; g++) {
+    result(seqN(0, I, 2), g) = left(all, g);
+    result(seqN(1, I, 2), g) = right(all, g);
+  }
+
+  return result;
+}
+
+Eigen::MatrixXd MethodResult::cell_average() const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+
+  int I = scalar_flux.rows() / 4;
+  int G = scalar_flux.cols();
+
+  Eigen::MatrixXd leftsum = (scalar_flux(seqN(0, I, 4), all) + scalar_flux(seqN(2, I, 4), all));
+  Eigen::MatrixXd rightsum = (scalar_flux(seqN(1, I, 4), all) + scalar_flux(seqN(3, I, 4), all));
+
+  Eigen::MatrixXd result = (leftsum + rightsum) / 4;
+  return result;
+}
+
 void Method::appendToFile(const std::filesystem::path& file_path, const std::string& text) const {
   std::ofstream out(file_path, std::ios::app);
   if (!out.is_open()) {
