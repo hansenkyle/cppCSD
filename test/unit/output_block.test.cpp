@@ -498,6 +498,54 @@ TEST_SUITE("MatrixTable") {
     CHECK(table.render_txt("{:.1f}") == "   new\nr  3.0\n");
   }
 
+  TEST_CASE("a grid corner label fills the whole corner block") {
+    Eigen::MatrixXd data(2, 2);
+    data << 1.0, 2.0, 3.0, 4.0;
+
+    MatrixTable table;
+    table.set_data(data, {"g=1", "g=1"}, {"i=1", "i=1"});
+    table.add_column_label({"up", "down"});
+    table.add_row_label({"L", "R"});
+    table.set_corner_grid({{"i", "g"}, {"1", "2"}});
+
+    // Row 0 of the corner grid ("i", "g") sits in the first header row
+    // beside the column labels; row 1 ("1", "2") sits in the second,
+    // beside the row labels' own two levels down the left.
+    const std::string expected = "i    g  g=1   g=1\n"
+                                 "1    2   up  down\n"
+                                 "i=1  L  1.0   2.0\n"
+                                 "i=1  R  3.0   4.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a grid corner label with the wrong row count throws") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}}, {"g=1", "g=2"}, {"i=1"});
+    table.add_column_label({"up", "down"});
+    table.set_corner_grid({{"only one row"}});
+
+    CHECK_THROWS_WITH_AS(table.render_txt(), doctest::Contains("2 column-label"),
+                         std::runtime_error);
+  }
+
+  TEST_CASE("a grid corner label with the wrong column count throws") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}}, {"g=1", "g=2"}, {"i=1"});
+    table.add_column_label({"up", "down"});
+    table.add_row_label({"L"});
+    table.set_corner_grid({{"only", "one", "row"}, {"too", "wide"}});
+
+    CHECK_THROWS_WITH_AS(table.render_txt(), doctest::Contains("2 row-label"), std::runtime_error);
+  }
+
+  TEST_CASE("a grid corner label is ignored, not validated, with no row labels") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}}, {"g=1", "g=2"});
+    table.set_corner_grid({{"would", "never", "fit"}});
+
+    CHECK(table.render_txt("{:.1f}") == "g=1  g=2\n1.0  2.0\n");
+  }
+
   TEST_CASE("an empty table renders just its header") {
     MatrixTable table("EMPTY");
     CHECK(table.render_txt() == "[EMPTY]\n\n");

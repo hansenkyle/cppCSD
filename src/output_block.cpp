@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <format>
+#include <stdexcept>
 #include <utility>
 
 namespace {
@@ -210,6 +211,16 @@ void MatrixTable::add_row_label(std::vector<std::string> labels) {
   row_levels_.push_back(std::move(labels));
 }
 
+void MatrixTable::set_corner_label(std::string label) {
+  corner_ = {{std::move(label)}};
+  corner_is_single_cell_ = true;
+}
+
+void MatrixTable::set_corner_grid(std::vector<std::vector<std::string>> corner) {
+  corner_ = std::move(corner);
+  corner_is_single_cell_ = false;
+}
+
 std::string MatrixTable::render_txt(std::string_view format, int tabs) const {
   if (series_.empty()) {
     return indent(header(), tabs);
@@ -217,21 +228,50 @@ std::string MatrixTable::render_txt(std::string_view format, int tabs) const {
 
   const std::size_t n_label_cols = row_levels_.size();
   std::size_t n_head_rows = column_levels_.size();
-  // Unlabelled columns leave no header row for the corner text to sit in.
-  // Give it one, since the row labels under it still want naming.
-  if (n_head_rows == 0 && n_label_cols > 0 && !corner_.empty()) {
-    n_head_rows = 1;
+
+  if (corner_is_single_cell_) {
+    // Unlabelled columns leave no header row for the corner text to sit
+    // in. Give it one, since the row labels under it still want naming.
+    const bool corner_has_text = !corner_.empty() && !corner_[0][0].empty();
+    if (n_head_rows == 0 && n_label_cols > 0 && corner_has_text) {
+      n_head_rows = 1;
+    }
+  } else if (!corner_.empty() && n_label_cols > 0) {
+    // A grid corner has nowhere else to anchor to, unlike the single-cell
+    // form's bottom-left default, so it must fill the block exactly -- one
+    // row per column-label level, each that many entries wide. With no
+    // row labels there's no block for it to fill at all, so it's ignored
+    // instead of enforced, same as the single-cell form.
+    if (corner_.size() != n_head_rows) {
+      throw std::runtime_error(std::format(
+          "MatrixTable corner label has {} row(s), but there {} {} column-label level(s) to fill",
+          corner_.size(), n_head_rows == 1 ? "is" : "are", n_head_rows));
+    }
+    for (const std::vector<std::string>& row : corner_) {
+      if (row.size() != n_label_cols) {
+        throw std::runtime_error(std::format(
+            "MatrixTable corner label row has {} entries, but there {} {} row-label level(s) to "
+            "fill",
+            row.size(), n_label_cols == 1 ? "is" : "are", n_label_cols));
+      }
+    }
   }
 
   std::vector<std::vector<std::string>> rows;
 
   for (std::size_t level = 0; level < n_head_rows; ++level) {
     std::vector<std::string> head;
-    // The corner text goes in the last header row, so it sits directly
-    // above the row labels no matter how many column levels there are.
+    // The single-cell corner text goes in the last header row, so it sits
+    // directly above the row labels no matter how many column levels
+    // there are; a grid corner has an entry for every row already.
     const bool last_head_row = level + 1 == n_head_rows;
     for (std::size_t col = 0; col < n_label_cols; ++col) {
-      head.push_back(col == 0 && last_head_row ? corner_ : std::string());
+      if (corner_is_single_cell_) {
+        const bool is_corner_cell = col == 0 && last_head_row && !corner_.empty();
+        head.push_back(is_corner_cell ? corner_[0][0] : std::string());
+      } else {
+        head.push_back(level < corner_.size() ? corner_[level][col] : std::string());
+      }
     }
     if (level < column_levels_.size()) {
       const std::vector<std::string>& names = column_levels_[level];

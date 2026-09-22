@@ -228,8 +228,25 @@ public:
   // row when the columns are labelled at several levels, so it always sits
   // directly above the labels it names. Blank by default, and ignored when
   // there are no row labels.
-  void set_corner_label(std::string label) { corner_ = std::move(label); }
-  const std::string& corner_label() const { return corner_; }
+  void set_corner_label(std::string label);
+
+  // Same, but filling the whole corner block instead of just its one cell:
+  // `corner` is indexed [header row][label column], outermost first on
+  // each axis to match add_column_label()/add_row_label(). The block is
+  // exactly as many header rows as there are column levels by as many
+  // label columns as there are row levels, so how big `corner` needs to be
+  // depends on however many add_column_label()/add_row_label() calls end
+  // up made -- render_txt() is where that's finally known, so a mismatch
+  // is reported there (as a std::runtime_error) rather than here.
+  //
+  // A separate name from set_corner_label() rather than an overload of it:
+  // a doubly-nested single string, {{"c"}}, is ambiguous as an argument
+  // between the two -- list-initialization lets it collapse down to a
+  // plain std::string just as validly as it can build a 1x1 grid, so
+  // overload resolution can't pick between them.
+  void set_corner_grid(std::vector<std::vector<std::string>> corner);
+
+  const std::vector<std::vector<std::string>>& corner_label() const { return corner_; }
 
   // `format` is the std::format spec applied to every numeric cell; text
   // cells are already rendered. `tabs` indents the whole block by that
@@ -243,7 +260,14 @@ private:
   // is simply how many levels there are.
   std::vector<std::vector<std::string>> column_levels_;
   std::vector<std::vector<std::string>> row_levels_;
-  std::string corner_;
+
+  // Always stored as a grid, [header row][label column]. The plain-string
+  // overload stores a 1x1 grid too, but sets corner_is_single_cell_ so
+  // render_txt() places it in the corner block's bottom-left cell
+  // regardless of the block's actual size, rather than requiring it to
+  // fill the block exactly the way set_corner_grid() does.
+  std::vector<std::vector<std::string>> corner_;
+  bool corner_is_single_cell_ = true;
 };
 
 // One or more rendered units stacked into a single block, separated by
