@@ -1,0 +1,27 @@
+src/method.h
+  h_c6d403188ce57a 20-21
+src/method.cpp
+  h_c6d403188ce57a 33-42,44-70
+  s_728298f040c8fa::t_5a4474f8d7875a 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b30850858be008aa74c499593efb9c966160905",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_728298f040c8fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "083166d5-7661-43f8-9f09-b85d6e354eaf",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

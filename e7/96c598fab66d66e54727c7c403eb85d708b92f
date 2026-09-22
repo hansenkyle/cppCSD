@@ -1,0 +1,31 @@
+src/main.cpp
+  h_c6d403188ce57a 41,46
+src/solver.h
+  h_c6d403188ce57a 21,26,30,43
+  h_c6d403188ce57a 29
+src/source_iteration.h
+  h_c6d403188ce57a 15-17,19-21
+src/source_iteration.cpp
+  h_c6d403188ce57a 11-14
+src/method.cpp
+  h_c6d403188ce57a 9,15-24,32-39
+  h_c6d403188ce57a 31
+src/solver_formatter.cpp
+  h_c6d403188ce57a 108-118
+src/solver.cpp
+  h_c6d403188ce57a 21,102-106
+src/method.h
+  h_c6d403188ce57a 11,27,29-31,34-37
+  h_c6d403188ce57a 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e796c598fab66d66e54727c7c403eb85d708b92f",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
