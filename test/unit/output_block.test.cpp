@@ -357,6 +357,154 @@ TEST_SUITE("HorizontalTable") {
   }
 }
 
+TEST_SUITE("MatrixTable") {
+  TEST_CASE("a matrix renders with labels on both axes") {
+    Eigen::MatrixXd data(2, 3);
+    data << 1.0, 2.0, 3.0, 4.0, 5.0, 6.0;
+
+    MatrixTable table("FLUX");
+    table.set_data(data, {"g=1", "g=2", "g=3"}, {"up", "down"});
+    table.set_corner_label("corner");
+
+    const std::string expected = "[FLUX]\n"
+                                 "\n"
+                                 "corner  g=1  g=2  g=3\n"
+                                 "up      1.0  2.0  3.0\n"
+                                 "down    4.0  5.0  6.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("only the labels change between two quantities of the same shape") {
+    Eigen::MatrixXd data(1, 2);
+    data << 1.0, 2.0;
+
+    MatrixTable flux("scalar flux");
+    flux.set_data(data, {"g=1", "g=2"}, {"i=1"});
+
+    MatrixTable current("current");
+    current.set_data(data, {"g=1", "g=2"}, {"i=1"});
+
+    CHECK(flux.render_txt("{:.1f}") == "[scalar flux]\n\n     g=1  g=2\ni=1  1.0  2.0\n");
+    CHECK(current.render_txt("{:.1f}") == "[current]\n\n     g=1  g=2\ni=1  1.0  2.0\n");
+  }
+
+  TEST_CASE("no row labels drops the label column") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}, {3.0, 4.0}}, {"a", "b"});
+
+    CHECK(table.render_txt("{:.1f}") == "  a    b\n1.0  2.0\n3.0  4.0\n");
+  }
+
+  TEST_CASE("an all-blank header row is dropped rather than rendered empty") {
+    MatrixTable table;
+    table.set_data({{1.0}}, {}, {"i=1"});
+
+    CHECK(table.render_txt("{:.1f}") == "i=1  1.0\n");
+  }
+
+  TEST_CASE("labels shorter than their axis leave the rest blank, still aligned") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}, {3.0, 4.0}}, {"a"}, {"r1"});
+
+    // Row 2 has no label, but its blank still occupies the label column so
+    // its values stay under the same headings as row 1's.
+    const std::string expected = "      a\n"
+                                 "r1  1.0  2.0\n"
+                                 "    3.0  4.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("set_data replaces any previous contents") {
+    MatrixTable table;
+    table.set_data({{9.0, 9.0}}, {"old", "old"}, {"old"});
+    table.set_data({{1.0}}, {"new"}, {"r"});
+
+    CHECK(table.render_txt("{:.1f}") == "   new\nr  1.0\n");
+  }
+
+  TEST_CASE("text cells pass through unformatted, mixed with numbers") {
+    MatrixTable table;
+    table.set_data({{1.0, std::string("n/a")}}, {"a", "b"}, {"r"});
+
+    CHECK(table.render_txt("{:.1f}") == "     a    b\nr  1.0  n/a\n");
+  }
+
+  TEST_CASE("add_column_label stacks another level under the header") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}}, {"g=1", "g=1"});
+    table.add_column_label({"up", "down"});
+
+    const std::string expected = "g=1   g=1\n"
+                                 " up  down\n"
+                                 "1.0   2.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("add_row_label spreads another level into the label columns") {
+    MatrixTable table;
+    table.set_data({{1.0}, {2.0}}, {"phi"}, {"i=1", "i=1"});
+    table.add_row_label({"L", "R"});
+    table.set_corner_label("i");
+
+    const std::string expected = "i       phi\n"
+                                 "i=1  L  1.0\n"
+                                 "i=1  R  2.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("both axes can be labelled at several levels at once") {
+    Eigen::MatrixXd data(2, 2);
+    data << 1.0, 2.0, 3.0, 4.0;
+
+    MatrixTable table;
+    table.set_data(data, {"g=1", "g=1"}, {"i=1", "i=1"});
+    table.add_column_label({"up", "down"});
+    table.add_row_label({"L", "R"});
+    table.set_corner_label("i \\ g");
+
+    // The corner sits in the last header row, so it stays directly above
+    // the row labels however many column levels there are.
+    const std::string expected = "          g=1   g=1\n"
+                                 "i \\ g      up  down\n"
+                                 "i=1    L  1.0   2.0\n"
+                                 "i=1    R  3.0   4.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("a level that names only some entries ends its row early") {
+    Eigen::MatrixXd data(1, 2);
+    data << 1.0, 2.0;
+
+    MatrixTable table;
+    table.set_data(data, {"g=1", "g=1"}, {"i=1"});
+    table.add_column_label({"up"});
+
+    // The second column has no second-level label, so that level's header
+    // row ends after the first column instead of naming it.
+    const std::string expected = "     g=1  g=1\n"
+                                 "      up\n"
+                                 "i=1  1.0  2.0\n";
+    CHECK(table.render_txt("{:.1f}") == expected);
+  }
+
+  TEST_CASE("set_data drops levels a previous add_column_label/add_row_label added") {
+    MatrixTable table;
+    table.set_data({{1.0, 2.0}}, {"old1", "old2"});
+    table.add_column_label({"old-lvl2-a", "old-lvl2-b"});
+    table.add_row_label({"old-row-lvl"});
+
+    table.set_data({{3.0}}, {"new"}, {"r"});
+
+    CHECK(table.render_txt("{:.1f}") == "   new\nr  3.0\n");
+  }
+
+  TEST_CASE("an empty table renders just its header") {
+    MatrixTable table("EMPTY");
+    CHECK(table.render_txt() == "[EMPTY]\n\n");
+    CHECK(MatrixTable().render_txt() == "");
+  }
+}
+
 TEST_SUITE("OutputUnit") {
   TEST_CASE("set_title replaces the title used by render_txt") {
     KeyValueOutput meta;
