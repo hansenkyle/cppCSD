@@ -1,0 +1,34 @@
+src/output_block.h
+  s_759d0fe9b5fef5::t_9eb4174319aaed 183-185,189,195-197,227-230
+  s_759d0fe9b5fef5::t_42d42caf4ddbcf 186-188,190-194,203-207,217-225,240-245
+  s_759d0fe9b5fef5::t_3d10d1f616c847 226
+test/unit/output_block.test.cpp
+  s_759d0fe9b5fef5::t_ca484f83cea684 432,434-435,443,445-446,460-462,466,474,479-483,490-494,496,498
+  s_759d0fe9b5fef5::t_5f09a5b9480b96 433,436-442,444,447-459,463-465,467-473,475-478,484-489,495,497,499-500
+src/output_block.cpp
+  s_759d0fe9b5fef5::t_39560fe2555126 177-184,205-210,218-219,231,236-237,243-248,257-258
+  s_759d0fe9b5fef5::t_3364e2b5a87858 186-187,211-212,220-225,228-230,232-235,239,250-251,256,266
+  s_759d0fe9b5fef5::t_e35601bc509b5c 238
+  s_759d0fe9b5fef5::t_98ce3632ea9269 240-242,249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c63f01596c155f6ff5b199dcea825ba2c5aea15e",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_759d0fe9b5fef5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84159d55-88a2-4a2b-9b49-cd60ef23c954",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
