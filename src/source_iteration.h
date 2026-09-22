@@ -28,7 +28,6 @@ public:
   // constructor from input deck (copy)
   SourceIteration(InputDeck input_deck)
       : Method("source iteration", input_deck), transport_operator(input_deck) {}
-  InputDeck input_deck;
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
   ///
@@ -55,10 +54,9 @@ public:
 
   // Appends the results block: scalar flux, then angular flux. angular_flux
   // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
-  void writeResults(const std::filesystem::path& file_path, const Eigen::MatrixXd& scalar_flux,
-                    const std::vector<Eigen::MatrixXd>& angular_flux) const;
+  void writeResults(const std::filesystem::path& file_path) const;
 
-  MethodResult result;
+  MethodResult solution;
 
 protected:
   TransportOperator transport_operator;

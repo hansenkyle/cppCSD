@@ -7,6 +7,7 @@
 
 #include "source_iteration.h"
 #include "logger.h"
+#include "output_block.h"
 #include "solver_formatter.h"
 
 #include <array>
@@ -14,6 +15,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -32,7 +34,7 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
   Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
   Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
 
-  result.angular_flux = std::vector<Eigen::MatrixXd>(
+  solution.angular_flux = std::vector<Eigen::MatrixXd>(
       input_deck.energy.G, Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M));
 
   // for each E:
@@ -88,23 +90,72 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
                      "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
     }
     psi_up = psi;
-    result.angular_flux[g] = psi;
+    solution.angular_flux[g] = psi;
   }
 
-  result.scalar_flux = phi;
+  solution.scalar_flux = phi;
 }
 
-void appendToFile(const std::filesystem::path& file_path, const std::string& text) {
-  std::ofstream out(file_path, std::ios::app);
-  if (!out.is_open()) {
-    throw std::runtime_error("SourceIteration: failed to open '" + file_path.string() +
-                             "' for writing");
+void SourceIteration::writeResults(const std::filesystem::path& results_path) const {
+
+  auto int_label_seq = [](int max) {
+    auto intview = std::views::iota(1, max + 1) |
+                   std::views::transform([](int x) { return std::to_string(x); });
+    std::vector<std::string> result(intview.begin(), intview.end());
+    return result;
+  };
+
+  auto average_space = [&](Eigen::MatrixXd data) {
+    Eigen::MatrixXd left =
+        data(Eigen::seqN(0, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
+    Eigen::MatrixXd right =
+        data(Eigen::seqN(1, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
+    return (left + right) / 2;
+  };
+
+  auto interleave = [&](std::vector<std::string> original) {
+    std::vector<std::string> doubled(2 * original.size());
+    for (int i = 0; i < original.size(); i++) {
+      doubled[2 * i] = original[i];
+      doubled[2 * i + 1] = "";
+    }
+    return doubled;
+  };
+
+  auto iseq = int_label_seq(input_deck.mesh.n_x);
+  auto gseq = int_label_seq(input_deck.energy.G);
+  auto mseq = int_label_seq(input_deck.angle.M);
+
+  UnitGroup sol_block("solution");
+
+  // cell-average scalar flux
+  MatrixTable scalar("cell-average scalar flux", "averaged over each space-energy cell");
+  scalar.set_data(solution.scalar_flux.transpose(), iseq, gseq);
+  scalar.set_corner_label("g \\ i");
+
+  // cell-average angular flux
+  UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    std::cout << g << "\n";
+    int gplusone = g + 1;
+    MatrixTable group("g = " + std::to_string(gplusone));
+    group.set_data(solution.angular_flux[g].transpose(), iseq, mseq);
+    group.set_corner_label("m \\ i");
+    angular.add(group, "{:.4e}");
   }
-  out << text;
-}
 
-void SourceIteration::writeResults(const std::filesystem::path& results_path,
-                                   const Eigen::MatrixXd& scalar_flux,
-                                   const std::vector<Eigen::MatrixXd>& angular_flux) const {
-  appendToFile(results_path, SolverFormatter::formatResults(scalar_flux, angular_flux, input_deck));
+  MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
+  multigroup.set_data(solution.multigroup(), interleave(iseq), gseq);
+  multigroup.set_corner_label("g \\ i (L/R)");
+
+  MatrixTable spectrum("energy spectrum", "averaged over space, not energy");
+  spectrum.set_data(solution.spectrum(), interleave(gseq), iseq);
+  spectrum.set_corner_label("i \\ g (up/down)");
+
+  sol_block.add(scalar, "{:.4e}");
+  sol_block.add(angular);
+  sol_block.add(multigroup, "{:.4e}");
+  sol_block.add(spectrum, "{:.4e}");
+
+  appendToFile(results_path, sol_block.render_txt());
 }

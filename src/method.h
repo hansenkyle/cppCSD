@@ -19,7 +19,8 @@ struct MethodResult {
   std::vector<Eigen::MatrixXd> angular_flux;
   Eigen::MatrixXd spectrum() const;
   Eigen::MatrixXd multigroup() const;
-  Eigen::MatrixXd cell_average() const;
+  Eigen::MatrixXd cell_average_scalar() const;
+  std::vector<Eigen::MatrixXd> cell_average_angular() const;
 };
 
 class Method {

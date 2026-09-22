@@ -65,10 +65,10 @@ Eigen::MatrixXd MethodResult::multigroup() const {
     result(seqN(1, I, 2), g) = right(all, g);
   }
 
-  return result;
+  return result.transpose();
 }
 
-Eigen::MatrixXd MethodResult::cell_average() const {
+Eigen::MatrixXd MethodResult::cell_average_scalar() const {
   using Eigen::seqN;
   using Eigen::placeholders::all;
 
@@ -79,6 +79,28 @@ Eigen::MatrixXd MethodResult::cell_average() const {
   Eigen::MatrixXd rightsum = (scalar_flux(seqN(1, I, 4), all) + scalar_flux(seqN(3, I, 4), all));
 
   Eigen::MatrixXd result = (leftsum + rightsum) / 4;
+  return result;
+}
+
+std::vector<Eigen::MatrixXd> MethodResult::cell_average_angular() const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+
+  int M = angular_flux[0].cols();
+  int I = angular_flux[0].rows() / 4;
+  int G = angular_flux.size();
+
+  std::vector<Eigen::MatrixXd> result(G);
+
+  for (int g = 0; g < G; g++) {
+    Eigen::MatrixXd leftsum =
+        (angular_flux[g](seqN(0, I, 4), all) + angular_flux[g](seqN(2, I, 4), all));
+    Eigen::MatrixXd rightsum =
+        (angular_flux[g](seqN(1, I, 4), all) + angular_flux[g](seqN(3, I, 4), all));
+
+    result[g] = (leftsum + rightsum) / 4;
+  }
+
   return result;
 }
 

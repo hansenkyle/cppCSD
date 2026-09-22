@@ -40,10 +40,10 @@ int main(int argc, char** argv) {
 
   solver.writeMetadata(output.results_path);
   solver.writeInputEcho(output.results_path);
-  solver.writeResults(output.results_path, Eigen::MatrixXd::Zero(1, 1),
-                      {Eigen::MatrixXd::Zero(1, 1)});
 
   solver.solve(1e-8);
+
+  solver.writeResults(output.results_path);
 
   return 0;
 }
