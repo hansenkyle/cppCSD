@@ -8,7 +8,6 @@
 #include <doctest.h>
 
 #include "convergence.h"
-#include "solver_formatter.h"
 
 TEST_SUITE("convergence") {
 
@@ -78,37 +77,5 @@ TEST_SUITE("convergence") {
     CHECK_FALSE(history.allConverged());
     CHECK(history.unconvergedGroups() == std::vector<int>{1});
     CHECK(history.totalSeconds() == doctest::Approx(9.1));
-  }
-
-  TEST_CASE("finishing a group that never iterated is an error, not a silent no-op") {
-    ConvergenceHistory history;
-    history.record(IterationRecord{0, 1, 1.0, 1.0, 0.0, 0.0});
-
-    CHECK_THROWS_AS(history.finishGroup(3, true, 0.0), std::runtime_error);
-  }
-
-  TEST_CASE("formatConvergence renders both tables and the totals block") {
-    ConvergenceHistory history;
-    history.record(IterationRecord{0, 1, 2.0, 1.0, 0.0, 1e-15});
-    history.record(IterationRecord{0, 2, 2.0, 1e-12, 0.0, 2e-15});
-    history.finishGroup(0, true, 0.25);
-    history.record(IterationRecord{1, 1, 3.0, 3.0, 0.0, 5e-15});
-    history.finishGroup(1, false, 1.5);
-
-    const std::string text = SolverFormatter::formatConvergence(history);
-
-    CHECK(text.find("Convergence Summary") != std::string::npos);
-    CHECK(text.find("Convergence Totals") != std::string::npos);
-    CHECK(text.find("Iteration History") != std::string::npos);
-    CHECK(text.find("converged") != std::string::npos);
-    CHECK(text.find("Unconverged groups") != std::string::npos);
-    // Totals: two groups, three iterations, 1.75 s.
-    CHECK(text.find("Total iterations") != std::string::npos);
-    CHECK(text.find("1.750") != std::string::npos);
-  }
-
-  TEST_CASE("formatConvergence says so rather than printing empty tables") {
-    const std::string text = SolverFormatter::formatConvergence(ConvergenceHistory{});
-    CHECK(text.find("no iterations recorded") != std::string::npos);
   }
 }

@@ -8,7 +8,6 @@
 #include "source_iteration.h"
 #include "logger.h"
 #include "output_block.h"
-#include "solver_formatter.h"
 
 #include <array>
 #include <chrono>
