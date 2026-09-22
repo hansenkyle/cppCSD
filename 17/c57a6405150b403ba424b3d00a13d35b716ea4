@@ -1,0 +1,26 @@
+src/source_iteration.cpp
+  h_250041054ad857 101-116,121-124,153-155,160-161,163-164,167,173-176,185-187
+  s_759d0fe9b5fef5::t_1eb2bb778fde41 117-120
+  h_250041054ad857 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17c57a6405150b403ba424b3d00a13d35b716ea4",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_759d0fe9b5fef5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84159d55-88a2-4a2b-9b49-cd60ef23c954",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
