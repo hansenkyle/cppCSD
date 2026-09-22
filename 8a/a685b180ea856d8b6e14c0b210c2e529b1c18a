@@ -1,0 +1,41 @@
+src/output_block.cpp
+  s_759d0fe9b5fef5::t_8c0a035adf12e5 12
+  s_759d0fe9b5fef5::t_7ea96c37cdac73 219
+  s_759d0fe9b5fef5::t_445659effb8de5 214-218,220-223,231-257,264-266,269,272-274
+  s_759d0fe9b5fef5::t_5460ac751bb9a9 270-271
+src/output_block.h
+  s_759d0fe9b5fef5::t_14acb8351f6a18 268
+  s_759d0fe9b5fef5::t_4224ceeaa205fd 241
+  s_759d0fe9b5fef5::t_ba3f581f3dfbfe 263-264,269
+  s_759d0fe9b5fef5::t_1ee774344da13a 242-247
+  s_759d0fe9b5fef5::t_8d1bebc0b2bab5 265-267,270
+  s_759d0fe9b5fef5::t_4d8f012194c085 231-240,248-249
+test/unit/output_block.test.cpp
+  s_759d0fe9b5fef5::t_7ea96c37cdac73 509,536,544
+  s_759d0fe9b5fef5::t_632cf6a40caf34 511-517
+  s_759d0fe9b5fef5::t_563236f3ad1ab3 525
+  s_759d0fe9b5fef5::t_91cc9000d5a3cc 534
+  s_759d0fe9b5fef5::t_955c2c0f32d353 527-528
+  s_759d0fe9b5fef5::t_c3737f075d6528 501-508,510,518-524,526,529-533,535,537-543,545-548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8aa685b180ea856d8b6e14c0b210c2e529b1c18a",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_759d0fe9b5fef5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84159d55-88a2-4a2b-9b49-cd60ef23c954",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
