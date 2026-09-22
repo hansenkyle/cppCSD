@@ -98,6 +98,15 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
   solution.scalar_flux = phi;
 }
 
+namespace {
+auto int_label_seq = [](int max) {
+  auto intview =
+      std::views::iota(1, max + 1) | std::views::transform([](int x) { return std::to_string(x); });
+  std::vector<std::string> result(intview.begin(), intview.end());
+  return result;
+};
+} // namespace
+
 void SourceIteration::writeResults(const std::filesystem::path& results_path) const {
 
   auto vint_to_vstring = [](std::vector<int> ivec) {
@@ -121,13 +130,6 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
     for (Eigen::Index i = 0; i < dvec.size(); i++) {
       result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
     }
-    return result;
-  };
-
-  auto int_label_seq = [](int max) {
-    auto intview = std::views::iota(1, max + 1) |
-                   std::views::transform([](int x) { return std::to_string(x); });
-    std::vector<std::string> result(intview.begin(), intview.end());
     return result;
   };
 
@@ -194,4 +196,32 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   sol_block.add(spectrum, "{:.4e}");
 
   appendToFile(results_path, sol_block.render_txt());
+}
+void SourceIteration::writeConvergence(const std::filesystem::path& results_path) const {
+  auto gseq = int_label_seq(input_deck.energy.G);
+  VerticalTable summary("iteration summary");
+  summary.add_column("g", gseq);
+  summary.add_column("# iterations", convergence_.iterations);
+
+  UnitGroup convergence("per-group convergence history",
+                        "delta = (phi_n - phi_n-1). absolute change.");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    VerticalTable group("g = " + gseq[g]);
+    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
+
+    std::vector<double> l2, li;
+    for (int i = 0; i < convergence_.records[g].size(); i++) {
+      l2.push_back(convergence_.records[g][i].norm2);
+      li.push_back(convergence_.records[g][i].norminf);
+    }
+
+    group.add_column("|delta|_2", l2);
+    group.add_column("|delta|_infty", li);
+    convergence.add(group, "{:.4e}");
+  }
+
+  UnitGroup result("convergence");
+  result.add(summary);
+  result.add(convergence);
+  appendToFile(results_path, result.render_txt());
 }

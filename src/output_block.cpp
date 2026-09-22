@@ -314,5 +314,5 @@ std::string UnitGroup::render_txt(int tabs) const {
     }
     out += indent(bodies_[i], 1);
   }
-  return indent(out, tabs);
+  return indent(out, tabs) + "\n";
 }
