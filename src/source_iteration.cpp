@@ -105,6 +105,14 @@ auto int_label_seq = [](int max) {
   std::vector<std::string> result(intview.begin(), intview.end());
   return result;
 };
+
+auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
+  std::vector<std::string> result;
+  for (Eigen::Index i = 0; i < dvec.size(); i++) {
+    result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
+  }
+  return result;
+};
 } // namespace
 
 void SourceIteration::writeResults(const std::filesystem::path& results_path) const {
@@ -121,14 +129,6 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
     std::vector<std::string> result = {};
     for (auto i : dvec) {
       result.push_back(std::vformat(fmt, std::make_format_args(i)));
-    }
-    return result;
-  };
-
-  auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
-    std::vector<std::string> result;
-    for (Eigen::Index i = 0; i < dvec.size(); i++) {
-      result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
     }
     return result;
   };
@@ -157,6 +157,18 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   auto x_center = evdoub_to_string(input_deck.mesh.x_center);
   auto mu = evdoub_to_string(input_deck.angle.mu);
 
+  std::vector<std::string> xb, eb;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    auto s = evdoub_to_string(input_deck.mesh.x_boundary(Eigen::seqN(i, 2)));
+    xb.insert(xb.end(), s.begin(), s.end());
+  }
+
+  for (int i = 0; i < input_deck.energy.G; i++) {
+    auto s = evdoub_to_string(input_deck.energy.E_boundary(Eigen::seqN(i, 2)));
+    eb.insert(eb.end(), s.begin(), s.end());
+  }
+
   UnitGroup sol_block("solution");
 
   // cell-average scalar flux
@@ -182,13 +194,15 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   }
 
   MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
-  multigroup.set_data(solution.multigroup(), interleave(iseq), gseq);
-  multigroup.set_corner_label("g \\ i (L/R)");
+  multigroup.set_data(solution.multigroup(), xb, gseq);
+  multigroup.add_column_label(interleave(iseq));
+  multigroup.set_corner_grid({{"x_boundary"}, {"g \\ i"}});
 
-  MatrixTable spectrum("energy spectrum", "averaged over space, not energy");
-  spectrum.set_data(solution.spectrum(), interleave(gseq), x_center);
+  MatrixTable spectrum("energy spectrum", "averaged over each spatial cell, not energy");
+  spectrum.set_data(solution.spectrum(), eb, x_center);
   spectrum.add_row_label(iseq);
-  spectrum.set_corner_grid({{"x_i", "i \\ g"}});
+  spectrum.add_column_label(interleave(gseq));
+  spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
 
   sol_block.add(scalar, "{:.4e}");
   sol_block.add(angular);
