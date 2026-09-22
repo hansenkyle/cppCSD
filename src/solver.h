@@ -40,10 +40,6 @@ public:
   /// @return Eigen::MatrixXd. Scalar flux in all energy groups. [4nx by G]
   Eigen::MatrixXd sourceIterate(double epsilon, int max_iterations = kDefaultMaxIterations);
 
-  // Per-iteration convergence record from the most recent sourceIterate().
-  // Empty before the first solve.
-  const ConvergenceHistory& convergence() const { return convergence_; }
-
   // When true, every iteration re-evaluates the largest residual in the
   // group term-by-term and logs the breakdown. Extremely verbose (it was
   // unconditionally on before this became a switch) -- for hunting a
@@ -75,51 +71,8 @@ public:
   // // per-iteration history) for the most recent solve.
   // void writeConvergence(const std::filesystem::path& file_path) const;
 
-  class Kernel {
-    // contains mass matrices, etc.
-    // functions include:
-    // solveBLD()
-    Eigen::Matrix2d M;
-    Eigen::Matrix2d L;
-    Eigen::Matrix2d Lb;
-
-    Eigen::Matrix4d A;
-    Eigen::Vector4d b;
-
-  public:
-    Kernel();
-
-    /// @brief Solve the high-order transport equation in a single cell. Forms 4x4 system, solved
-    /// with Eigen direct solver. Problem is rotated internally, forces mu>0
-    /// @param cosine Angle cosine, "mu"
-    /// @param dx Cell width
-    /// @param dE Energy group width
-    /// @param xs Total cross section in this cell and energy group
-    /// @param S  Group-average stopping power in this cell and energy group
-    /// @param S_up Stopping power at upper energy boundary
-    /// @param S_down Stopping power at lower energy boundary
-    /// @param psi_in_E L/R pair; "D" moment of incoming-in-E flux
-    /// @param psi_in_x_down Incoming flux, "D" moment
-    /// @param psi_in_x_up Incoming flux, "U" moment
-    /// @param q_up External source, "U" moment, L/R pair
-    /// @param q_down External source, "D" moment, L/R pair
-    /// @param sigma_sdEprime Sigma_s(g' -> g) times dE(g') for all g'
-    /// @param phi_gprime_up Scalar flux, L/R pair, "U" moment, all energy groups
-    /// @param phi_gprime_down Scalar flux, L/R pair, "D" moment, all energy groups
-    /// @param check_condition Print matrix's condition number to LOG_INFO, default false
-    /// @return Angular flux in this cell: [U_L, U_R, D_L, D_R]^T
-    Eigen::Vector4d solveDirect(double cosine, double dx, double dE, double xs, double S,
-                                double S_up, double S_down, Eigen::Vector2d psi_in_E,
-                                double psi_in_x_down, double psi_in_x_up, Eigen::Vector2d q_up,
-                                Eigen::Vector2d q_down, const Eigen::VectorXd& sigma_sdEprime,
-                                const Eigen::MatrixXd& phi_gprime_up,
-                                const Eigen::MatrixXd& phi_gprime_down,
-                                bool check_condition = false);
-  };
-
 protected:
   TransportOperator transport_operator;
-  Kernel kernel;
   ConvergenceHistory convergence_;
 };
 

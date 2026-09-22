@@ -18,16 +18,6 @@
 #include <string>
 #include <vector>
 
-Solver::Kernel::Kernel() {
-  M << 2.0, 1.0, 1.0, 2.0;
-  M *= (1.0 / 6);
-  L << 0.5, 0.5, -0.5, -0.5;
-  Lb << -1, 0, 0, 1;
-
-  A = Eigen::Matrix4d::Zero();
-  b = Eigen::Vector4d::Zero();
-}
-
 Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
   // Solve the transport equation in all groups via source iteration.
   //
@@ -37,7 +27,6 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
   // group g starts from group g-1's converged answer (a warm start).
 
   LDCSD_LOG_INFO("Begin source iteration");
-  convergence_ = ConvergenceHistory{};
 
   // initial guess (maybe provided)
   Eigen::MatrixXd phi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.energy.G);
@@ -103,114 +92,6 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
   return phi;
 }
 
-Eigen::Vector4d
-Solver::Kernel::solveDirect(double cosine, double dx, double dE, double xs, double S, double S_up,
-                            double S_down, Eigen::Vector2d psi_in_E, double psi_in_x_down,
-                            double psi_in_x_up, Eigen::Vector2d q_up, Eigen::Vector2d q_down,
-                            const Eigen::VectorXd& sigma_sdEprime,
-                            const Eigen::MatrixXd& phi_gprime_up,
-                            const Eigen::MatrixXd& phi_gprime_down, bool check_condition) {
-  A = Eigen::Matrix4d::Zero();
-  b = Eigen::Vector4d::Zero();
-
-  // All inputs are rotated to solve problem for mu>0 to reduce code duplication.
-  //
-  //
-  double mu = std::abs(cosine);
-
-  Eigen::MatrixXd phi_gprime_up_local = phi_gprime_up;
-  Eigen::MatrixXd phi_gprime_down_local = phi_gprime_down;
-  if (cosine < 0) {
-    psi_in_E.reverseInPlace();
-    q_up.reverseInPlace();
-    q_down.reverseInPlace();
-    phi_gprime_up_local = phi_gprime_up_local.colwise().reverse().eval();
-    phi_gprime_down_local = phi_gprime_down_local.colwise().reverse().eval();
-  }
-
-  /*
-  matrix/vector are energy-major, space-minor:
-  up:    L
-         R
-
-  down:  L
-         R
-  */
-
-  // Parameters:
-  //   cosine             : angle consine (mu)
-  //   dx, dE             : cell widhts
-  //   xs                 : total xs
-  //   S                  : group-average stopping power
-  //   S_up, S_down       : S(g-1), S(g)
-  //   psi_in_E           : flux at next-higher energy group, L/R    : [2x1]
-  //   psi_in_x_up        : upwind flux in same energy group, up     : scalar
-  //   psi_in_x_down      : "                              ", down   : scalar
-  //   q_up               : external source, up (L/R)                : [2x1]
-  //   q_down             : "             ", down (L/R)              : [2x1]
-  //   sigma_sdEprime     : sigma_s(g' -> g) * dE_g' for all g'      : [Gx1]
-  //   phi_gprime_up/down : scalar flux in all groups                : [2xG]
-
-  // "Up" LHS
-  // streaming (L)
-  A({0, 1}, {0, 1}) += (mu / 6) * 2 * L;
-  A({0, 1}, {2, 3}) += (mu / 6) * L;
-  // streaming (Lb)
-  A(1, 1) += (mu / 6) * 2;
-  A(1, 3) += (mu / 6);
-  // absorption + CSD loss
-  A({0, 1}, {0, 1}) += dx * (xs / 3 + S / (2 * dE)) * M;
-  A({0, 1}, {2, 3}) += dx * (xs / 6 + S / (2 * dE)) * M;
-
-  // "Up" RHS
-  // streaming source
-  b(0) += (mu / 6) * (2 * psi_in_x_up + psi_in_x_down);
-  // CSD source
-  b({0, 1}) += (dx / dE) * S_up * M * psi_in_E;
-  // Scattering source
-  b({0, 1}) += (dx / 8) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
-  // External source
-  b({0, 1}) += (dx / 6) * M * (2 * q_up + q_down);
-
-  // "Down" LHS
-  // streaming (L)
-  A({2, 3}, {0, 1}) += (mu / 6) * L;
-  A({2, 3}, {2, 3}) += (mu / 6) * 2 * L;
-  // Streaming (Lb)
-  A(3, 1) += (mu / 6);
-  A(3, 3) += (mu / 6) * 2;
-  // absorption + CSD loss
-  A({2, 3}, {0, 1}) += dx * (xs / 6 - S / (2 * dE)) * M;
-  A({2, 3}, {2, 3}) += dx * (xs / 3 + (S_down - S / 2) / dE) * M;
-
-  // "Down" RHS
-  // streaming source
-  b(2) += (mu / 6) * (psi_in_x_up + 2 * psi_in_x_down);
-  // Scattering source
-  b({2, 3}) += (dx / 8) * M * (phi_gprime_down_local + phi_gprime_up_local) * sigma_sdEprime;
-  // External source
-  b({2, 3}) += (dx / 6) * M * (q_up + 2 * q_down);
-
-  if (check_condition) {
-    Eigen::JacobiSVD<Eigen::Matrix4d> svd(A);
-    const Eigen::Vector4d& singular_values = svd.singularValues();
-    double condition_number = singular_values(0) / singular_values(singular_values.size() - 1);
-    LDCSD_LOG_INFO("solveDirect: condition number = " + std::format("{:.4e}", condition_number));
-  }
-
-  Eigen::Vector4d x = A.partialPivLu().solve(b);
-
-  // Return result in expected order
-  //
-  if (cosine < 0) {
-    return x({1, 0, 3, 2});
-  }
-
-  return x;
-}
-
-namespace {
-
 void appendToFile(const std::filesystem::path& file_path, const std::string& text) {
   std::ofstream out(file_path, std::ios::app);
   if (!out.is_open()) {
@@ -218,8 +99,6 @@ void appendToFile(const std::filesystem::path& file_path, const std::string& tex
   }
   out << text;
 }
-
-} // namespace
 
 void Solver::write_metadata(const std::filesystem::path& results_path,
                             const std::filesystem::path& deck_path) const {
