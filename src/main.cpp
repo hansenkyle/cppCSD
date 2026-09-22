@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
   solver.solve(1e-8);
 
   solver.writeResults(output.results_path);
+  solver.writeConvergence(output.results_path);
 
   return 0;
 }

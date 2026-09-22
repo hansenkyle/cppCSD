@@ -42,7 +42,8 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
     const auto group_start = std::chrono::steady_clock::now();
 
     int iteration = 0;
-    double abs_diff = 0.0;
+    double abs_diff_l2 = 0.0;
+    Eigen::VectorXd abs_diff;
     bool converged = false;
 
     while (!converged && iteration < max_iterations) {
@@ -59,16 +60,18 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       // compute new phi
       phi_g = transport_operator.integrateAngle(psi);
 
-      abs_diff = (phi_g - phi.col(g)).norm();
+      abs_diff = (phi_g - phi.col(g));
+      abs_diff_l2 = (phi_g - phi.col(g)).norm();
       const double phi_norm = phi_g.norm();
-      converged = abs_diff <= phi_norm * epsilon;
+      converged = abs_diff_l2 <= phi_norm * epsilon;
 
-      convergence_.record(IterationRecord{g, iteration, phi_norm, abs_diff, 0.0, max_residual});
+      convergence_.log_group(g,
+                             IterationRecord(abs_diff.norm(), abs_diff.lpNorm<Eigen::Infinity>()));
 
       const int max_cell = static_cast<int>(max_row) / 4;
       const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
       LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
-                     ": |dphi| = " + std::format("{:.4e}", abs_diff) +
+                     ": |dphi| = " + std::format("{:.4e}", abs_diff_l2) +
                      ", |phi| = " + std::format("{:.4e}", phi_norm) +
                      ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
                      std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
@@ -78,15 +81,15 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
     phi.col(g) = phi_g;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
-    convergence_.finishGroup(g, converged, elapsed.count());
+    convergence_.time_group(g, elapsed.count());
 
     if (converged) {
-      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff) + " in " +
+      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_l2) + " in " +
                      std::to_string(iteration) + " iterations");
     } else {
       LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
                      std::to_string(max_iterations) +
-                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff));
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff_l2));
     }
     psi_up = psi;
     solution.angular_flux[g] = psi;
@@ -94,6 +97,23 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
 
   solution.scalar_flux = phi;
 }
+
+namespace {
+auto int_label_seq = [](int max) {
+  auto intview =
+      std::views::iota(1, max + 1) | std::views::transform([](int x) { return std::to_string(x); });
+  std::vector<std::string> result(intview.begin(), intview.end());
+  return result;
+};
+
+auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
+  std::vector<std::string> result;
+  for (Eigen::Index i = 0; i < dvec.size(); i++) {
+    result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
+  }
+  return result;
+};
+} // namespace
 
 void SourceIteration::writeResults(const std::filesystem::path& results_path) const {
 
@@ -110,21 +130,6 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
     for (auto i : dvec) {
       result.push_back(std::vformat(fmt, std::make_format_args(i)));
     }
-    return result;
-  };
-
-  auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
-    std::vector<std::string> result;
-    for (Eigen::Index i = 0; i < dvec.size(); i++) {
-      result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
-    }
-    return result;
-  };
-
-  auto int_label_seq = [](int max) {
-    auto intview = std::views::iota(1, max + 1) |
-                   std::views::transform([](int x) { return std::to_string(x); });
-    std::vector<std::string> result(intview.begin(), intview.end());
     return result;
   };
 
@@ -152,6 +157,18 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   auto x_center = evdoub_to_string(input_deck.mesh.x_center);
   auto mu = evdoub_to_string(input_deck.angle.mu);
 
+  std::vector<std::string> xb, eb;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    auto s = evdoub_to_string(input_deck.mesh.x_boundary(Eigen::seqN(i, 2)));
+    xb.insert(xb.end(), s.begin(), s.end());
+  }
+
+  for (int i = 0; i < input_deck.energy.G; i++) {
+    auto s = evdoub_to_string(input_deck.energy.E_boundary(Eigen::seqN(i, 2)));
+    eb.insert(eb.end(), s.begin(), s.end());
+  }
+
   UnitGroup sol_block("solution");
 
   // cell-average scalar flux
@@ -177,13 +194,15 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   }
 
   MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
-  multigroup.set_data(solution.multigroup(), interleave(iseq), gseq);
-  multigroup.set_corner_label("g \\ i (L/R)");
+  multigroup.set_data(solution.multigroup(), xb, gseq);
+  multigroup.add_column_label(interleave(iseq));
+  multigroup.set_corner_grid({{"x_boundary"}, {"g \\ i"}});
 
-  MatrixTable spectrum("energy spectrum", "averaged over space, not energy");
-  spectrum.set_data(solution.spectrum(), interleave(gseq), x_center);
+  MatrixTable spectrum("energy spectrum", "averaged over each spatial cell, not energy");
+  spectrum.set_data(solution.spectrum(), eb, x_center);
   spectrum.add_row_label(iseq);
-  spectrum.set_corner_grid({{"x_i", "i \\ g"}});
+  spectrum.add_column_label(interleave(gseq));
+  spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
 
   sol_block.add(scalar, "{:.4e}");
   sol_block.add(angular);
@@ -191,4 +210,32 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   sol_block.add(spectrum, "{:.4e}");
 
   appendToFile(results_path, sol_block.render_txt());
+}
+void SourceIteration::writeConvergence(const std::filesystem::path& results_path) const {
+  auto gseq = int_label_seq(input_deck.energy.G);
+  VerticalTable summary("iteration summary");
+  summary.add_column("g", gseq);
+  summary.add_column("# iterations", convergence_.iterations);
+
+  UnitGroup convergence("per-group convergence history",
+                        "delta = (phi_n - phi_n-1). absolute change.");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    VerticalTable group("g = " + gseq[g]);
+    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
+
+    std::vector<double> l2, li;
+    for (int i = 0; i < convergence_.records[g].size(); i++) {
+      l2.push_back(convergence_.records[g][i].norm2);
+      li.push_back(convergence_.records[g][i].norminf);
+    }
+
+    group.add_column("|delta|_2", l2);
+    group.add_column("|delta|_infty", li);
+    convergence.add(group, "{:.4e}");
+  }
+
+  UnitGroup result("convergence");
+  result.add(summary);
+  result.add(convergence);
+  appendToFile(results_path, result.render_txt());
 }
