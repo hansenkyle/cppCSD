@@ -25,12 +25,6 @@
 // write schedule), not *how* it's laid out as text.
 namespace SolverFormatter {
 
-// "run info" block: when the run happened, which deck it came from, and
-// the problem's dimensions. deck_path is recorded as-is, so the caller
-// decides whether it reads as absolute or relative.
-std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
-                              std::string method_name);
-
 std::string formatInputEcho(const InputDeck& deck);
 
 // "Scalar Flux" block, followed by one "Angular Flux - Group N" block per

@@ -38,17 +38,6 @@ InputDeck makeDeck() {
 } // namespace
 
 TEST_SUITE("SolverFormatter") {
-  TEST_CASE("formatRunMetadata renders the run time, deck path and problem dimensions") {
-    const std::string result =
-        SolverFormatter::formatRunMetadata(makeDeck(), "/decks/sample.yaml", "method_name");
-
-    CHECK(result.find("[run info]") != std::string::npos);
-    CHECK(result.find("execution date/time") != std::string::npos);
-    CHECK(result.find("/decks/sample.yaml") != std::string::npos);
-    CHECK(result.find("n_groups") != std::string::npos);
-    CHECK(result.find("n_cells") != std::string::npos);
-    CHECK(result.find("n_angles") != std::string::npos);
-  }
 
   TEST_CASE("formatResiduals renders one table per group") {
     Eigen::MatrixXd residual(4, 1);

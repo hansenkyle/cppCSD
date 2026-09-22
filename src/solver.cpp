@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
+void Solver::solve(double epsilon, int max_iterations) {
   // Solve the transport equation in all groups via source iteration.
   //
   // Groups are solved in a single downward pass and never revisited: that's
@@ -89,7 +89,6 @@ Eigen::MatrixXd Solver::sourceIterate(double epsilon, int max_iterations) {
     }
     psi_up = psi;
   }
-  return phi;
 }
 
 void appendToFile(const std::filesystem::path& file_path, const std::string& text) {
@@ -100,11 +99,11 @@ void appendToFile(const std::filesystem::path& file_path, const std::string& tex
   out << text;
 }
 
-void Solver::write_metadata(const std::filesystem::path& results_path,
-                            const std::filesystem::path& deck_path) const {
-  appendToFile(results_path,
-               SolverFormatter::formatRunMetadata(input_deck, deck_path, "source iteration"));
-}
+// void Solver::write_metadata(const std::filesystem::path& results_path,
+//                             const std::filesystem::path& deck_path) const {
+//   appendToFile(results_path,
+//                SolverFormatter::formatRunMetadata(input_deck, deck_path, "source iteration"));
+// }
 
 void Solver::writeInputDeckEcho(const std::filesystem::path& results_path) const {
   appendToFile(results_path, SolverFormatter::formatInputEcho(input_deck));

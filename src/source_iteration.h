@@ -12,13 +12,12 @@
 #include "method.h"
 #include "transport_operator.h"
 
-class SourceIteration : public Method {
-public:
-  SourceIteration(InputDeck input_deck);
+// class SourceIteration : public Method {
+// public:
+//   SourceIteration(InputDeck input_deck);
 
-private:
-  InputDeck input_deck;
-  TransportOperator transport_operator;
-};
+// private:
+//   TransportOperator transport_operator;
+// };
 
 #endif

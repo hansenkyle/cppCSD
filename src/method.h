@@ -8,6 +8,7 @@
 #ifndef METHOD_H
 #define METHOD_H
 
+#include "input_deck.h"
 #include <Eigen/Dense>
 #include <filesystem>
 #include <string>
@@ -22,14 +23,18 @@ struct MethodResult {
 class Method {
 public:
   std::string name;
-  virtual void solve() = 0;
 
-  virtual void writeMetadata() = 0;
-  virtual void writeInputDeckEcho() = 0;
-  virtual void writeResults(const std::filesystem::path& file_path) const;
+  virtual void solve(double epsilon, int max_iterations) = 0;
+
+  void writeMetadata(const std::filesystem::path& file_path) const;
+  // virtual void writeInputDeckEcho() = 0;
+  // virtual void writeResults(const std::filesystem::path& file_path) const;
   MethodResult result;
 
-private:
+protected:
+  Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}
+
+  InputDeck input_deck;
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
 };
 

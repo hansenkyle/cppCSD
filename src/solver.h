@@ -18,14 +18,16 @@
 
 #include "convergence.h"
 #include "input_deck.h"
+#include "method.h"
 #include "transport_operator.h"
 
 using HighPrecision = boost::multiprecision::float128;
 
-class Solver {
+class Solver : public Method {
 public:
   // constructor from input deck (copy)
-  Solver(InputDeck input_deck) : input_deck(input_deck), transport_operator(input_deck) {}
+  Solver(InputDeck input_deck)
+      : Method("source iteration", input_deck), transport_operator(input_deck) {}
   InputDeck input_deck;
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
@@ -38,7 +40,7 @@ public:
   /// @param max_iterations Per-group iteration cap. A group that hits it is marked unconverged
   /// (logged as a warning) and the solve moves on to the next group rather than spinning forever.
   /// @return Eigen::MatrixXd. Scalar flux in all energy groups. [4nx by G]
-  Eigen::MatrixXd sourceIterate(double epsilon, int max_iterations = kDefaultMaxIterations);
+  void solve(double epsilon, int max_iterations = kDefaultMaxIterations);
 
   // When true, every iteration re-evaluates the largest residual in the
   // group term-by-term and logs the breakdown. Extremely verbose (it was

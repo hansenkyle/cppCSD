@@ -105,17 +105,17 @@ std::vector<int> intseq(int stop, int start = 1) {
 
 namespace SolverFormatter {
 
-std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
-                              std::string method_name) {
-  KeyValueOutput metadata("run info");
-  metadata.add("execution date/time", timestamp());
-  metadata.add("input deck path", deck_path.string());
-  metadata.add("n_groups", deck.energy.G);
-  metadata.add("n_cells", deck.mesh.n_x);
-  metadata.add("n_angles", deck.angle.M);
-  metadata.add("method", method_name);
-  return metadata.render_txt() + "\n";
-}
+// std::string formatRunMetadata(const InputDeck& deck, const std::filesystem::path& deck_path,
+//                               std::string method_name) {
+//   KeyValueOutput metadata("run info");
+//   metadata.add("execution date/time", timestamp());
+//   metadata.add("input deck path", deck_path.string());
+//   metadata.add("n_groups", deck.energy.G);
+//   metadata.add("n_cells", deck.mesh.n_x);
+//   metadata.add("n_angles", deck.angle.M);
+//   metadata.add("method", method_name);
+//   return metadata.render_txt() + "\n";
+// }
 
 std::string formatInputEcho(const InputDeck& deck) {
 

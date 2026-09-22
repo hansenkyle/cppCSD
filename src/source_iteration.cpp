@@ -8,7 +8,7 @@
 #include "source_iteration.h"
 #include "input_deck.h"
 
-SourceIteration::SourceIteration(InputDeck input_deck) {
-  this->input_deck = input_deck;
-  this->transport_operator = TransportOperator(input_deck);
-}
+// SourceIteration::SourceIteration(InputDeck input_deck) {
+//   this->input_deck = input_deck;
+//   this->transport_operator = TransportOperator(input_deck);
+// }
