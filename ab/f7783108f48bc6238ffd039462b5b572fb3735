@@ -1,0 +1,28 @@
+src/smm.cpp
+  h_250041054ad857 1-11,12,13-22,23-44
+src/smm.h
+  h_250041054ad857 1-16,17,18-20,21,22-29,30,31-39,40,41-42,43,44,45-49,50-52
+src/input_deck.cpp
+  h_250041054ad857 309,310,311,312,313,314,315-316,317,318,319
+src/input_deck.h
+  h_250041054ad857 67-68,69
+src/transport_operator.cpp
+  h_250041054ad857 19-22
+src/transport_operator.h
+  h_250041054ad857 23
+CMakeLists.txt
+  h_250041054ad857 88
+src/main.cpp
+  h_250041054ad857 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abf7783108f48bc6238ffd039462b5b572fb3735",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
