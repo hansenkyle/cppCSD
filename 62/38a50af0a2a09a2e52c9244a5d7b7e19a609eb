@@ -1,0 +1,16 @@
+src/input_deck.cpp
+  h_250041054ad857 309-321
+src/input_deck.h
+  h_250041054ad857 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6238a50af0a2a09a2e52c9244a5d7b7e19a609eb",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
