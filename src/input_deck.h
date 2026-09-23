@@ -64,6 +64,9 @@ public:
     Eigen::VectorXd mu; // direction cosines, strictly ascending, size M
     Eigen::VectorXd w;  // quadrature weights, normalized to sum to 2, size M
 
+    Eigen::VectorXd w_positive;
+    Eigen::VectorXd w_negative;
+
     // Checks M > 0, mu/w sizes == M, and mu strictly ascending. w's sum is
     // checked against 2: if the relative difference is within 1e-4, w is
     // rescaled in place to sum to exactly 2 (logging a warning); beyond

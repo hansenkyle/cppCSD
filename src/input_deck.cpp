@@ -306,6 +306,17 @@ void InputDeck::Angle::validate() {
                    " to sum to 2");
     w *= scale;
   }
+
+  // create positivity mask
+  auto nonneg_indicator = [](const Eigen::VectorXd& v) {
+    return (v.array() >= 0.0).select(v, Eigen::VectorXd::Zero(v.size()));
+  };
+  w_positive = nonneg_indicator(mu);
+
+  auto negative_indicator = [](const Eigen::VectorXd& v) {
+    return (v.array() < 0.0).select(v, Eigen::VectorXd::Zero(v.size()));
+  };
+  w_negative = negative_indicator(mu);
 }
 
 void InputDeck::Xs::validate() const {

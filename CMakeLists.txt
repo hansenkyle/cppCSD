@@ -85,6 +85,7 @@ add_library(ldcsd_core STATIC
     src/transport_operator.cpp
     src/method.cpp
     src/source_iteration.cpp
+    src/smm.cpp
     src/cli.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
