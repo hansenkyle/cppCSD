@@ -13,13 +13,6 @@
 #include <string>
 
 namespace {
-std::string timestamp() {
-  const std::time_t now = std::time(nullptr);
-  const std::tm* tm = std::localtime(&now);
-  std::ostringstream oss;
-  oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
-  return oss.str();
-}
 
 std::vector<int> intseq(int stop, int start = 1) {
   std::vector<int> result = {};
@@ -112,9 +105,9 @@ void Method::appendToFile(const std::filesystem::path& file_path, const std::str
   out << text;
 }
 
-void Method::writeMetadata(const std::filesystem::path& file_path) const {
+void Method::writeMetadata(const std::filesystem::path& file_path, std::string timestamp) const {
   KeyValueOutput metadata("run info");
-  metadata.add("execution date/time", timestamp());
+  metadata.add("execution date/time", timestamp);
   metadata.add("n_groups", input_deck.energy.G);
   metadata.add("n_cells", input_deck.mesh.n_x);
   metadata.add("n_angles", input_deck.angle.M);
@@ -217,23 +210,4 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
   input_echo.add(materials);
 
   appendToFile(file_path, input_echo.render_txt());
-}
-
-void Method::writeTransportResiduals(const std::filesystem::path& file_path) const {
-  UnitGroup transport("transport residuals");
-  std::vector<std::string> x_i;
-  std::vector<std::string> mu_m;
-
-  for (int i = 0; i < input_deck.mesh.n_x; i++) {
-    x_i.push_back(std::to_string(i + 1));
-  }
-  for (int m = 0; m < input_deck.angle.M; m++) {
-    mu_m.push_back(std::to_string(m + 1));
-  }
-  for (int g = 0; g < input_deck.energy.G; g++) {
-    MatrixTable group("g = " + std::to_string(g + 1));
-    transport.add(group, "{:.3e}");
-  }
-
-  appendToFile(file_path, transport.render_txt());
 }

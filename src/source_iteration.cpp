@@ -35,6 +35,7 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
 
   solution.angular_flux = std::vector<Eigen::MatrixXd>(
       input_deck.energy.G, Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M));
+  residuals.high_order = solution.angular_flux;
 
   // for each E:
   for (int g = 0; g < input_deck.energy.G; g++) {
@@ -52,10 +53,10 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       // solve transport using known phi
       psi = transport_operator.sweep(g, psi_up, phi);
 
-      const Eigen::MatrixXd residuals =
-          transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
-      Eigen::Index max_row, max_col;
-      const double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
+      // const Eigen::MatrixXd residuals =
+      //     transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
+      // Eigen::Index max_row, max_col;
+      // const double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
 
       // compute new phi
       phi_g = transport_operator.integrateAngle(psi);
@@ -68,17 +69,15 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       convergence_.log_group(g,
                              IterationRecord(abs_diff.norm(), abs_diff.lpNorm<Eigen::Infinity>()));
 
-      const int max_cell = static_cast<int>(max_row) / 4;
-      const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
-      LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
-                     ": |dphi| = " + std::format("{:.4e}", abs_diff_l2) +
-                     ", |phi| = " + std::format("{:.4e}", phi_norm) +
-                     ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
-                     std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
-                     ", ordinate " + std::to_string(max_col) + ")");
+      // const int max_cell = static_cast<int>(max_row) / 4;
+      // const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
+      // LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
+      //                ": |dphi| = " + std::format("{:.4e}", abs_diff_l2) +
+      //                ", |phi| = " + std::format("{:.4e}", phi_norm) +
+      //                ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
+      //                std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
+      //                ", ordinate " + std::to_string(max_col) + ")");
     }
-
-    phi.col(g) = phi_g;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
     convergence_.time_group(g, elapsed.count());
@@ -91,8 +90,11 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
                      std::to_string(max_iterations) +
                      "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff_l2));
     }
-    psi_up = psi;
+    residuals.high_order[g] =
+        transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
+    phi.col(g) = phi_g;
     solution.angular_flux[g] = psi;
+    psi_up = psi;
   }
 
   solution.scalar_flux = phi;
@@ -183,7 +185,6 @@ void SourceIteration::writeResults(const std::filesystem::path& results_path) co
   labels = {{"", "x_i"}, {"mu", "m \\i"}};
   UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
   for (int g = 0; g < input_deck.energy.G; g++) {
-    std::cout << g << "\n";
     int gplusone = g + 1;
     MatrixTable group("g = " + std::to_string(gplusone));
     group.set_data(solution.cell_average_angular()[g].transpose(), x_center, mu);
@@ -240,7 +241,36 @@ void SourceIteration::writeConvergence(const std::filesystem::path& results_path
   appendToFile(results_path, result.render_txt());
 }
 
-void SourceIteration::writeResiduals(const std::filesystem::path& file_path) const {
-  writeMetadata(file_path);
-  writeTransportResiduals(file_path);
+void SourceIteration::writeResiduals(const std::filesystem::path& file_path,
+                                     std::string timestamp) const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+  writeMetadata(file_path, timestamp);
+
+  UnitGroup transport("transport residuals");
+  int I = input_deck.mesh.n_x;
+  std::vector<std::string> x_i;
+  std::vector<std::string> mu_m;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    x_i.push_back(std::to_string(i + 1));
+  }
+  for (int m = 0; m < input_deck.angle.M; m++) {
+    mu_m.push_back(std::to_string(m + 1));
+  }
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (int m = 0; m < input_deck.angle.M; m++) {
+      HorizontalTable angle("m = " + std::to_string(m + 1));
+      angle.add_row("i", x_i);
+      angle.add_row("up,L", residuals.high_order[g](seqN(0, I, 4), m));
+      angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
+      angle.add_row("down,L", residuals.high_order[g](seqN(2, I, 4), m));
+      angle.add_row("down,R", residuals.high_order[g](seqN(3, I, 4), m));
+      group.add(angle, "{:.4e}");
+    }
+    transport.add(group);
+  }
+
+  appendToFile(file_path, transport.render_txt());
 }

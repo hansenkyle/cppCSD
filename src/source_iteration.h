@@ -57,8 +57,9 @@ public:
   // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
   void writeResults(const std::filesystem::path& file_path) const;
   void writeConvergence(const std::filesystem::path& file_path) const;
-  void writeResiduals(const std::filesystem::path& file_path) const;
+  void writeResiduals(const std::filesystem::path& file_path, std::string timestamp) const;
   MethodResult solution;
+  Residuals residuals;
 
 protected:
   TransportOperator transport_operator;

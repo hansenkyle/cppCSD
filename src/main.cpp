@@ -14,8 +14,18 @@
 #include "source_iteration.h"
 #include "terminal.h"
 
+std::string make_timestamp() {
+  const std::time_t now = std::time(nullptr);
+  const std::tm* tm = std::localtime(&now);
+  std::ostringstream oss;
+  oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
+  return oss.str();
+}
+
 int main(int argc, char** argv) {
   int exit_code = 0;
+
+  std::string timestamp = make_timestamp();
 
   const std::optional<std::filesystem::path> yaml_path = parseArgs(argc, argv, exit_code);
   if (!yaml_path.has_value()) {
@@ -38,14 +48,14 @@ int main(int argc, char** argv) {
   SourceIteration solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
-  solver.writeMetadata(output.results_path);
+  solver.writeMetadata(output.results_path, timestamp);
   solver.writeInputEcho(output.results_path);
 
   solver.solve(1e-8);
 
   solver.writeResults(output.results_path);
   solver.writeConvergence(output.results_path);
-  solver.writeResiduals(output.residuals_path);
+  solver.writeResiduals(output.residuals_path, timestamp);
 
   return 0;
 }
