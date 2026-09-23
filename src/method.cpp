@@ -13,13 +13,6 @@
 #include <string>
 
 namespace {
-std::string timestamp() {
-  const std::time_t now = std::time(nullptr);
-  const std::tm* tm = std::localtime(&now);
-  std::ostringstream oss;
-  oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
-  return oss.str();
-}
 
 std::vector<int> intseq(int stop, int start = 1) {
   std::vector<int> result = {};
@@ -112,9 +105,9 @@ void Method::appendToFile(const std::filesystem::path& file_path, const std::str
   out << text;
 }
 
-void Method::writeMetadata(const std::filesystem::path& file_path) const {
+void Method::writeMetadata(const std::filesystem::path& file_path, std::string timestamp) const {
   KeyValueOutput metadata("run info");
-  metadata.add("execution date/time", timestamp());
+  metadata.add("execution date/time", timestamp);
   metadata.add("n_groups", input_deck.energy.G);
   metadata.add("n_cells", input_deck.mesh.n_x);
   metadata.add("n_angles", input_deck.angle.M);

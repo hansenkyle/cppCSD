@@ -23,17 +23,18 @@ struct MethodResult {
   std::vector<Eigen::MatrixXd> cell_average_angular() const;
 };
 
+struct Residuals {
+  std::vector<Eigen::MatrixXd> high_order;
+};
+
 class Method {
 public:
   std::string name;
 
   virtual void solve(double epsilon, int max_iterations) = 0;
 
-  void writeMetadata(const std::filesystem::path& file_path) const;
+  void writeMetadata(const std::filesystem::path& file_path, std::string timestamp) const;
   void writeInputEcho(const std::filesystem::path& file_path) const;
-
-  // virtual void writeInputDeckEcho() = 0;
-  // virtual void writeResults(const std::filesystem::path& file_path) const;
 
 protected:
   Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}
