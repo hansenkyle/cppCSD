@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
 
   solver.writeResults(output.results_path);
   solver.writeConvergence(output.results_path);
+  solver.writeResiduals(output.residuals_path);
 
   return 0;
 }

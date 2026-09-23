@@ -103,4 +103,5 @@ OutputManager::OutputManager(const fs::path& deck_dir) {
   log_path = run_dir / "log.txt";
   out_path = run_dir / "out.txt";
   results_path = run_dir / "results.txt";
+  residuals_path = run_dir / "residuals.txt";
 }

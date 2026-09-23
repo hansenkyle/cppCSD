@@ -218,3 +218,22 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
 
   appendToFile(file_path, input_echo.render_txt());
 }
+
+void Method::writeTransportResiduals(const std::filesystem::path& file_path) const {
+  UnitGroup transport("transport residuals");
+  std::vector<std::string> x_i;
+  std::vector<std::string> mu_m;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    x_i.push_back(std::to_string(i + 1));
+  }
+  for (int m = 0; m < input_deck.angle.M; m++) {
+    mu_m.push_back(std::to_string(m + 1));
+  }
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    MatrixTable group("g = " + std::to_string(g + 1));
+    transport.add(group, "{:.3e}");
+  }
+
+  appendToFile(file_path, transport.render_txt());
+}

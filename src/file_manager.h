@@ -25,6 +25,7 @@ public:
   std::filesystem::path log_path;
   std::filesystem::path out_path;
   std::filesystem::path results_path;
+  std::filesystem::path residuals_path;
 };
 
 #endif

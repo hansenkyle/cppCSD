@@ -31,9 +31,7 @@ public:
 
   void writeMetadata(const std::filesystem::path& file_path) const;
   void writeInputEcho(const std::filesystem::path& file_path) const;
-
-  // virtual void writeInputDeckEcho() = 0;
-  // virtual void writeResults(const std::filesystem::path& file_path) const;
+  void writeTransportResiduals(const std::filesystem::path& file_path) const;
 
 protected:
   Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}

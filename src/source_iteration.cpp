@@ -239,3 +239,8 @@ void SourceIteration::writeConvergence(const std::filesystem::path& results_path
   result.add(convergence);
   appendToFile(results_path, result.render_txt());
 }
+
+void SourceIteration::writeResiduals(const std::filesystem::path& file_path) const {
+  writeMetadata(file_path);
+  writeTransportResiduals(file_path);
+}
