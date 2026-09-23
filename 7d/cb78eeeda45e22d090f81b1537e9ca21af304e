@@ -1,0 +1,27 @@
+src/file_manager.cpp
+  h_250041054ad857 106
+src/file_manager.h
+  h_250041054ad857 28
+src/method.cpp
+  h_250041054ad857 221-238
+  h_250041054ad857 220
+src/method.h
+  h_250041054ad857 34
+src/main.cpp
+  h_250041054ad857 48
+src/source_iteration.cpp
+  h_250041054ad857 241-246
+src/source_iteration.h
+  h_250041054ad857 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dcb78eeeda45e22d090f81b1537e9ca21af304e",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
