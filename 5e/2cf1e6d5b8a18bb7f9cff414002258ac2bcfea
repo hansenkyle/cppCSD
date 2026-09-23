@@ -1,0 +1,14 @@
+src/source_iteration.cpp
+  h_250041054ad857 27-30,33,34-38,40-41,44,48-50,52-53,55,63-64,66-74,77-81,85,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e2cf1e6d5b8a18bb7f9cff414002258ac2bcfea",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}

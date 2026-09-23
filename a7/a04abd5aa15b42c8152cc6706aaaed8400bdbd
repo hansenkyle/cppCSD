@@ -1,0 +1,16 @@
+src/smm.cpp
+  h_250041054ad857 1-22
+src/smm.h
+  h_250041054ad857 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7a04abd5aa15b42c8152cc6706aaaed8400bdbd",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}

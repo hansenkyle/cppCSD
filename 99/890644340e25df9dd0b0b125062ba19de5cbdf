@@ -1,0 +1,20 @@
+CMakeLists.txt
+  h_250041054ad857 88
+src/main.cpp
+  h_250041054ad857 14
+src/smm.cpp
+  h_250041054ad857 12,23-44
+src/smm.h
+  h_250041054ad857 17,21,30,40,43,45-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99890644340e25df9dd0b0b125062ba19de5cbdf",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
