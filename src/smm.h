@@ -47,6 +47,9 @@ private:
   std::vector<Eigen::MatrixXd> J_in_negative;
   std::vector<Eigen::MatrixXd> phi_in_positive;
   std::vector<Eigen::MatrixXd> phi_in_negative;
+
+  Eigen::VectorXd calculateK(Eigen::MatrixXd psi_slice) const;
+  Eigen::VectorXd calculateT(Eigen::MatrixXd psi_slice, int sign) const;
 };
 
 #endif
