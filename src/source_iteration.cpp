@@ -24,80 +24,70 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
   //
   // No iteration over energy groups, assume downscatter only
 
+  int I = input_deck.mesh.n_x;
+  int G = input_deck.energy.G;
+  int M = input_deck.angle.M;
+
   LDCSD_LOG_INFO("Begin source iteration");
 
-  // initial guess (maybe provided)
-  Eigen::MatrixXd phi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.energy.G);
-  Eigen::VectorXd phi_g = Eigen::VectorXd::Zero(4 * input_deck.mesh.n_x);
+  Eigen::VectorXd phi_g = Eigen::VectorXd::Zero(4 * I);
+  Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * I, M);
 
-  Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
-  Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+  // write phi directly into this->solution
+  solution.scalar_flux = Eigen::MatrixXd::Zero(4 * I, G);
+  auto& phi = solution.scalar_flux;
 
-  solution.angular_flux = std::vector<Eigen::MatrixXd>(
-      input_deck.energy.G, Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M));
+  solution.angular_flux =
+      std::vector<Eigen::MatrixXd>(input_deck.energy.G, Eigen::MatrixXd::Zero(4 * I, M));
   residuals.high_order = solution.angular_flux;
 
-  // for each E:
-  for (int g = 0; g < input_deck.energy.G; g++) {
+  for (int g = 0; g < G; g++) {
     LDCSD_LOG_INFO("Beginning group " + std::to_string(g));
     const auto group_start = std::chrono::steady_clock::now();
 
-    int iteration = 0;
-    double abs_diff_l2 = 0.0;
-    Eigen::VectorXd abs_diff;
-    bool converged = false;
+    // write result directly into this->solution
+    auto& psi = solution.angular_flux[g];
 
-    while (!converged && iteration < max_iterations) {
+    int iteration = 0;
+    double delta_phi_l2norm = 0.0;
+    Eigen::VectorXd absolute_delta_phi;
+
+    while (iteration < max_iterations) {
       iteration++;
       phi.col(g) = phi_g;
       // solve transport using known phi
       psi = transport_operator.sweep(g, psi_up, phi);
-
-      // const Eigen::MatrixXd residuals =
-      //     transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
-      // Eigen::Index max_row, max_col;
-      // const double max_residual = residuals.cwiseAbs().maxCoeff(&max_row, &max_col);
-
       // compute new phi
       phi_g = transport_operator.integrateAngle(psi);
 
-      abs_diff = (phi_g - phi.col(g));
-      abs_diff_l2 = (phi_g - phi.col(g)).norm();
+      absolute_delta_phi = (phi_g - phi.col(g));
+      delta_phi_l2norm = (phi_g - phi.col(g)).norm();
       const double phi_norm = phi_g.norm();
-      converged = abs_diff_l2 <= phi_norm * epsilon;
 
-      convergence_.log_group(g,
-                             IterationRecord(abs_diff.norm(), abs_diff.lpNorm<Eigen::Infinity>()));
+      convergence_.log_group(g, IterationRecord(absolute_delta_phi.norm(),
+                                                absolute_delta_phi.lpNorm<Eigen::Infinity>()));
 
-      // const int max_cell = static_cast<int>(max_row) / 4;
-      // const int max_corner = static_cast<int>(max_row) - 4 * max_cell;
-      // LDCSD_LOG_INFO("group " + std::to_string(g) + " iteration " + std::to_string(iteration) +
-      //                ": |dphi| = " + std::format("{:.4e}", abs_diff_l2) +
-      //                ", |phi| = " + std::format("{:.4e}", phi_norm) +
-      //                ", max|residual| = " + std::format("{:.4e}", max_residual) + " (cell " +
-      //                std::to_string(max_cell) + ", corner " + std::to_string(max_corner) +
-      //                ", ordinate " + std::to_string(max_col) + ")");
+      if (delta_phi_l2norm <= phi_norm * epsilon) {
+        LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", delta_phi_l2norm) +
+                       " in " + std::to_string(iteration) + " iterations");
+        break; // exit while loop
+      }
     }
+
+    residuals.high_order[g] =
+        transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
+    phi.col(g) = phi_g;
+    psi_up = psi;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
     convergence_.time_group(g, elapsed.count());
 
-    if (converged) {
-      LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", abs_diff_l2) + " in " +
-                     std::to_string(iteration) + " iterations");
-    } else {
+    if (iteration == max_iterations) {
       LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
                      std::to_string(max_iterations) +
-                     "-iteration cap with abs. norm = " + std::format("{:.4e}", abs_diff_l2));
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", delta_phi_l2norm));
     }
-    residuals.high_order[g] =
-        transport_operator.calculateResiduals(g, psi, psi_up, phi, log_residual_terms);
-    phi.col(g) = phi_g;
-    solution.angular_flux[g] = psi;
-    psi_up = psi;
   }
-
-  solution.scalar_flux = phi;
 }
 
 namespace {
