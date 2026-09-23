@@ -1,0 +1,22 @@
+src/main.cpp
+  h_250041054ad857 17-24,28-29,51,58
+src/method.cpp
+  h_250041054ad857 108,110
+src/method.h
+  h_250041054ad857 26-29,36
+src/source_iteration.cpp
+  h_250041054ad857 38,56-59,72-79,93-95,97,244-275
+src/source_iteration.h
+  h_250041054ad857 60,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32fcefc338ba306696a7bcac9878990235857f41",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
