@@ -20,6 +20,7 @@ public:
   TransportOperator(InputDeck input_deck);
   Eigen::MatrixXd sweep(int g, Eigen::MatrixXd psi_in_E, Eigen::MatrixXd scalar_flux);
   Eigen::VectorXd integrateAngle(Eigen::MatrixXd psi);
+  Eigen::VectorXd integrateAngle(Eigen::MatrixXd psi, Eigen::VectorXd weight);
 
   Eigen::MatrixXd calculateResiduals(int g, const Eigen::MatrixXd& angular,
                                      const Eigen::MatrixXd& psi_gm1, const Eigen::MatrixXd& scalar,

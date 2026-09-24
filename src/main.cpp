@@ -11,6 +11,7 @@
 #include "file_manager.h"
 #include "input_deck.h"
 #include "logger.h"
+#include "smm.h"
 #include "source_iteration.h"
 #include "terminal.h"
 

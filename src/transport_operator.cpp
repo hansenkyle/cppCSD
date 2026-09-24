@@ -13,10 +13,13 @@
 
 Eigen::VectorXd TransportOperator::integrateAngle(Eigen::MatrixXd psi) {
   // psi: [4nx by M]
-
   return psi * input_deck.angle.w;
 }
 
+Eigen::VectorXd TransportOperator::integrateAngle(Eigen::MatrixXd psi, Eigen::VectorXd weight) {
+  // psi: [4nx by M]
+  return psi * weight;
+}
 TransportOperator::TransportOperator(InputDeck input_deck) { this->input_deck = input_deck; }
 
 Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,

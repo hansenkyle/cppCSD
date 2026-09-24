@@ -13,7 +13,6 @@
 
 #include <Eigen/Dense>
 
-#include <boost/multiprecision/eigen.hpp>
 #include <boost/multiprecision/float128.hpp>
 
 #include "convergence.h"
@@ -49,10 +48,6 @@ public:
   bool log_residual_terms = false;
 
   static constexpr int kDefaultMaxIterations = 1000;
-
-  // Appends an echo of input_deck (InputDeck::echo()).
-  void writeInputDeckEcho(const std::filesystem::path& results_path) const;
-
   // Appends the results block: scalar flux, then angular flux. angular_flux
   // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
   void writeResults(const std::filesystem::path& file_path) const;

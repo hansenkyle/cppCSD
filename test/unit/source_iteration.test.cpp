@@ -7,6 +7,7 @@
 
 #include "source_iteration.h"
 
+#include "smm.h"
 #include <doctest.h>
 
 namespace {
@@ -104,4 +105,11 @@ TEST_CASE("source iteration conserves particles in an infinite pure scatterer wi
   SourceIteration si(im.deck);
   si.solve(1e-14, 10000);
   checkInfiniteMedium(im, si.solution.angular_flux);
+}
+
+TEST_CASE("SMM conserves particles in an infinite pure scatterer with dE != 1") {
+  const InfiniteMedium im = makeInfiniteMediumDeck();
+  SecondMoment sm(im.deck);
+  sm.solve(1e-14, 10000);
+  checkInfiniteMedium(im, sm.solution.angular_flux);
 }
