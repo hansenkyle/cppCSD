@@ -1,0 +1,31 @@
+src/method.h
+  s_e4770adc49d5a8::t_2c786acd8e2f8b 28-30
+src/smm.cpp
+  s_e4770adc49d5a8::t_2c96629054ccb5 844-846,858-860
+  s_e4770adc49d5a8::t_6ad08ed4a226ae 345
+  h_c6d403188ce57a 847-857
+  s_e4770adc49d5a8::t_aa504328ce47b3 302
+src/main.cpp
+  h_c6d403188ce57a 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed04efaaa6746f015f74f2b5c4ead406f7f3f95d",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_e4770adc49d5a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d4bb324-16c7-43a5-93b3-5030d98fbd08",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
