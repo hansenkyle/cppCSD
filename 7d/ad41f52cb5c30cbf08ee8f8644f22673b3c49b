@@ -1,0 +1,14 @@
+src/main.cpp
+  h_c6d403188ce57a 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dad41f52cb5c30cbf08ee8f8644f22673b3c49b",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
