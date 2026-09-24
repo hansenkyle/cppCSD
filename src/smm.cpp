@@ -811,7 +811,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 }
 
 void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
-                                  std::string timestamp) const {
+                                  std::string timestamp) {
   using Eigen::seqN;
   using Eigen::placeholders::all;
   writeMetadata(file_path, timestamp);
@@ -847,6 +847,14 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
                   kEdgeLabels[transport_peak.sub]);
   LDCSD_LOG_INFO("transport residuals: " + transport_summary);
 
+  // Re-evaluate the true peak (found above, across all groups) term-by-term.
+  const Eigen::MatrixXd zero_psi_gm1 =
+      Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+  transport_operator.calculateResiduals(
+      transport_peak.g, solution.angular_flux[transport_peak.g],
+      transport_peak.g == 0 ? zero_psi_gm1 : solution.angular_flux[transport_peak.g - 1],
+      solution.scalar_flux, /*debug_max=*/true);
+
   UnitGroup transport("transport residuals", transport_summary);
   int I = input_deck.mesh.n_x;
   std::vector<std::string> x_i;
@@ -879,6 +887,10 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
       std::format("max |residual| = {:.4e} at g= {}, i= {}, equation {}", sm_peak.value,
                   sm_peak.g + 1, sm_peak.i + 1, kSMEqLabels[sm_peak.sub]);
   LDCSD_LOG_INFO("second moment equation residuals: " + sm_summary);
+
+  // Re-evaluate the true peak (found above, across all groups) term-by-term.
+  calculateResiduals(sm_peak.g, solution.scalar_flux, solution.current,
+                     solution.angular_flux[sm_peak.g], /*debug_max=*/true);
 
   UnitGroup low_order("second moment equation residuals", sm_summary);
   for (int g = 0; g < input_deck.energy.G; g++) {
