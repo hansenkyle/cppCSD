@@ -710,18 +710,68 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   UnitGroup close("closures");
 
   for (int g = 0; g < input_deck.energy.G; g++) {
+    using Eigen::seqN;
+    int I = input_deck.mesh.n_x;
     int gplusone = g + 1;
-    HorizontalTable group("g = " + std::to_string(gplusone));
-    group.add_row("i", iseq);
-    group.add_row("F", closures[g].F);
-    group.add_row("F+", closures[g].F_pos);
-    group.add_row("F-", closures[g].F_neg);
-    group.add_row("K+", closures[g].K_pos);
-    group.add_row("K-", closures[g].K_neg);
-    group.add_row("T+", closures[g].T_pos);
-    group.add_row("T-", closures[g].T_neg);
+    UnitGroup group("g = " + std::to_string(gplusone));
 
-    close.add(group, "{:.4e}");
+    HorizontalTable f("F");
+    f.add_row("i", iseq);
+    f.add_row("up,left", closures[g].F(seqN(0, I, 4)));
+    f.add_row("up,right", closures[g].F(seqN(1, I, 4)));
+    f.add_row("down,left", closures[g].F(seqN(2, I, 4)));
+    f.add_row("down,right", closures[g].F(seqN(3, I, 4)));
+    group.add(f, "{:.4e}");
+
+    HorizontalTable fplus("F+");
+    fplus.add_row("i", iseq);
+    fplus.add_row("up,left", closures[g].F_pos(seqN(0, I, 4)));
+    fplus.add_row("up,right", closures[g].F_pos(seqN(1, I, 4)));
+    fplus.add_row("down,left", closures[g].F_pos(seqN(2, I, 4)));
+    fplus.add_row("down,right", closures[g].F_pos(seqN(3, I, 4)));
+    group.add(fplus, "{:.4e}");
+
+    HorizontalTable fminus("F-");
+    fminus.add_row("i", iseq);
+    fminus.add_row("up,left", closures[g].F_neg(seqN(0, I, 4)));
+    fminus.add_row("up,right", closures[g].F_neg(seqN(1, I, 4)));
+    fminus.add_row("down,left", closures[g].F_neg(seqN(2, I, 4)));
+    fminus.add_row("down,right", closures[g].F_neg(seqN(3, I, 4)));
+    group.add(fminus, "{:.4e}");
+
+    HorizontalTable kplus("K+");
+    kplus.add_row("i", iseq);
+    kplus.add_row("up,left", closures[g].K_pos(seqN(0, I, 4)));
+    kplus.add_row("up,right", closures[g].K_pos(seqN(1, I, 4)));
+    kplus.add_row("down,left", closures[g].K_pos(seqN(2, I, 4)));
+    kplus.add_row("down,right", closures[g].K_pos(seqN(3, I, 4)));
+    group.add(kplus, "{:.4e}");
+
+    HorizontalTable kminus("K-");
+    kminus.add_row("i", iseq);
+    kminus.add_row("up,left", closures[g].K_neg(seqN(0, I, 4)));
+    kminus.add_row("up,right", closures[g].K_neg(seqN(1, I, 4)));
+    kminus.add_row("down,left", closures[g].K_neg(seqN(2, I, 4)));
+    kminus.add_row("down,right", closures[g].K_neg(seqN(3, I, 4)));
+    group.add(kminus, "{:.4e}");
+
+    HorizontalTable tplus("T+");
+    tplus.add_row("i", iseq);
+    tplus.add_row("up,left", closures[g].T_pos(seqN(0, I, 4)));
+    tplus.add_row("up,right", closures[g].T_pos(seqN(1, I, 4)));
+    tplus.add_row("down,left", closures[g].T_pos(seqN(2, I, 4)));
+    tplus.add_row("down,right", closures[g].T_pos(seqN(3, I, 4)));
+    group.add(tplus, "{:.4e}");
+
+    HorizontalTable tminus("T-");
+    tminus.add_row("i", iseq);
+    tminus.add_row("up,left", closures[g].T_neg(seqN(0, I, 4)));
+    tminus.add_row("up,right", closures[g].T_neg(seqN(1, I, 4)));
+    tminus.add_row("down,left", closures[g].T_neg(seqN(2, I, 4)));
+    tminus.add_row("down,right", closures[g].T_neg(seqN(3, I, 4)));
+    group.add(tminus, "{:.4e}");
+
+    close.add(group);
   }
 
   // cell-average angular flux
