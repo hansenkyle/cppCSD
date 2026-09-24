@@ -1,0 +1,42 @@
+CMakeLists.txt
+  s_7a74bd5f2ed12a::t_ac0fa62a5b3ccc 133
+src/smm.h
+  s_7a74bd5f2ed12a::t_c4ac99ff1433dc 45-48,50-70
+  s_7a74bd5f2ed12a::t_6184f48ff14932 18-19
+  s_7a74bd5f2ed12a::t_072c29415aea18 44,49,77
+  s_7a74bd5f2ed12a::t_bb749745dcbbcd 71-76
+  s_7a74bd5f2ed12a::t_05ad758a89bf4f 87,89-90
+test/unit/smm.test.cpp
+  s_7a74bd5f2ed12a::t_bb749745dcbbcd 193,195-198,201-224,235-236,246-250,257-271
+  s_7a74bd5f2ed12a::t_f7d19f8bb4fd48 139-140
+  s_7a74bd5f2ed12a::t_97987f7892ec81 1-138,141-192,194,199-200,225-234,237-245,251-256,272
+src/smm.cpp
+  s_7a74bd5f2ed12a::t_bb749745dcbbcd 257-258,365,379-383
+  h_250041054ad857 73,76,78,81
+  s_7a74bd5f2ed12a::t_739f2efb3486f2 14
+  s_7a74bd5f2ed12a::t_96acf095a349bc 97,99-105,107-108,112,119,122,126,134,181,183,208-210,213,216,222,230,234,244-248,312,422
+  s_7a74bd5f2ed12a::t_c4ac99ff1433dc 98
+  s_7a74bd5f2ed12a::t_57503e645df6c2 10-11,13,106,109-111,113-118,120-121,123-125,127-133,135-180,182,184-207,211-212,214-215,217-221,223-229,231-233,235-243,249-256,259-311,313-364,366-378,384-421
+  s_7a74bd5f2ed12a::t_98e53d11cfcd1c 49,55-56,74-75,77,79-80,82-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f865e8afbe9d3e15f2900a2085244b4e48f0d721",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7a74bd5f2ed12a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "374ab2ea-bba8-4523-af8a-3ac1a1466b4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
