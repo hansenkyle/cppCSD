@@ -1,0 +1,29 @@
+src/smm.cpp
+  s_e79fa0e7843c3f::t_cc0f8959cee5a9 429-430
+  s_e79fa0e7843c3f::t_b70d24b458bf3a 190,237
+src/transport_operator.cpp
+  s_e79fa0e7843c3f::t_b70d24b458bf3a 41,183
+  s_e79fa0e7843c3f::t_cc0f8959cee5a9 314-315
+  s_e79fa0e7843c3f::t_4df45851622266 67,81,99,113
+src/smm.h
+  s_e79fa0e7843c3f::t_b70d24b458bf3a 77
+test/unit/source_iteration.test.cpp
+  s_e79fa0e7843c3f::t_ab0a9c815c74ca 24,53,86
+  s_e79fa0e7843c3f::t_7c4ea5d8dbae1c 10,12-23,25-52,54-85,87-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8f300bb88a2af96494509ec91b4386e33982ce7",
+  "prompts": {},
+  "sessions": {
+    "s_e79fa0e7843c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "489197ee-da3c-46b3-85e7-6e13ee34c3c8",
+        "model": "unknown"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
