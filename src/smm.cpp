@@ -707,6 +707,23 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   std::vector<std::vector<std::string>> labels = {{"x_i"}, {"g \\ i"}};
   scalar.set_corner_grid(labels);
 
+  UnitGroup close("closures");
+
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    int gplusone = g + 1;
+    HorizontalTable group("g = " + std::to_string(gplusone));
+    group.add_row("i", iseq);
+    group.add_row("F", closures[g].F);
+    group.add_row("F+", closures[g].F_pos);
+    group.add_row("F-", closures[g].F_neg);
+    group.add_row("K+", closures[g].K_pos);
+    group.add_row("K-", closures[g].K_neg);
+    group.add_row("T+", closures[g].T_pos);
+    group.add_row("T-", closures[g].T_neg);
+
+    close.add(group, "{:.4e}");
+  }
+
   // cell-average angular flux
   labels = {{"", "x_i"}, {"mu", "m \\i"}};
   UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
@@ -732,6 +749,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
 
   sol_block.add(scalar, "{:.4e}");
+  sol_block.add(close);
   sol_block.add(angular);
   sol_block.add(multigroup, "{:.4e}");
   sol_block.add(spectrum, "{:.4e}");
