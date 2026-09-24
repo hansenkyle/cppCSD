@@ -6,12 +6,13 @@
 // or without modification are permitted provided that the terms of the license are met.
 
 #include "smm.h"
-
 #include "logger.h"
+#include "output_block.h"
 
 #include <Eigen/Dense>
 #include <chrono>
 #include <format>
+#include <ranges>
 #include <stdexcept>
 #include <vector>
 
@@ -78,7 +79,7 @@ Eigen::MatrixXd SMMResult::cell_average_current() const {
 
 SecondMoment::SecondMoment(InputDeck input_deck)
     : Method("second moment method", input_deck), transport_operator(input_deck),
-      convergence_(input_deck.energy.G) {}
+      convergence_(input_deck.energy.G), closures(input_deck.energy.G) {}
 
 Eigen::VectorXd SecondMoment::calculateK(Eigen::MatrixXd psi_slice, int sign) const {
   // calculates
@@ -319,7 +320,8 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
       // solve transport using known phi
       psi = transport_operator.sweep(g, psi_up, phi);
       // compute new phi (and J) from the SM equations
-      auto [phi_lo, J_lo] = solveGroup(buildGroupRHS(g, computeClosures(psi), phi, J));
+      closures[g] = computeClosures(psi);
+      auto [phi_lo, J_lo] = solveGroup(buildGroupRHS(g, closures[g], phi, J));
       phi_g = phi_lo;
       J.col(g) = J_lo;
 
@@ -622,4 +624,198 @@ Eigen::Vector<HighPrecision, 8> SecondMoment::cellResidual(
   result << residual_balance_u, residual_balance_d, residual_first_moment_u,
       residual_first_moment_d;
   return result;
+}
+
+namespace {
+auto int_label_seq = [](int max) {
+  auto intview =
+      std::views::iota(1, max + 1) | std::views::transform([](int x) { return std::to_string(x); });
+  std::vector<std::string> result(intview.begin(), intview.end());
+  return result;
+};
+
+auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
+  std::vector<std::string> result;
+  for (Eigen::Index i = 0; i < dvec.size(); i++) {
+    result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
+  }
+  return result;
+};
+} // namespace
+
+void SecondMoment::writeResults(const std::filesystem::path& results_path) const {
+
+  auto vint_to_vstring = [](std::vector<int> ivec) {
+    std::vector<std::string> result = {};
+    for (auto i : ivec) {
+      result.push_back(std::to_string(i));
+    }
+    return result;
+  };
+
+  auto vdoub_to_string = [](std::vector<double> dvec, std::string fmt = "{:.2e}") {
+    std::vector<std::string> result = {};
+    for (auto i : dvec) {
+      result.push_back(std::vformat(fmt, std::make_format_args(i)));
+    }
+    return result;
+  };
+
+  auto average_space = [&](Eigen::MatrixXd data) {
+    Eigen::MatrixXd left =
+        data(Eigen::seqN(0, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
+    Eigen::MatrixXd right =
+        data(Eigen::seqN(1, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
+    return (left + right) / 2;
+  };
+
+  auto interleave = [&](std::vector<std::string> original) {
+    std::vector<std::string> doubled(2 * original.size());
+    for (int i = 0; i < original.size(); i++) {
+      doubled[2 * i] = original[i];
+      doubled[2 * i + 1] = "";
+    }
+    return doubled;
+  };
+
+  auto iseq = int_label_seq(input_deck.mesh.n_x);
+  auto gseq = int_label_seq(input_deck.energy.G);
+  auto mseq = int_label_seq(input_deck.angle.M);
+
+  auto x_center = evdoub_to_string(input_deck.mesh.x_center);
+  auto mu = evdoub_to_string(input_deck.angle.mu);
+
+  std::vector<std::string> xb, eb;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    auto s = evdoub_to_string(input_deck.mesh.x_boundary(Eigen::seqN(i, 2)));
+    xb.insert(xb.end(), s.begin(), s.end());
+  }
+
+  for (int i = 0; i < input_deck.energy.G; i++) {
+    auto s = evdoub_to_string(input_deck.energy.E_boundary(Eigen::seqN(i, 2)));
+    eb.insert(eb.end(), s.begin(), s.end());
+  }
+
+  UnitGroup sol_block("solution");
+
+  // cell-average scalar flux
+  MatrixTable scalar("cell-average scalar flux", "averaged over each space-energy cell");
+  scalar.set_data(solution.cell_average_scalar().transpose(), x_center, gseq);
+  scalar.add_column_label(iseq);
+
+  std::vector<std::vector<std::string>> labels = {{"x_i"}, {"g \\ i"}};
+  scalar.set_corner_grid(labels);
+
+  UnitGroup close("closures");
+
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    int gplusone = g + 1;
+    HorizontalTable group("g = " + std::to_string(gplusone));
+    group.add_row("i", iseq);
+    group.add_row("F", closures[g].F);
+    group.add_row("F+", closures[g].F_pos);
+    group.add_row("F-", closures[g].F_neg);
+    group.add_row("K+", closures[g].K_pos);
+    group.add_row("K-", closures[g].K_neg);
+    group.add_row("T+", closures[g].T_pos);
+    group.add_row("T-", closures[g].T_neg);
+
+    close.add(group, "{:.4e}");
+  }
+
+  // cell-average angular flux
+  labels = {{"", "x_i"}, {"mu", "m \\i"}};
+  UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    int gplusone = g + 1;
+    MatrixTable group("g = " + std::to_string(gplusone));
+    group.set_data(solution.cell_average_angular()[g].transpose(), x_center, mu);
+    group.add_column_label(iseq);
+    group.add_row_label(mseq);
+    group.set_corner_grid(labels);
+    angular.add(group, "{:.4e}");
+  }
+
+  MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
+  multigroup.set_data(solution.multigroup(), xb, gseq);
+  multigroup.add_column_label(interleave(iseq));
+  multigroup.set_corner_grid({{"x_boundary"}, {"g \\ i"}});
+
+  MatrixTable spectrum("energy spectrum", "averaged over each spatial cell, not energy");
+  spectrum.set_data(solution.spectrum(), eb, x_center);
+  spectrum.add_row_label(iseq);
+  spectrum.add_column_label(interleave(gseq));
+  spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
+
+  sol_block.add(scalar, "{:.4e}");
+  sol_block.add(close);
+  sol_block.add(angular);
+  sol_block.add(multigroup, "{:.4e}");
+  sol_block.add(spectrum, "{:.4e}");
+
+  appendToFile(results_path, sol_block.render_txt());
+}
+
+void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
+                                  std::string timestamp) const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+  writeMetadata(file_path, timestamp);
+
+  UnitGroup transport("transport residuals");
+  int I = input_deck.mesh.n_x;
+  std::vector<std::string> x_i;
+  std::vector<std::string> mu_m;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    x_i.push_back(std::to_string(i + 1));
+  }
+  for (int m = 0; m < input_deck.angle.M; m++) {
+    mu_m.push_back(std::to_string(m + 1));
+  }
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (int m = 0; m < input_deck.angle.M; m++) {
+      HorizontalTable angle("m = " + std::to_string(m + 1));
+      angle.add_row("i", x_i);
+      angle.add_row("up,L", residuals.high_order[g](seqN(0, I, 4), m));
+      angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
+      angle.add_row("down,L", residuals.high_order[g](seqN(2, I, 4), m));
+      angle.add_row("down,R", residuals.high_order[g](seqN(3, I, 4), m));
+      group.add(angle, "{:.4e}");
+    }
+    transport.add(group);
+  }
+
+  appendToFile(file_path, transport.render_txt());
+}
+
+void SecondMoment::writeConvergence(const std::filesystem::path& results_path) const {
+  auto gseq = int_label_seq(input_deck.energy.G);
+  VerticalTable summary("iteration summary");
+  summary.add_column("g", gseq);
+  summary.add_column("# iterations", convergence_.iterations);
+
+  UnitGroup convergence("per-group convergence history",
+                        "delta = (phi_n - phi_n-1). absolute change.");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    VerticalTable group("g = " + gseq[g]);
+    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
+
+    std::vector<double> l2, li;
+    for (int i = 0; i < convergence_.records[g].size(); i++) {
+      l2.push_back(convergence_.records[g][i].norm2);
+      li.push_back(convergence_.records[g][i].norminf);
+    }
+
+    group.add_column("|delta|_2", l2);
+    group.add_column("|delta|_infty", li);
+    convergence.add(group, "{:.4e}");
+  }
+
+  UnitGroup result("convergence");
+  result.add(summary);
+  result.add(convergence);
+  appendToFile(results_path, result.render_txt());
 }

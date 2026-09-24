@@ -186,6 +186,9 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     xs_t_and_s.add_row("sigma_total", m.total);
     xs_t_and_s.add_row("grp. avg. stoping power", m.S);
     xs_t_and_s.add_row("grp. bound. stopping power", m.S_b);
+    xs_t_and_s.add_row("in-group scattering xs", m.scatter.diagonal());
+    xs_t_and_s.add_row("scattering / total",
+                       m.scatter.diagonal().cwiseProduct(m.total.cwiseInverse()));
 
     HorizontalTable scatter("scattering matrix (from, to)");
     scatter.add_row("", intseq(input_deck.energy.G));

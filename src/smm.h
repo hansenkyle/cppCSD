@@ -54,6 +54,7 @@ public:
   void writeConvergence(const std::filesystem::path& file_path) const;
   void writeResiduals(const std::filesystem::path& file_path, std::string timestamp) const;
   SMMResult solution;
+  std::vector<SMClosures> closures;
   Residuals residuals;
 
   // Residuals of the SM equations for group g over the whole mesh: rows 8i..8i+7 hold cell i's

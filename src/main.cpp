@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  SourceIteration solver(deck);
+  SecondMoment solver(deck);
   LDCSD_LOG_INFO("constructed Solver");
 
   solver.writeMetadata(output.results_path, timestamp);
