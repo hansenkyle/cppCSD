@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   solver.writeMetadata(output.results_path, timestamp);
   solver.writeInputEcho(output.results_path);
 
-  solver.solve(1e-8);
+  solver.solve(1e-12);
 
   solver.writeResults(output.results_path);
   solver.writeConvergence(output.results_path);

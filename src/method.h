@@ -25,6 +25,9 @@ struct MethodResult {
 
 struct Residuals {
   std::vector<Eigen::MatrixXd> high_order;
+  // Low-order (SM equation) residuals per group, each [8nx], as returned by
+  // SecondMoment::calculateResiduals.
+  std::vector<Eigen::VectorXd> low_order;
 };
 
 class Method {
