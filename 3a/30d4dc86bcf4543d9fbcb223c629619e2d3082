@@ -1,0 +1,29 @@
+test/method/al_shield/description.md
+  s_e79fa0e7843c3f::t_fff9ce0de35aba 1-32
+test/method/al_shield/xs_data/al_6061_12g.csv
+  s_e79fa0e7843c3f::t_1ea70dc15c526c 1-45
+test/method/al_shield/xs_data/al_6061_24g.csv
+  s_e79fa0e7843c3f::t_06da38dc4e69cb 1-69
+test/method/al_shield/xs_data/al_6061_36g.csv
+  s_e79fa0e7843c3f::t_e99b7d7c9929ab 1-93
+test/method/al_shield/xs_data/al_6061_48g.csv
+  s_e79fa0e7843c3f::t_99b2528e49e285 1-117
+test/method/al_shield/xs_data/al_6061_6g.csv
+  s_e79fa0e7843c3f::t_554e4676b9dae0 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a30d4dc86bcf4543d9fbcb223c629619e2d3082",
+  "prompts": {},
+  "sessions": {
+    "s_e79fa0e7843c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "489197ee-da3c-46b3-85e7-6e13ee34c3c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
