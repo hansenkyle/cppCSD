@@ -737,3 +737,66 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
   appendToFile(results_path, sol_block.render_txt());
 }
+
+void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
+                                  std::string timestamp) const {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+  writeMetadata(file_path, timestamp);
+
+  UnitGroup transport("transport residuals");
+  int I = input_deck.mesh.n_x;
+  std::vector<std::string> x_i;
+  std::vector<std::string> mu_m;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    x_i.push_back(std::to_string(i + 1));
+  }
+  for (int m = 0; m < input_deck.angle.M; m++) {
+    mu_m.push_back(std::to_string(m + 1));
+  }
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (int m = 0; m < input_deck.angle.M; m++) {
+      HorizontalTable angle("m = " + std::to_string(m + 1));
+      angle.add_row("i", x_i);
+      angle.add_row("up,L", residuals.high_order[g](seqN(0, I, 4), m));
+      angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
+      angle.add_row("down,L", residuals.high_order[g](seqN(2, I, 4), m));
+      angle.add_row("down,R", residuals.high_order[g](seqN(3, I, 4), m));
+      group.add(angle, "{:.4e}");
+    }
+    transport.add(group);
+  }
+
+  appendToFile(file_path, transport.render_txt());
+}
+
+void SecondMoment::writeConvergence(const std::filesystem::path& results_path) const {
+  auto gseq = int_label_seq(input_deck.energy.G);
+  VerticalTable summary("iteration summary");
+  summary.add_column("g", gseq);
+  summary.add_column("# iterations", convergence_.iterations);
+
+  UnitGroup convergence("per-group convergence history",
+                        "delta = (phi_n - phi_n-1). absolute change.");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    VerticalTable group("g = " + gseq[g]);
+    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
+
+    std::vector<double> l2, li;
+    for (int i = 0; i < convergence_.records[g].size(); i++) {
+      l2.push_back(convergence_.records[g][i].norm2);
+      li.push_back(convergence_.records[g][i].norminf);
+    }
+
+    group.add_column("|delta|_2", l2);
+    group.add_column("|delta|_infty", li);
+    convergence.add(group, "{:.4e}");
+  }
+
+  UnitGroup result("convergence");
+  result.add(summary);
+  result.add(convergence);
+  appendToFile(results_path, result.render_txt());
+}
