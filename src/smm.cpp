@@ -187,7 +187,7 @@ Eigen::SparseMatrix<double> SecondMoment::buildGroupMatrix(int g) {
              sigma_t / 6 - S_bar / (2 * dE), sigma_t / 3 + (xs.S_down(g, i) - S_bar / 2) / dE);
     const Eigen::Matrix4d R = dx * kron(C, kM);
     // within-group scattering, kept on the LHS; sigma_s1 = 0, so only the balance rows get it
-    const double w0 = (dx / 4) * dE * xs.scatter(g, g, i);
+    const double w0 = (dx / 4) * xs.scatter(g, g, i); // dE_g / dE_g = 1
 
     Matrix8d A0 = kA0Streaming;
     A0.topLeftCorner<4, 4>() += R - w0 * kX;
@@ -234,7 +234,7 @@ Eigen::VectorXd SecondMoment::buildGroupRHS(int g, const SMClosures& closures,
     const double csd = (dx / dE) * xs.S_up(g, i);
 
     // scattering from every other group; g -> g is in the matrix
-    Eigen::VectorXd sigma_sdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+    Eigen::VectorXd sigma_sdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE) / dE;
     sigma_sdEprime(g) = 0.0;
     const Eigen::Vector4d scatter = scalar.middleRows<4>(4 * i) * sigma_sdEprime;
 
@@ -426,8 +426,8 @@ Eigen::VectorXd SecondMoment::calculateResiduals(int g, const Eigen::MatrixXd& s
     return cellResidual(dx[i], dE[g], xs.total(g, i), xs.S(g, i), xs.S_down(g, i), xs.S_up(g, i),
                         phi_gm1_d, J_gm1_d, phi_b_up, phi_b_down, J_b_up, J_b_down, F_b_up,
                         F_b_down, F_up, F_down, q0_up, q0_down, q1_up, q1_down,
-                        dE.cwiseProduct(sigma_s), phi_gprime_up, phi_gprime_down, phi_up, phi_down,
-                        J_up, J_down, verbose)
+                        dE.cwiseProduct(sigma_s) / dE[g], phi_gprime_up, phi_gprime_down, phi_up,
+                        phi_down, J_up, J_down, verbose)
         .cast<double>();
   };
 

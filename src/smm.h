@@ -74,7 +74,7 @@ public:
   //   phi_b_*, J_b_*         : face values from the interface conditions (57), (59)-(62)
   //   F_b_*, F_*             : SM closure on faces (55) and at corners (54)
   //   q0_*, q1_*             : zeroth and first angular moments of the external source
-  //   sigma_sdEprime         : sigma_s0(g' -> g) * dE_g' for all g'      : [Gx1]
+  //   sigma_sdEprime         : sigma_s0(g' -> g) * dE_g' / dE_g, all g' : [Gx1]
   //   phi_gprime_u/d         : scalar flux in all groups                 : [2xG]
   //   phi_*, J_*             : this group's LO unknowns
   Eigen::Vector<HighPrecision, 8>
