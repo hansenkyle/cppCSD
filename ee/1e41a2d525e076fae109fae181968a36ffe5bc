@@ -1,0 +1,21 @@
+src/smm.cpp
+  s_d9e318ad757c0a::t_d4360d24d38fdf 13,276-352
+test/unit/smm.test.cpp
+  s_d9e318ad757c0a::t_d4360d24d38fdf 378-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee1e41a2d525e076fae109fae181968a36ffe5bc",
+  "prompts": {},
+  "sessions": {
+    "s_d9e318ad757c0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c8c23ac-f523-44a9-81c1-f763e2e8789c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
