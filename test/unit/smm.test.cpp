@@ -270,3 +270,108 @@ TEST_CASE("calculateResiduals with debug_max returns the same residuals") {
   CHECK(quiet.cwiseAbs().maxCoeff() > 0);
   CHECK(logged == quiet);
 }
+
+TEST_CASE("LO solve reproduces the moments of an exact transport solution") {
+  // Closures from the exact discrete transport solution make the LO system exact, so its solution
+  // must be that solution's zeroth and first moments -- group 1 also checks the CSD and
+  // downscatter coupling to group 0.
+  const InputDeck deck = makeSMDeck(false);
+  const int rows = 4 * deck.mesh.n_x;
+  TransportOperator transport(deck);
+  SecondMoment sm(deck);
+
+  Eigen::MatrixXd scalar = Eigen::MatrixXd::Zero(rows, deck.energy.G);
+  Eigen::MatrixXd current = Eigen::MatrixXd::Zero(rows, deck.energy.G);
+  Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(rows, deck.angle.M);
+
+  for (int g = 0; g < deck.energy.G; ++g) {
+    CAPTURE(g);
+    const Eigen::MatrixXd psi = transport.sweep(g, psi_up, scalar);
+
+    sm.factorizeGroup(g);
+    const auto [phi, J] =
+        sm.solveGroup(sm.buildGroupRHS(g, sm.computeClosures(psi), scalar, current));
+
+    const Eigen::VectorXd phi_exact = zerothMoment(deck, psi);
+    const Eigen::VectorXd J_exact = firstMoment(deck, psi);
+    CHECK((phi - phi_exact).norm() < 1e-13 * phi_exact.norm());
+    CHECK((J - J_exact).norm() < 1e-13 * J_exact.norm());
+
+    scalar.col(g) = phi;
+    current.col(g) = J;
+    psi_up = psi;
+  }
+}
+
+TEST_CASE("LO solve reproduces the moments of a converged source iteration") {
+  // Within-group scattering is on the LHS of the LO system, so this checks the matrix's w0 term.
+  const InputDeck deck = makeSMDeck(true);
+  SourceIteration si(deck);
+  si.solve(1e-14, 10000);
+  SecondMoment sm(deck);
+
+  const Eigen::MatrixXd& scalar = si.solution.scalar_flux;
+  Eigen::MatrixXd current(scalar.rows(), scalar.cols());
+  for (int g = 0; g < deck.energy.G; ++g) {
+    current.col(g) = firstMoment(deck, si.solution.angular_flux[g]);
+  }
+
+  for (int g = 0; g < deck.energy.G; ++g) {
+    CAPTURE(g);
+    const Eigen::MatrixXd& psi = si.solution.angular_flux[g];
+    sm.factorizeGroup(g);
+    const auto [phi, J] =
+        sm.solveGroup(sm.buildGroupRHS(g, sm.computeClosures(psi), scalar, current));
+    CHECK((phi - scalar.col(g)).norm() < 1e-10 * scalar.col(g).norm());
+    CHECK((J - current.col(g)).norm() < 1e-10 * current.col(g).norm());
+  }
+}
+
+TEST_CASE("LO solution zeroes the SM residuals for arbitrary closures") {
+  // psi here is not a transport solution, so the LO solution differs from its moments -- but it
+  // must still satisfy (53) exactly as calculateResiduals states it, term for term.
+  const InputDeck deck = makeSMDeck(true);
+  const int rows = 4 * deck.mesh.n_x;
+  SecondMoment sm(deck);
+
+  std::srand(20260923);
+  Eigen::MatrixXd scalar = Eigen::MatrixXd::Random(rows, deck.energy.G);
+  Eigen::MatrixXd current = Eigen::MatrixXd::Random(rows, deck.energy.G);
+  const Eigen::MatrixXd psi = Eigen::MatrixXd::Random(rows, deck.angle.M).array() + 1.0;
+
+  for (int g = 0; g < deck.energy.G; ++g) {
+    CAPTURE(g);
+    sm.factorizeGroup(g);
+    const auto [phi, J] =
+        sm.solveGroup(sm.buildGroupRHS(g, sm.computeClosures(psi), scalar, current));
+    scalar.col(g) = phi;
+    current.col(g) = J;
+    const Eigen::VectorXd r = sm.calculateResiduals(g, scalar, current, psi);
+    CHECK(r.cwiseAbs().maxCoeff() < 1e-13);
+  }
+}
+
+TEST_CASE("LO matrix is block tridiagonal with 80I - 32 nonzeros") {
+  const InputDeck deck = makeSMDeck(true);
+  const int I = deck.mesh.n_x;
+  SecondMoment sm(deck);
+
+  for (int g = 0; g < deck.energy.G; ++g) {
+    CAPTURE(g);
+    const Eigen::SparseMatrix<double> A = sm.buildGroupMatrix(g);
+    REQUIRE(A.rows() == 8 * I);
+    REQUIRE(A.cols() == 8 * I);
+    CHECK(A.nonZeros() == 80 * I - 32);
+    for (int k = 0; k < A.outerSize(); ++k) {
+      for (Eigen::SparseMatrix<double>::InnerIterator it(A, k); it; ++it) {
+        CHECK(std::abs(it.row() / 8 - it.col() / 8) <= 1);
+      }
+    }
+  }
+}
+
+TEST_CASE("solveGroup before factorizeGroup throws") {
+  const InputDeck deck = makeSMDeck(false);
+  const SecondMoment sm(deck);
+  CHECK_THROWS_AS(sm.solveGroup(Eigen::VectorXd::Zero(8 * deck.mesh.n_x)), std::logic_error);
+}

@@ -14,9 +14,11 @@
 #include "transport_operator.h"
 
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <boost/multiprecision/float128.hpp>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 using HighPrecision = boost::multiprecision::float128;
 
@@ -25,6 +27,19 @@ struct SMMResult : public MethodResult {
   Eigen::MatrixXd current;
 
   Eigen::MatrixXd cell_average_current() const;
+};
+
+// Closures of the SM equations for one group, evaluated from its angular flux at every corner
+// [4nx], in the same layout as scalar_flux. The +/- terms are kept separate: a face value takes
+// the + term from the R corner left of the face and the - term from the L corner right of it.
+struct SMClosures {
+  Eigen::VectorXd F;     // (54)
+  Eigen::VectorXd F_pos; // (56a)
+  Eigen::VectorXd F_neg; // (56b)
+  Eigen::VectorXd K_pos; // (58b)
+  Eigen::VectorXd K_neg; // (58a)
+  Eigen::VectorXd T_pos; // (58d)
+  Eigen::VectorXd T_neg; // (58c)
 };
 
 class SecondMoment : public Method {
@@ -75,19 +90,51 @@ public:
                const Eigen::Vector2d& phi_u, const Eigen::Vector2d& phi_d,
                const Eigen::Vector2d& J_u, const Eigen::Vector2d& J_d, bool verbose = false) const;
 
+  // Closures F, F+-, K+- and T+- at every corner, from one group's angular flux psi [4nx x M].
+  SMClosures computeClosures(const Eigen::MatrixXd& psi) const;
+
+  // Group g's LO matrix [8nx x 8nx]: cell i's unknowns [phi_i; J_i] are columns 8i..8i+7 and its
+  // equations (53a-h) rows 8i..8i+7. Block tridiagonal; only depends on the problem data, never
+  // on the closures, so one factorization serves every iteration within the group.
+  Eigen::SparseMatrix<double> buildGroupMatrix(int g);
+
+  // Group g's LO right-hand side [8nx]: every closure, boundary, CSD, scattering and external
+  // source term of (53). scalar and current are the LO solution [4nx x G], filled for every group
+  // before g; column g itself is not read (within-group scattering is in the matrix).
+  Eigen::VectorXd buildGroupRHS(int g, const SMClosures& closures, const Eigen::MatrixXd& scalar,
+                                const Eigen::MatrixXd& current);
+
+  // Builds and factorizes group g's LO matrix. Every solveGroup call reuses this factorization
+  // until factorizeGroup is called again.
+  void factorizeGroup(int g);
+
+  // Solves the factorized group's LO system for rhs, returning (phi_g, J_g), each [4nx].
+  std::pair<Eigen::VectorXd, Eigen::VectorXd> solveGroup(const Eigen::VectorXd& rhs) const;
+
 private:
   TransportOperator transport_operator;
   ConvergenceHistory convergence_;
+  Eigen::SparseLU<Eigen::SparseMatrix<double>> lo_solver_;
+  bool lo_factorized_ = false;
 
-  std::vector<Eigen::MatrixXd> J_in_positive;
-  std::vector<Eigen::MatrixXd> J_in_negative;
-  std::vector<Eigen::MatrixXd> phi_in_positive;
-  std::vector<Eigen::MatrixXd> phi_in_negative;
+  // Half-range moments of group g's incoming boundary flux, (63)-(64), indexed (u, d). The same
+  // bc[g] feeds both boundaries: mu > 0 enters at x_0, mu < 0 at x_I. F_in is not in the notes,
+  // but the boundary faces' F^b needs it just like (55) does on interior faces.
+  struct IncomingMoments {
+    Eigen::Vector2d J_pos, J_neg;
+    Eigen::Vector2d phi_pos, phi_neg;
+    Eigen::Vector2d F_pos, F_neg;
+  };
+  IncomingMoments incomingMoments(int g) const;
+
+  // Values on every face x_0..x_I [nx+1 x 2], columns (u, d): pos taken at the R corner of the
+  // cell left of the face, neg at the L corner of the cell right of it. On an outer face the
+  // missing side is the incoming boundary moment in_pos (at x_0) or in_neg (at x_I) instead.
+  Eigen::MatrixXd assembleFaces(const Eigen::VectorXd& pos, const Eigen::VectorXd& neg,
+                                const Eigen::Vector2d& in_pos, const Eigen::Vector2d& in_neg) const;
 
   Eigen::VectorXd calculateK(Eigen::MatrixXd psi_slice, int sign) const;
   Eigen::VectorXd calculateT(Eigen::MatrixXd psi_slice, int sign) const;
-  Eigen::VectorXd solveSM(Eigen::VectorXd Kpos, Eigen::VectorXd Kneg, Eigen::VectorXd Tpos,
-                          Eigen::VectorXd Tneg) const;
 };
 
 #endif

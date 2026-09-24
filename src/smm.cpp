@@ -12,6 +12,56 @@
 #include <Eigen/Dense>
 #include <format>
 #include <stdexcept>
+#include <vector>
+
+namespace {
+using Matrix8d = Eigen::Matrix<double, 8, 8>;
+
+// Kronecker product A (x) B. Left factor = energy (u, d) or equation/unknown type, right factor =
+// space (L, R) or a 4x4 per-cell block, as in smm.md.
+template <int Rows, int Cols>
+Eigen::Matrix<double, 2 * Rows, 2 * Cols> kron(const Eigen::Matrix2d& A,
+                                               const Eigen::Matrix<double, Rows, Cols>& B) {
+  Eigen::Matrix<double, 2 * Rows, 2 * Cols> K;
+  for (int r = 0; r < 2; r++) {
+    for (int c = 0; c < 2; c++) {
+      K.template block<Rows, Cols>(Rows * r, Cols * c) = A(r, c) * B;
+    }
+  }
+  return K;
+}
+
+Eigen::Matrix2d mat2(double a, double b, double c, double d) {
+  return (Eigen::Matrix2d() << a, b, c, d).finished();
+}
+
+// 2x2 building blocks and the data-free 4x4 operators of (53), named as in smm.md
+const Eigen::Matrix2d kM = mat2(2, 1, 1, 2) / 6;
+const Eigen::Matrix2d kL = mat2(1, 1, -1, -1) / 2;
+const Eigen::Matrix2d kLb = mat2(-1, 0, 0, 1);
+const Eigen::Matrix2d kN = mat2(0, 1, -1, 0) / 2;
+const Eigen::Matrix2d kI2 = Eigen::Matrix2d::Identity();
+
+const Eigen::Matrix4d kS = kron(kM, kL);               // interior streaming
+const Eigen::Matrix4d kSb = kron(kM, kLb);             // face streaming
+const Eigen::Matrix4d kX = kron(mat2(1, 1, 1, 1), kM); // scattering
+const Eigen::Matrix4d kP = kron(mat2(0, 1, 0, 0), kM); // CSD inflow from g - 1
+const Eigen::Matrix4d kQ = kron(kM, kM);               // external source
+
+// The data-free part of the LO matrix's blocks: streaming, with the face values' dependence on
+// the unknowns (57) substituted in. A0 is a cell's own block (still missing R and within-group
+// scattering), A_minus couples it to cell i-1 and A_plus to cell i+1. Outer 2x2 indexing is
+// (equation type, unknown type).
+const Matrix8d kA0Streaming =
+    kron(kI2, kron(kM, kI2)) / 4 + kron(mat2(0, 1, 1.0 / 3, 0), kron(kM, kN));
+const Matrix8d kAMinus = kron(mat2(0.25, 0.5, 1.0 / 6, 0.25), kron(kM, mat2(0, -1, 0, 0)));
+const Matrix8d kAPlus = kron(mat2(-0.25, 0.5, 1.0 / 6, -0.25), kron(kM, mat2(0, 0, 1, 0)));
+
+// Cell i's 4 face values [u(x_{i-1}), u(x_i), d(x_{i-1}), d(x_i)] from a face array [nx+1 x 2].
+Eigen::Vector4d cellFaces(const Eigen::MatrixXd& faces, int i) {
+  return Eigen::Vector4d(faces(i, 0), faces(i + 1, 0), faces(i, 1), faces(i + 1, 1));
+}
+} // namespace
 
 Eigen::MatrixXd SMMResult::cell_average_current() const {
   using Eigen::seqN;
@@ -27,24 +77,7 @@ Eigen::MatrixXd SMMResult::cell_average_current() const {
 
 SecondMoment::SecondMoment(InputDeck input_deck)
     : Method("second moment method", input_deck), transport_operator(input_deck),
-      convergence_(input_deck.energy.G) {
-
-  J_in_positive = std::vector<Eigen::MatrixXd>(input_deck.energy.G);
-  J_in_negative = J_in_positive;
-  phi_in_positive = J_in_positive;
-  phi_in_negative = J_in_positive;
-
-  auto& bc = input_deck.bc.values;
-  auto& mu = input_deck.angle.mu;
-  auto& w_pos = input_deck.angle.w_positive;
-  auto& w_neg = input_deck.angle.w_negative;
-  for (int g = 0; g < input_deck.energy.G; g++) {
-    phi_in_positive[g] = transport_operator.integrateAngle(bc, w_pos);
-    phi_in_negative[g] = transport_operator.integrateAngle(bc, w_neg);
-    J_in_positive[g] = transport_operator.integrateAngle(bc, mu.cwiseProduct(w_pos));
-    J_in_negative[g] = transport_operator.integrateAngle(bc, mu.cwiseProduct(w_neg));
-  }
-}
+      convergence_(input_deck.energy.G) {}
 
 Eigen::VectorXd SecondMoment::calculateK(Eigen::MatrixXd psi_slice, int sign) const {
   // calculates
@@ -71,29 +104,172 @@ Eigen::VectorXd SecondMoment::calculateT(Eigen::MatrixXd psi_slice, int sign) co
   return 0.5 * psi_slice * mu_term.cwiseProduct(w);
 }
 
-Eigen::VectorXd SecondMoment::solveSM(Eigen::VectorXd Kpos, Eigen::VectorXd Kneg,
-                                      Eigen::VectorXd Tpos, Eigen::VectorXd Tneg) const {
+SMClosures SecondMoment::computeClosures(const Eigen::MatrixXd& psi) const {
+  const Eigen::VectorXd& mu = input_deck.angle.mu;
+  const Eigen::VectorXd& w = input_deck.angle.w;
 
-  // solves for scalar flux and current given closure terms K and T.
-  int I = input_deck.mesh.n_x;
-  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(8 * I, 8 * I);
-  Eigen::VectorXd b = Eigen::VectorXd::Zero(8 * I);
+  // quadrature weights restricted to each half-range
+  const Eigen::VectorXd w_pos = (mu.array() > 0).select(w, 0.0);
+  const Eigen::VectorXd w_neg = (mu.array() < 0).select(w, 0.0);
+  const Eigen::VectorXd third_minus_mu2 = (1.0 / 3) - mu.array().square();
 
-  // balance, LU (53a)
+  SMClosures closures;
+  closures.F = psi * w.cwiseProduct(third_minus_mu2);
+  closures.F_pos = psi * w_pos.cwiseProduct(third_minus_mu2);
+  // (56b) typo corrected: PDF sums m = M/2+1..M (mu > 0); F^- is the mu < 0 half-range.
+  closures.F_neg = psi * w_neg.cwiseProduct(third_minus_mu2);
+  closures.K_pos = calculateK(psi, +1);
+  closures.K_neg = calculateK(psi, -1);
+  closures.T_pos = calculateT(psi, +1);
+  closures.T_neg = calculateT(psi, -1);
+  return closures;
+}
 
-  // balance, RU (53b)
+SecondMoment::IncomingMoments SecondMoment::incomingMoments(int g) const {
+  const Eigen::VectorXd& mu = input_deck.angle.mu;
+  const Eigen::VectorXd& w = input_deck.angle.w;
+  const Eigen::VectorXd w_pos = (mu.array() > 0).select(w, 0.0);
+  const Eigen::VectorXd w_neg = (mu.array() < 0).select(w, 0.0);
+  const Eigen::VectorXd third_minus_mu2 = (1.0 / 3) - mu.array().square();
 
-  // balance, LD (53c)
+  const Eigen::MatrixXd bc = input_deck.bc[g];
+  IncomingMoments in;
+  in.J_pos = bc * mu.cwiseProduct(w_pos);
+  in.J_neg = bc * mu.cwiseProduct(w_neg);
+  in.phi_pos = bc * w_pos;
+  in.phi_neg = bc * w_neg;
+  in.F_pos = bc * w_pos.cwiseProduct(third_minus_mu2);
+  in.F_neg = bc * w_neg.cwiseProduct(third_minus_mu2);
+  return in;
+}
 
-  // balance, RD (53d)
+Eigen::MatrixXd SecondMoment::assembleFaces(const Eigen::VectorXd& pos, const Eigen::VectorXd& neg,
+                                            const Eigen::Vector2d& in_pos,
+                                            const Eigen::Vector2d& in_neg) const {
+  const int nx = input_deck.mesh.n_x;
+  Eigen::MatrixXd faces(nx + 1, 2);
+  for (int k = 0; k <= nx; k++) {
+    for (int l : {0, 1}) {
+      // R corner of the cell left of x_k, and L corner of the cell right of it
+      faces(k, l) = (k == 0 ? in_pos(l) : pos(4 * (k - 1) + 2 * l + 1)) +
+                    (k == nx ? in_neg(l) : neg(4 * k + 2 * l));
+    }
+  }
+  return faces;
+}
 
-  // first-moment, LU (53e)
+Eigen::SparseMatrix<double> SecondMoment::buildGroupMatrix(int g) {
+  const int nx = input_deck.mesh.n_x;
+  const double dE = input_deck.energy.dE(g);
+  InputDeck::Xs& xs = input_deck.xs;
 
-  // first-moment, RU (53f)
+  std::vector<Eigen::Triplet<double>> triplets;
+  triplets.reserve(96 * nx);
+  auto addBlock = [&](int row_cell, int col_cell, const Matrix8d& block) {
+    for (int c = 0; c < 8; c++) {
+      for (int r = 0; r < 8; r++) {
+        if (block(r, c) != 0.0) {
+          triplets.emplace_back(8 * row_cell + r, 8 * col_cell + c, block(r, c));
+        }
+      }
+    }
+  };
 
-  // first-moment, LD (53g)
+  for (int i = 0; i < nx; i++) {
+    const double dx = input_deck.mesh.dx(i);
+    const double sigma_t = xs.total(g, i);
+    const double S_bar = xs.S(g, i);
 
-  // first-moment, RD (53h)
+    // absorption + CSD loss, the same four coefficients solveDirect uses
+    const Eigen::Matrix2d C =
+        mat2(sigma_t / 3 + S_bar / (2 * dE), sigma_t / 6 + S_bar / (2 * dE),
+             sigma_t / 6 - S_bar / (2 * dE), sigma_t / 3 + (xs.S_down(g, i) - S_bar / 2) / dE);
+    const Eigen::Matrix4d R = dx * kron(C, kM);
+    // within-group scattering, kept on the LHS; sigma_s1 = 0, so only the balance rows get it
+    const double w0 = (dx / 4) * dE * xs.scatter(g, g, i);
+
+    Matrix8d A0 = kA0Streaming;
+    A0.topLeftCorner<4, 4>() += R - w0 * kX;
+    A0.bottomRightCorner<4, 4>() += R;
+
+    addBlock(i, i, A0);
+    if (i > 0) {
+      addBlock(i, i - 1, kAMinus);
+    }
+    if (i < nx - 1) {
+      addBlock(i, i + 1, kAPlus);
+    }
+  }
+
+  Eigen::SparseMatrix<double> A(8 * nx, 8 * nx);
+  A.setFromTriplets(triplets.begin(), triplets.end());
+  return A;
+}
+
+Eigen::VectorXd SecondMoment::buildGroupRHS(int g, const SMClosures& closures,
+                                            const Eigen::MatrixXd& scalar,
+                                            const Eigen::MatrixXd& current) {
+  const int nx = input_deck.mesh.n_x;
+  const double dE = input_deck.energy.dE(g);
+  InputDeck::Xs& xs = input_deck.xs;
+  const IncomingMoments in = incomingMoments(g);
+
+  // closure (and incoming boundary) parts of the face values, (55) and (57)
+  const Eigen::MatrixXd K_b = assembleFaces(closures.K_pos, closures.K_neg, in.J_pos, in.J_neg);
+  const Eigen::MatrixXd T_b = assembleFaces(closures.T_pos, closures.T_neg, in.phi_pos, in.phi_neg);
+  const Eigen::MatrixXd F_b = assembleFaces(closures.F_pos, closures.F_neg, in.F_pos, in.F_neg);
+
+  Eigen::VectorXd b(8 * nx);
+  for (int i = 0; i < nx; i++) {
+    const double dx = input_deck.mesh.dx(i);
+
+    // (48): nothing enters the highest-energy group from above
+    Eigen::Vector4d phi_gm1 = Eigen::Vector4d::Zero();
+    Eigen::Vector4d J_gm1 = Eigen::Vector4d::Zero();
+    if (g > 0) {
+      phi_gm1 = scalar.col(g - 1).segment<4>(4 * i);
+      J_gm1 = current.col(g - 1).segment<4>(4 * i);
+    }
+    const double csd = (dx / dE) * xs.S_up(g, i);
+
+    // scattering from every other group; g -> g is in the matrix
+    Eigen::VectorXd sigma_sdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+    sigma_sdEprime(g) = 0.0;
+    const Eigen::Vector4d scatter = scalar.middleRows<4>(4 * i) * sigma_sdEprime;
+
+    const Eigen::Vector4d q0 = input_deck.source.q0[g].segment<4>(4 * i);
+    const Eigen::Vector4d q1 = input_deck.source.q1[g].segment<4>(4 * i);
+    const Eigen::Vector4d F = closures.F.segment<4>(4 * i);
+
+    // balance (53a-d)
+    b.segment<4>(8 * i) =
+        csd * kP * phi_gm1 + (dx / 4) * kX * scatter + dx * kQ * q0 - kSb * cellFaces(K_b, i);
+    // first moment (53e-h)
+    b.segment<4>(8 * i + 4) = kS * F + kSb * cellFaces(F_b, i) + csd * kP * J_gm1 + dx * kQ * q1 -
+                              kSb * cellFaces(T_b, i) / 3;
+  }
+  return b;
+}
+
+void SecondMoment::factorizeGroup(int g) {
+  lo_solver_.compute(buildGroupMatrix(g));
+  if (lo_solver_.info() != Eigen::Success) {
+    throw std::runtime_error("SecondMoment: LO matrix factorization failed in group " +
+                             std::to_string(g) + ": " + lo_solver_.lastErrorMessage());
+  }
+  lo_factorized_ = true;
+}
+
+std::pair<Eigen::VectorXd, Eigen::VectorXd>
+SecondMoment::solveGroup(const Eigen::VectorXd& rhs) const {
+  if (!lo_factorized_) {
+    throw std::logic_error("SecondMoment::solveGroup called before factorizeGroup");
+  }
+  const Eigen::VectorXd x = lo_solver_.solve(rhs);
+
+  // x holds [phi_i; J_i] per cell; each column of cells is one cell's 8 unknowns
+  const Eigen::Map<const Eigen::Matrix<double, 8, Eigen::Dynamic>> cells(x.data(), 8, x.size() / 8);
+  return {cells.topRows<4>().reshaped(), cells.bottomRows<4>().reshaped()};
 }
 
 void SecondMoment::solve(double /*epsilon*/, int /*max_iterations*/) {
@@ -112,8 +288,6 @@ Eigen::VectorXd SecondMoment::calculateResiduals(int g, const Eigen::MatrixXd& s
 
   int nx = input_deck.mesh.n_x;
 
-  auto mu = input_deck.angle.mu;
-  auto w = input_deck.angle.w;
   auto dx = input_deck.mesh.dx;
   auto dE = input_deck.energy.dE;
   InputDeck::Xs& xs = input_deck.xs;
@@ -123,63 +297,17 @@ Eigen::VectorXd SecondMoment::calculateResiduals(int g, const Eigen::MatrixXd& s
   Eigen::VectorXd phi = scalar.col(g);
   Eigen::VectorXd J = current.col(g);
 
-  // quadrature weights restricted to each half-range
-  Eigen::VectorXd w_pos = (mu.array() > 0).select(w, 0.0);
-  Eigen::VectorXd w_neg = (mu.array() < 0).select(w, 0.0);
-  Eigen::VectorXd third_minus_mu2 = (1.0 / 3) - mu.array().square();
+  const SMClosures c = computeClosures(psi);
+  const Eigen::VectorXd& F = c.F;
+  const IncomingMoments in = incomingMoments(g);
 
-  // closures at every corner of group g : [4nx]
-  Eigen::VectorXd F = psi * w.cwiseProduct(third_minus_mu2);         // (54)
-  Eigen::VectorXd F_pos = psi * w_pos.cwiseProduct(third_minus_mu2); // (56a)
-  // (56b) typo corrected: PDF sums m = M/2+1..M (mu > 0); F^- is the mu < 0 half-range.
-  Eigen::VectorXd F_neg = psi * w_neg.cwiseProduct(third_minus_mu2);
-  Eigen::VectorXd K_pos = calculateK(psi, +1); // (58b)
-  Eigen::VectorXd K_neg = calculateK(psi, -1); // (58a)
-  Eigen::VectorXd T_pos = calculateT(psi, +1); // (58d)
-  Eigen::VectorXd T_neg = calculateT(psi, -1); // (58c)
-
-  // Half-range moments of the incoming boundary flux, (63)-(64), indexed (u, d). The same bc[g]
-  // feeds both boundaries: mu > 0 enters at x_0, mu < 0 at x_I. F_in is not in the notes, but
-  // the boundary faces' F^b needs it just like (55) does on interior faces.
-  Eigen::MatrixXd bc = input_deck.bc[g];
-  Eigen::Vector2d J_in_pos = bc * mu.cwiseProduct(w_pos);
-  Eigen::Vector2d J_in_neg = bc * mu.cwiseProduct(w_neg);
-  Eigen::Vector2d phi_in_pos = bc * w_pos;
-  Eigen::Vector2d phi_in_neg = bc * w_neg;
-  Eigen::Vector2d F_in_pos = bc * w_pos.cwiseProduct(third_minus_mu2);
-  Eigen::Vector2d F_in_neg = bc * w_neg.cwiseProduct(third_minus_mu2);
-
-  // construct phi^b, J^b, F^b on every face x_0..x_I : [nx+1 x 2], columns (u, d).
-  // Each is the mu > 0 part carried out of the cell left of the face (its R corner) plus the
-  // mu < 0 part carried out of the cell right of it (its L corner): (55) and (57). On an outer
-  // face the missing side is the incoming boundary moment instead, giving (59)-(62).
-  Eigen::MatrixXd phi_b(nx + 1, 2), J_b(nx + 1, 2), F_b(nx + 1, 2);
-  for (int k = 0; k <= nx; k++) {
-    for (int l : {u, d}) {
-      // mu > 0 part
-      if (k == 0) {
-        J_b(k, l) = J_in_pos(l);
-        phi_b(k, l) = phi_in_pos(l);
-        F_b(k, l) = F_in_pos(l);
-      } else {
-        int R = 4 * (k - 1) + 2 * l + 1; // R corner of the cell left of x_k
-        J_b(k, l) = 0.5 * J(R) + 0.25 * phi(R) + K_pos(R);
-        phi_b(k, l) = 0.75 * J(R) + 0.5 * phi(R) + T_pos(R);
-        F_b(k, l) = F_pos(R);
-      }
-      // mu < 0 part
-      if (k == nx) {
-        J_b(k, l) += J_in_neg(l);
-        phi_b(k, l) += phi_in_neg(l);
-        F_b(k, l) += F_in_neg(l);
-      } else {
-        int L = 4 * k + 2 * l; // L corner of the cell right of x_k
-        J_b(k, l) += 0.5 * J(L) - 0.25 * phi(L) + K_neg(L);
-        phi_b(k, l) += -0.75 * J(L) + 0.5 * phi(L) + T_neg(L);
-        F_b(k, l) += F_neg(L);
-      }
-    }
-  }
+  // phi^b, J^b, F^b on every face x_0..x_I : [nx+1 x 2], columns (u, d), from (55) and (57);
+  // (59)-(62) on the outer faces.
+  const Eigen::MatrixXd J_b = assembleFaces(0.5 * J + 0.25 * phi + c.K_pos,
+                                            0.5 * J - 0.25 * phi + c.K_neg, in.J_pos, in.J_neg);
+  const Eigen::MatrixXd phi_b = assembleFaces(
+      0.75 * J + 0.5 * phi + c.T_pos, -0.75 * J + 0.5 * phi + c.T_neg, in.phi_pos, in.phi_neg);
+  const Eigen::MatrixXd F_b = assembleFaces(c.F_pos, c.F_neg, in.F_pos, in.F_neg);
 
   Eigen::Vector2d phi_gm1_d, J_gm1_d;
 
