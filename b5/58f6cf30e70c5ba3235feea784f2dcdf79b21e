@@ -1,0 +1,32 @@
+scripts/generate_bc.py
+  s_6120de76b83ce3::t_3d7d9ae17bda7a 39-78
+  s_6120de76b83ce3::t_ec9bceaa1b6c8a 142
+  s_6120de76b83ce3::t_d829d94764e188 82-85,96-97
+  s_6120de76b83ce3::t_c10fa5ce07f8ab 120-123,129-131
+test/method/al_slab/6g_10x/description.md
+  h_c6d403188ce57a 1-33
+test/method/al_slab/6g_10x/al6061_6g_10x.yaml
+  h_c6d403188ce57a 1-53,69,71-75,81-89,91-94
+  s_6120de76b83ce3::t_9028905f51b630 54-68,70,76-80,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b558f6cf30e70c5ba3235feea784f2dcdf79b21e",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_6120de76b83ce3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fadeab7-28b2-4c97-be4e-29e6fdb0c213",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
