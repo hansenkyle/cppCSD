@@ -1,0 +1,25 @@
+docs/input-deck.md
+  s_e79fa0e7843c3f::t_f3b80816636212 89-94
+scripts/generate_xs.jl
+  s_e79fa0e7843c3f::t_7cc57382c191d9 36-48,55-57,60-72,80,83-85,88,116,134-158,161-167,169-170,173-219,222-224
+src/transport_operator.cpp
+  s_e79fa0e7843c3f::t_208bd764738181 38,64,78,96,110,180,311-312
+test/unit/source_iteration.test.cpp
+  s_e79fa0e7843c3f::t_6e7c3635428684 11-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b8f286a5f8245f03b7363ff3e1a9eee80e8a8e4",
+  "prompts": {},
+  "sessions": {
+    "s_e79fa0e7843c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "489197ee-da3c-46b3-85e7-6e13ee34c3c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
