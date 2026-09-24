@@ -1,26 +1,23 @@
-# Al slab test description
+# Al shield test description
 
-0.465-cm Al-6061 Slab, exposed to isotropic electron flux with spectrum from Upper Van Allen belt.
+Al-6061 slab shielding electronics from outer-belt electrons. Cross sections
+are in `xs_data/`, for N_g = 6, 12, 24, 36, 48.
 
-Scattering is considered to be isotropic.
+Cross sections (`scripts/generate_xs.jl`, Radiant.jl):
+- Al-6061: Al 0.9805, Mg 0.0100, Si 0.0060, Fe 0.0035 (weight fractions), 2.70 g/cm^3
+- 5 MeV - 10 keV, log-spaced groups
+- Inelastic (Moller, primary "S" only -- no knock-on production, knock-on
+  energy is deposited locally instead), elastic, bremsstrahlung (as energy loss only;
+  photons are not transported)
+- Legendre order 1: transport-corrected isotropic scattering
+  (sigma_t - sigma_1, sigma_s0 - sigma_1)
 
-Spatial mesh:
-- 0.456 cm total thickness (from https://www.nasa.gov/wp-content/uploads/2024/02/6.soa-structures-2023.pdf?emrc=65d0f77aa93ee table 6-15)
-- 100 cells
+Incident spectrum (isotropic):
+- Claudepierre et al. (2021), "The Magnetic Electron Ion Spectrometer: A
+  Review of On-Orbit Sensor Performance, Data, Operations, and Science",
+  Space Sci. Rev. 217, 80, doi:10.1007/s11214-021-00855-2, Fig. 17
+  (background-corrected, L = 5.46, 2013-10-18 19:02:30 UT). Values read off
+  the plot, so accurate to about a factor of 1.5.
 
-Energy mesh:
-- 0.01 eV - 1 MeV
-- 36 log-spaced groups
-
-Cross sections:
-- Generated using RADIANT.jl, with reactions:
-    - Elastic collision
-    - Inleastic collision, including knock-on production
-    - Bremsstrahlung
-- Stopping power is negative in some groups; these are set to zero.
-- Group-to-group scattering ignored when sigma(g-> g')/sigma_t < 1e-8
-
-Boundary conditions:
-- Isotropic incoming flux on one side
-- Energy spectrum from from "Van Allen Probes show that the inner radiation zone contains no MeV electrons: ECT/MagEIS data" (Fennel, Claudepierre, et al. 2015), figure 2 is approximately used:
-    - psi = 1.5e+5 exp(-0.01 E[keV]) 1/(cm2 s ster keV), E<1000 keV. 0, E>1000 keV.
+2.5 mm Al in 10 cells. (The CSDA range is about
+2 mm at 1 MeV and about 11 mm at 5 MeV, per NIST ESTAR)
