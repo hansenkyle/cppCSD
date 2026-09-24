@@ -86,6 +86,12 @@ writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 - Group index 0 is the highest energy group. `stopping_power.group_boundary`
   is the only array sized `num_groups + 1`; everything else per material
   is sized `num_groups`.
+- `scattering` entries are group-to-group macroscopic cross sections in
+  cm^-1 (the multigroup convention Radiant writes): `sigma_s(g' -> g)` is
+  the rate at which a particle in group g' scatters into anywhere in group g,
+  not a density per unit final energy. The solver redistributes it uniformly
+  over group g, weighting it by `dE_g' / dE_g`, so a pure scatterer has
+  `sum_g sigma_s(g' -> g) = sigma_t(g')`.
 - A material's `scattering` matrix may be written sparse (a list of
   `{from, to, value}` entries, only nonzero pairs needed) or dense (a list
   of `num_groups` rows of `num_groups` values each, row = from group,
