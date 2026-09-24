@@ -320,7 +320,8 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
       // solve transport using known phi
       psi = transport_operator.sweep(g, psi_up, phi);
       // compute new phi (and J) from the SM equations
-      auto [phi_lo, J_lo] = solveGroup(buildGroupRHS(g, computeClosures(psi), phi, J));
+      closures[g] = computeClosures(psi);
+      auto [phi_lo, J_lo] = solveGroup(buildGroupRHS(g, closures[g], phi, J));
       phi_g = phi_lo;
       J.col(g) = J_lo;
 
