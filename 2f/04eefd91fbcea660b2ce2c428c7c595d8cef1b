@@ -1,0 +1,15 @@
+src/smm.cpp
+  h_c6d403188ce57a 821-822,845,879
+  h_c6d403188ce57a 846-847
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f04eefd91fbcea660b2ce2c428c7c595d8cef1b",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
