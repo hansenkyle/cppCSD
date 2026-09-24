@@ -33,25 +33,43 @@ using Radiant
 using Printf
 using Dates
 
-# Legendre truncation order Radiant uses internally to decompose elastic
-# scattering; only the l=0 (isotropic/total) moment is ever written out,
-# but a higher internal order improves that moment's accuracy. Not a user
-# knob -- there's no reason to trade accuracy for speed here.
-const RADIANT_LEGENDRE_ORDER = 7
+# Legendre truncation order Radiant uses for the scattering moments. cppCSD's
+# solver treats scattering as isotropic and has no angular Fokker-Planck term,
+# so only l=0 is written out -- and the order must be 1 for that to be
+# consistent. With Radiant's elastic defaults (extended transport correction
+# on, "BFP" soft/catastrophic split), order L subtracts sigma_L from sigma_t
+# and every sigma_l, and for L > 1 also moves the forward peak into a
+# momentum-transfer term that needs the angular Fokker-Planck operator. At
+# L = 1 the correction is the classic transport correction
+# (sigma_t - sigma_1, sigma_s0 - sigma_1) and no momentum transfer is split
+# off, which is the right isotropic (P0) approximation for forward-peaked
+# electron scattering. Raise this only together with anisotropic scattering
+# (and an angular Fokker-Planck term) in the solver.
+const RADIANT_LEGENDRE_ORDER = 1
 
 # --------------------------- USER INPUT -----------------------------
 # One entry per material. `name` becomes the CSV material key and must
 # eventually match the material names used in the deck's
 # `regions.materials` list once converted to YAML.
 materials_input = [
-    (name = "aluminum", density = 2.7, elements = ["Al"], wfractions = [1.0]),
+    # Al-6061 (nominal composition, weight fractions)
+    (name = "al_6061", density = 2.70, elements = ["Al", "Mg", "Si", "Fe"],
+     wfractions = [0.9805, 0.0100, 0.0060, 0.0035]),
 ]
 
-# Energy group boundaries [MeV], strictly descending (highest energy
-# first, ending at the cutoff) -- cppCSD's parser requires this same
-# descending order, so no reversal is ever needed below. Ng is derived
-# from this vector's length.
-energy_bounds = Float64[100, 10, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
+# Energy range [MeV]. The group structure is log-spaced from E_max down to
+# E_cutoff, highest energy first (cppCSD's parser requires descending order).
+#   E_max:    the outer-belt spectrum used for al_shield (Claudepierre et al.
+#             2021, MagEIS, L=5.46) falls ~4 decades from 1 to 4 MeV; raise
+#             to 7-10 MeV for storm-time spectra.
+#   E_cutoff: 10 keV electrons travel ~1 um in Al (CSDA), so everything below
+#             deposits locally at any cell size of interest; below ~1 keV the
+#             free-atom physics models Radiant uses stop being valid.
+E_max = 5.0
+E_cutoff = 0.01
+
+# One output file is written per group count.
+group_counts = [6, 12, 24, 36, 48]
 
 # Whether to include knock-on/delta-ray PRODUCTION (Moller's "P" interaction
 # type, i.e. the ejected secondary electron) in the electron-electron
@@ -59,18 +77,17 @@ energy_bounds = Float64[100, 10, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001,
 # cppCSD's solver has no production/source-term mechanism yet -- Sigma_t
 # only ever counts "S" -- so turning this on without matching solver
 # support breaks particle conservation (a group's Sigma_s row sum can
-# exceed its Sigma_t). Leave false until delta-ray production is added to
-# the solver.
+# exceed its Sigma_t). With it off, knock-on energy is deposited locally.
 include_knockon_production = false
 
-output_name = "al_27gcc.csv"  # output filename, written under scripts/xs_data/
+# Output files are written to output_dir as "<output_prefix>_<Ng>g.csv".
+output_dir = joinpath(@__DIR__, "..", "test", "method", "al_shield", "xs_data")
+output_prefix = "al_6061"
 # ----------------------------------------------------------------------
 
-Ng = length(energy_bounds) - 1
+log_bounds(Ng) = collect(exp10.(range(log10(E_max), log10(E_cutoff), length = Ng + 1)))
 
-output_dir = joinpath(@__DIR__, "xs_data")
 mkpath(output_dir)
-outfile = joinpath(output_dir, output_name)
 
 particle = Radiant.Electron()
 
@@ -96,7 +113,7 @@ inelastic_collision.set_interaction_types(Dict(
 
 interaction_list = [
     inelastic_collision,          # Moller collisional energy loss (+ knock-on production if toggled on)
-    Radiant.Elastic_Collision(),  # Mott elastic scattering (large-angle part, AFP-decomposed)
+    Radiant.Elastic_Collision(),  # Mott elastic scattering, transport-corrected at RADIANT_LEGENDRE_ORDER
     Radiant.Bremsstrahlung(),     # radiative energy loss
 ]
 
@@ -114,64 +131,94 @@ for m in materials_input
     push!(material_list, mat)
 end
 
-# --- Build cross sections ---
-cs = Radiant.Cross_Sections()
-cs.set_source("physics-models")
-cs.set_materials(material_list)
-cs.set_particles([particle])
-cs.set_group_structure(energy_bounds)
-cs.set_interactions(interaction_list)
-cs.set_legendre_order(RADIANT_LEGENDRE_ORDER)
-cs.build()
+# Builds, sanity-checks and writes one group structure's cross sections.
+function generate(Ng)
+    energy_bounds = log_bounds(Ng)
+    outfile = joinpath(output_dir, "$(output_prefix)_$(Ng)g.csv")
 
-# --- Pull data ---
-Eb = cs.get_energy_boundaries(particle)                 # MeV, size Ng+1, descending
-Σt = cs.get_total(particle)                             # [Ng, Nmat], cm^-1
-Σs_moments = cs.get_scattering(particle, particle, RADIANT_LEGENDRE_ORDER) # [Nmat, Ng, Ng, RADIANT_LEGENDRE_ORDER+1]
-S  = cs.get_stopping_powers(particle)                   # [Ng, Nmat], MeV/cm
-Sb = cs.get_boundary_stopping_powers(particle)          # [Ng+1, Nmat], MeV/cm
+    # --- Build cross sections ---
+    cs = Radiant.Cross_Sections()
+    cs.set_source("physics-models")
+    cs.set_materials(material_list)
+    cs.set_particles([particle])
+    cs.set_group_structure(energy_bounds)
+    cs.set_interactions(interaction_list)
+    cs.set_legendre_order(RADIANT_LEGENDRE_ORDER)
+    cs.build()
 
-# --- Write CSV ---
-format_floatrow(v) = join([@sprintf "%.6e" x for x in v], ",")
+    # --- Pull data ---
+    Eb = cs.get_energy_boundaries(particle)                 # MeV, size Ng+1, descending
+    Σt = cs.get_total(particle)                             # [Ng, Nmat], cm^-1
+    Σs_moments = cs.get_scattering(particle, particle, RADIANT_LEGENDRE_ORDER) # [Nmat, Ng, Ng, RADIANT_LEGENDRE_ORDER+1]
+    S  = cs.get_stopping_powers(particle)                   # [Ng, Nmat], MeV/cm
+    Sb = cs.get_boundary_stopping_powers(particle)          # [Ng+1, Nmat], MeV/cm
 
-open(outfile, "w") do io
-    println(io, "# Generated by scripts/generate_xs.jl (Radiant.jl)")
-    println(io, "# Generated: ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
-    println(io, "# Particle: electron")
-    println(io, "# Group structure: custom boundaries, Ng=", Ng)
-    println(io, "# Materials: ", join([m.name for m in materials_input], ", "))
-    println(io, "#")
-    println(io, "energy_mesh_MeV")
-    println(io, format_floatrow(Eb))
-
+    # --- Sanity checks ---
+    # Without knock-on production, a group can't scatter out more than it
+    # removes, and stopping powers must be positive for the CSD term.
     for (imat, m) in enumerate(materials_input)
-        sigma_t = Σt[:, imat]
-        stopping_power_average = S[:, imat]
-        stopping_power_boundary = Sb[:, imat]
-        wfractions_norm = m.wfractions ./ sum(m.wfractions)
-
-        # Full l=0 scattering matrix for this material.
-        Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
-
-        println(io, "#")
-        println(io, "material,", m.name)
-        println(io, "composition")
-        for (el, f) in zip(m.elements, wfractions_norm)
-            println(io, el, ",", @sprintf("%.6e", f))
-        end
-        println(io, "stopping_power_boundary_MeV_cm")
-        println(io, format_floatrow(stopping_power_boundary))
-        println(io, "group,sigma_t_cm-1,stopping_power_average_MeV_cm")
         for g in 1:Ng
-            println(io, g, ",", @sprintf("%.6e", sigma_t[g]), ",", @sprintf("%.6e", stopping_power_average[g]))
+            row_sum = sum(Σs_moments[imat, g, t, 1] for t in 1:Ng)
+            if !include_knockon_production && row_sum > Σt[g, imat] * (1 + 1e-6)
+                @warn "$(m.name), Ng=$Ng, group $g: scattering row sum $row_sum exceeds sigma_t $(Σt[g, imat])"
+            end
+            if Σs_moments[imat, g, g, 1] < 0
+                @warn "$(m.name), Ng=$Ng, group $g: negative within-group scattering $(Σs_moments[imat, g, g, 1])"
+            end
         end
-        println(io, "scattering_matrix_cm-1 (rows=from-group, cols=to-group, l=0 moment)")
-        println(io, "from\\to,", join(1:Ng, ","))
-        for f in 1:Ng
-            row = [Σs_full[f, t] == 0.0 ? "" : @sprintf("%.6e", Σs_full[f, t]) for t in 1:Ng]
-            println(io, f, ",", join(row, ","))
+        if any(S[:, imat] .<= 0) || any(Sb[:, imat] .<= 0)
+            @warn "$(m.name), Ng=$Ng: non-positive stopping power"
         end
     end
+
+    # --- Write CSV ---
+    format_floatrow(v) = join([@sprintf "%.6e" x for x in v], ",")
+
+    open(outfile, "w") do io
+        println(io, "# Generated by scripts/generate_xs.jl (Radiant.jl)")
+        println(io, "# Generated: ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
+        println(io, "# Particle: electron")
+        println(io, "# Group structure: log-spaced ", E_max, " -> ", E_cutoff, " MeV, Ng=", Ng)
+        println(io, "# Legendre order (transport correction): ", RADIANT_LEGENDRE_ORDER,
+                ", knock-on production: ", include_knockon_production)
+        println(io, "# Materials: ", join([m.name for m in materials_input], ", "))
+        println(io, "#")
+        println(io, "energy_mesh_MeV")
+        println(io, format_floatrow(Eb))
+
+        for (imat, m) in enumerate(materials_input)
+            sigma_t = Σt[:, imat]
+            stopping_power_average = S[:, imat]
+            stopping_power_boundary = Sb[:, imat]
+            wfractions_norm = m.wfractions ./ sum(m.wfractions)
+
+            # Full l=0 scattering matrix for this material.
+            Σs_full = [Σs_moments[imat, f, t, 1] for f in 1:Ng, t in 1:Ng]
+
+            println(io, "#")
+            println(io, "material,", m.name)
+            println(io, "composition")
+            for (el, f) in zip(m.elements, wfractions_norm)
+                println(io, el, ",", @sprintf("%.6e", f))
+            end
+            println(io, "stopping_power_boundary_MeV_cm")
+            println(io, format_floatrow(stopping_power_boundary))
+            println(io, "group,sigma_t_cm-1,stopping_power_average_MeV_cm")
+            for g in 1:Ng
+                println(io, g, ",", @sprintf("%.6e", sigma_t[g]), ",", @sprintf("%.6e", stopping_power_average[g]))
+            end
+            println(io, "scattering_matrix_cm-1 (rows=from-group, cols=to-group, l=0 moment)")
+            println(io, "from\\to,", join(1:Ng, ","))
+            for f in 1:Ng
+                row = [Σs_full[f, t] == 0.0 ? "" : @sprintf("%.6e", Σs_full[f, t]) for t in 1:Ng]
+                println(io, f, ",", join(row, ","))
+            end
+        end
+    end
+
+    println("Wrote cross sections for $(length(materials_input)) material(s), Ng=$Ng, to $outfile")
 end
 
-println("Wrote cross sections for $(length(materials_input)) material(s) to $outfile")
+for Ng in group_counts
+    generate(Ng)
+end

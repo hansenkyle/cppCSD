@@ -35,7 +35,7 @@ Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,
   // initialize guess
   Eigen::MatrixXd psi = Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
 
-  // prepare data (dE*sigma_s)
+  // prepare data (sigma_s * dE_g' / dE_g)
   double dE = input_deck.energy.dE(g);
   auto dx = input_deck.mesh.dx;
   InputDeck::Xs& xs = input_deck.xs;
@@ -61,7 +61,7 @@ Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,
       q_up = q(seqN(i * 4, 2));
       q_down = q(seqN(i * 4 + 2, 2));
       phi = scalar_flux(seqN(i * 4, 4), all);
-      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE) / dE;
       bc_up = input_deck.bc[g](0, m);
       bc_down = input_deck.bc[g](1, m);
 
@@ -75,7 +75,7 @@ Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,
         q_up = q(seqN(i * 4, 2));
         q_down = q(seqN(i * 4 + 2, 2));
         phi = scalar_flux(seqN(i * 4, 4), all);
-        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE) / dE;
         bc_up = psi((i - 1) * 4 + 1, m);
         bc_down = psi((i - 1) * 4 + 3, m);
 
@@ -93,7 +93,7 @@ Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,
       q_up = q(seqN(i * 4, 2));
       q_down = q(seqN(i * 4 + 2, 2));
       phi = scalar_flux(seqN(i * 4, 4), all);
-      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+      sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE) / dE;
       bc_up = input_deck.bc[g](0, m);
       bc_down = input_deck.bc[g](1, m);
       psi(seqN(i * 4, 4), m) = kernel.solveDirect(
@@ -107,7 +107,7 @@ Eigen::MatrixXd TransportOperator::sweep(int g, Eigen::MatrixXd psi_in_E,
         q_up = q(seqN(i * 4, 2));
         q_down = q(seqN(i * 4 + 2, 2));
         phi = scalar_flux(seqN(i * 4, 4), all);
-        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE);
+        sigmaSdEprime = xs.scatter(i).col(g).cwiseProduct(input_deck.energy.dE) / dE;
         bc_up = psi((i + 1) * 4, m);
         bc_down = psi((i + 1) * 4 + 2, m);
 
@@ -177,7 +177,7 @@ Eigen::Vector4d TransportOperator::Kernel::solveDirect(
   //   psi_in_x_down      : "                              ", down   : scalar
   //   q_up               : external source, up (L/R)                : [2x1]
   //   q_down             : "             ", down (L/R)              : [2x1]
-  //   sigma_sdEprime     : sigma_s(g' -> g) * dE_g' for all g'      : [Gx1]
+  //   sigma_sdEprime     : sigma_s(g' -> g) * dE_g' / dE_g, all g' : [Gx1]
   //   phi_gprime_up/down : scalar flux in all groups                : [2xG]
 
   // "Up" LHS
@@ -308,8 +308,8 @@ Eigen::MatrixXd TransportOperator::calculateResiduals(int g, const Eigen::Matrix
 
     return cellResidual(mu[m], dx[i], dE[g], xs.total(g, i), xs.S(g, i), xs.S_down(g, i),
                         xs.S_up(g, i), psi_in_E, psi_b_up, psi_b_down, q_up, q_down,
-                        dE.cwiseProduct(sigma_s), phi_gprime_up, phi_gprime_down, psi_up, psi_down,
-                        verbose)
+                        dE.cwiseProduct(sigma_s) / dE[g], phi_gprime_up, phi_gprime_down, psi_up,
+                        psi_down, verbose)
         .cast<double>();
   };
 
