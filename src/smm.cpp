@@ -10,6 +10,7 @@
 #include "logger.h"
 
 #include <Eigen/Dense>
+#include <chrono>
 #include <format>
 #include <stdexcept>
 #include <vector>
@@ -272,9 +273,83 @@ SecondMoment::solveGroup(const Eigen::VectorXd& rhs) const {
   return {cells.topRows<4>().reshaped(), cells.bottomRows<4>().reshaped()};
 }
 
-void SecondMoment::solve(double /*epsilon*/, int /*max_iterations*/) {
-  // Placeholder so SecondMoment is constructible (e.g. by the residual unit tests).
-  throw std::logic_error("SecondMoment::solve is not implemented yet");
+void SecondMoment::solve(double epsilon, int max_iterations) {
+  // Solve the transport equation in all groups via the second moment method: identical to
+  // source iteration, except each sweep's scalar flux comes from the LO (SM) equations with
+  // closures computed from the sweep's angular flux, instead of from integrating it over angle.
+  //
+  // No iteration over energy groups, assume downscatter only
+
+  int I = input_deck.mesh.n_x;
+  int G = input_deck.energy.G;
+  int M = input_deck.angle.M;
+
+  LDCSD_LOG_INFO("Begin second moment method");
+
+  Eigen::VectorXd phi_g = Eigen::VectorXd::Zero(4 * I);
+  Eigen::MatrixXd psi_up = Eigen::MatrixXd::Zero(4 * I, M);
+
+  // write phi and J directly into this->solution
+  solution.scalar_flux = Eigen::MatrixXd::Zero(4 * I, G);
+  auto& phi = solution.scalar_flux;
+  solution.current = Eigen::MatrixXd::Zero(4 * I, G);
+  auto& J = solution.current;
+
+  solution.angular_flux =
+      std::vector<Eigen::MatrixXd>(input_deck.energy.G, Eigen::MatrixXd::Zero(4 * I, M));
+  residuals.high_order = solution.angular_flux;
+
+  for (int g = 0; g < G; g++) {
+    LDCSD_LOG_INFO("Beginning group " + std::to_string(g));
+    const auto group_start = std::chrono::steady_clock::now();
+
+    // the LO matrix doesn't depend on the closures: factorize once for the whole group
+    factorizeGroup(g);
+
+    // write result directly into this->solution
+    auto& psi = solution.angular_flux[g];
+
+    int iteration = 0;
+    double delta_phi_l2norm = 0.0;
+    Eigen::VectorXd absolute_delta_phi;
+
+    while (iteration < max_iterations) {
+      iteration++;
+      phi.col(g) = phi_g;
+      // solve transport using known phi
+      psi = transport_operator.sweep(g, psi_up, phi);
+      // compute new phi (and J) from the SM equations
+      auto [phi_lo, J_lo] = solveGroup(buildGroupRHS(g, computeClosures(psi), phi, J));
+      phi_g = phi_lo;
+      J.col(g) = J_lo;
+
+      absolute_delta_phi = (phi_g - phi.col(g));
+      delta_phi_l2norm = (phi_g - phi.col(g)).norm();
+      const double phi_norm = phi_g.norm();
+
+      convergence_.log_group(g, IterationRecord(absolute_delta_phi.norm(),
+                                                absolute_delta_phi.lpNorm<Eigen::Infinity>()));
+
+      if (delta_phi_l2norm <= phi_norm * epsilon) {
+        LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", delta_phi_l2norm) +
+                       " in " + std::to_string(iteration) + " iterations");
+        break; // exit while loop
+      }
+    }
+
+    residuals.high_order[g] = transport_operator.calculateResiduals(g, psi, psi_up, phi);
+    phi.col(g) = phi_g;
+    psi_up = psi;
+
+    const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
+    convergence_.time_group(g, elapsed.count());
+
+    if (iteration == max_iterations) {
+      LDCSD_LOG_WARN("group " + std::to_string(g) + " did NOT converge: hit the " +
+                     std::to_string(max_iterations) +
+                     "-iteration cap with abs. norm = " + std::format("{:.4e}", delta_phi_l2norm));
+    }
+  }
 }
 
 Eigen::VectorXd SecondMoment::calculateResiduals(int g, const Eigen::MatrixXd& scalar,

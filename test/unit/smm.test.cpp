@@ -375,3 +375,27 @@ TEST_CASE("solveGroup before factorizeGroup throws") {
   const SecondMoment sm(deck);
   CHECK_THROWS_AS(sm.solveGroup(Eigen::VectorXd::Zero(8 * deck.mesh.n_x)), std::logic_error);
 }
+
+TEST_CASE("SecondMoment::solve converges to the source iteration solution") {
+  // Both methods solve the same discrete transport equations, so their converged scalar fluxes
+  // must agree, and the SMM current must be the first moment of its own angular flux.
+  const InputDeck deck = makeSMDeck(true);
+  SourceIteration si(deck);
+  si.solve(1e-14, 10000);
+  SecondMoment sm(deck);
+  sm.solve(1e-14, 10000);
+
+  REQUIRE(sm.solution.scalar_flux.rows() == 4 * deck.mesh.n_x);
+  REQUIRE(sm.solution.scalar_flux.cols() == deck.energy.G);
+  for (int g = 0; g < deck.energy.G; ++g) {
+    CAPTURE(g);
+    const Eigen::VectorXd phi_si = si.solution.scalar_flux.col(g);
+    const Eigen::VectorXd phi_sm = sm.solution.scalar_flux.col(g);
+    const Eigen::VectorXd J_sm = sm.solution.current.col(g);
+    const Eigen::VectorXd J_ho = firstMoment(deck, sm.solution.angular_flux[g]);
+    CHECK((phi_sm - phi_si).norm() < 1e-10 * phi_si.norm());
+    CHECK((phi_sm - zerothMoment(deck, sm.solution.angular_flux[g])).norm() <
+          1e-10 * phi_sm.norm());
+    CHECK((J_sm - J_ho).norm() < 1e-10 * J_ho.norm());
+  }
+}
