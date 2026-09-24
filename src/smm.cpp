@@ -10,6 +10,7 @@
 #include "output_block.h"
 
 #include <Eigen/Dense>
+#include <array>
 #include <chrono>
 #include <format>
 #include <ranges>
@@ -815,7 +816,39 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
   using Eigen::placeholders::all;
   writeMetadata(file_path, timestamp);
 
-  UnitGroup transport("transport residuals");
+  static constexpr std::array<const char*, 4> kEdgeLabels = {"up,L", "up,R", "down,L", "down,R"};
+  static constexpr std::array<const char*, 8> kSMEqLabels = {
+      "53a (balance, up L)",      "53b (balance, up R)",     "53c (balance, down L)",
+      "53d (balance, down R)",    "53e (1st moment, up L)",  "53f (1st moment, up R)",
+      "53g (1st moment, down L)", "53h (1st moment, down R)"};
+
+  // Largest |residual| over every group, its (cell, angle, edge), from a per-group Eigen
+  // container whose rows are laid out cell-major in blocks of block_size (4 for transport, one
+  // edge per row; 8 for the SM equations, one equation per row).
+  auto peakResidual = [](const auto& per_group, int block_size) {
+    struct Peak {
+      double value = -1.0;
+      int g = -1, i = -1, sub = -1, m = -1;
+    } peak;
+    for (int g = 0; g < static_cast<int>(per_group.size()); g++) {
+      Eigen::Index row, col;
+      const double gmax = per_group[g].cwiseAbs().maxCoeff(&row, &col);
+      if (gmax > peak.value) {
+        peak = {gmax, g, static_cast<int>(row) / block_size, static_cast<int>(row) % block_size,
+                static_cast<int>(col)};
+      }
+    }
+    return peak;
+  };
+
+  const auto transport_peak = peakResidual(residuals.high_order, 4);
+  const std::string transport_summary =
+      std::format("max |residual| = {:.4e} at group {}, cell {}, angle {}, {}",
+                  transport_peak.value, transport_peak.g + 1, transport_peak.i + 1,
+                  transport_peak.m + 1, kEdgeLabels[transport_peak.sub]);
+  LDCSD_LOG_INFO("transport residuals: " + transport_summary);
+
+  UnitGroup transport("transport residuals", transport_summary);
   int I = input_deck.mesh.n_x;
   std::vector<std::string> x_i;
   std::vector<std::string> mu_m;
@@ -842,7 +875,13 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
 
   appendToFile(file_path, transport.render_txt());
 
-  UnitGroup low_order("second moment equation residuals");
+  const auto sm_peak = peakResidual(residuals.low_order, 8);
+  const std::string sm_summary =
+      std::format("max |residual| = {:.4e} at group {}, cell {}, equation {}", sm_peak.value,
+                  sm_peak.g + 1, sm_peak.i + 1, kSMEqLabels[sm_peak.sub]);
+  LDCSD_LOG_INFO("second moment equation residuals: " + sm_summary);
+
+  UnitGroup low_order("second moment equation residuals", sm_summary);
   for (int g = 0; g < input_deck.energy.G; g++) {
     HorizontalTable group("g = " + std::to_string(g + 1));
     group.add_row("i", x_i);
