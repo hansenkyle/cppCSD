@@ -299,6 +299,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
   solution.angular_flux =
       std::vector<Eigen::MatrixXd>(input_deck.energy.G, Eigen::MatrixXd::Zero(4 * I, M));
   residuals.high_order = solution.angular_flux;
+  residuals.low_order = std::vector<Eigen::VectorXd>(G, Eigen::VectorXd::Zero(8 * I));
 
   for (int g = 0; g < G; g++) {
     LDCSD_LOG_INFO("Beginning group " + std::to_string(g));
@@ -341,6 +342,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
 
     residuals.high_order[g] = transport_operator.calculateResiduals(g, psi, psi_up, phi);
     phi.col(g) = phi_g;
+    residuals.low_order[g] = calculateResiduals(g, phi, J, psi);
     psi_up = psi;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
@@ -839,6 +841,23 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
   }
 
   appendToFile(file_path, transport.render_txt());
+
+  UnitGroup low_order("second moment equation residuals");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    HorizontalTable group("g = " + std::to_string(g + 1));
+    group.add_row("i", x_i);
+    group.add_row("(balance, up L)", residuals.low_order[g](seqN(0, I, 8)));
+    group.add_row("(balance, up R)", residuals.low_order[g](seqN(1, I, 8)));
+    group.add_row("(balance, down L)", residuals.low_order[g](seqN(2, I, 8)));
+    group.add_row("(balance, down R)", residuals.low_order[g](seqN(3, I, 8)));
+    group.add_row("(1st moment, up L)", residuals.low_order[g](seqN(4, I, 8)));
+    group.add_row("(1st moment, up R)", residuals.low_order[g](seqN(5, I, 8)));
+    group.add_row("(1st moment, down L)", residuals.low_order[g](seqN(6, I, 8)));
+    group.add_row("(1st moment, down R)", residuals.low_order[g](seqN(7, I, 8)));
+    low_order.add(group, "{:.4e}");
+  }
+
+  appendToFile(file_path, low_order.render_txt());
 }
 
 void SecondMoment::writeConvergence(const std::filesystem::path& results_path) const {
