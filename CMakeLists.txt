@@ -130,6 +130,7 @@ if(LDCSD_BUILD_TESTS)
         test/unit/output_block.test.cpp
         test/unit/transport_operator.test.cpp
         test/unit/source_iteration.test.cpp
+        test/unit/smm.test.cpp
         test/unit/method.test.cpp
         test/unit/cli.test.cpp)
     target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
