@@ -1,0 +1,28 @@
+src/smm.cpp
+  s_d9e318ad757c0a::t_d4639c9e13616d 15-42,44-55,59-64,107-114,116-126,128-159,161-164,166-202,204-207,209-252,254-261,263-268,270-272,306-309
+  s_d9e318ad757c0a::t_7a7d6564f1f47a 80
+  s_d9e318ad757c0a::t_f9d9aeee8d9dc6 300-305,310
+  s_d9e318ad757c0a::t_53645da41c4e28 43,56-58
+src/smm.h
+  s_d9e318ad757c0a::t_8de000aa1885a7 93-113,117-134
+  s_d9e318ad757c0a::t_e226fbc2d38ad4 17,21,32-42
+  s_d9e318ad757c0a::t_80357185b7c194 43-44
+test/unit/smm.test.cpp
+  s_d9e318ad757c0a::t_96753179d9a854 273-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bc998cf233908517fb5aa173138c144d9d4d628",
+  "prompts": {},
+  "sessions": {
+    "s_d9e318ad757c0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c8c23ac-f523-44a9-81c1-f763e2e8789c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
