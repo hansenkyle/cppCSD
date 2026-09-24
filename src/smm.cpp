@@ -818,9 +818,8 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
 
   static constexpr std::array<const char*, 4> kEdgeLabels = {"up,L", "up,R", "down,L", "down,R"};
   static constexpr std::array<const char*, 8> kSMEqLabels = {
-      "53a (balance, up L)",      "53b (balance, up R)",     "53c (balance, down L)",
-      "53d (balance, down R)",    "53e (1st moment, up L)",  "53f (1st moment, up R)",
-      "53g (1st moment, down L)", "53h (1st moment, down R)"};
+      "(balance, up L)",    "(balance, up R)",    "(balance, down L)",    "(balance, down R)",
+      "(1st moment, up L)", "(1st moment, up R)", "(1st moment, down L)", "(1st moment, down R)"};
 
   // Largest |residual| over every group, its (cell, angle, edge), from a per-group Eigen
   // container whose rows are laid out cell-major in blocks of block_size (4 for transport, one
@@ -843,9 +842,9 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
 
   const auto transport_peak = peakResidual(residuals.high_order, 4);
   const std::string transport_summary =
-      std::format("max |residual| = {:.4e} at group {}, cell {}, angle {}, {}",
-                  transport_peak.value, transport_peak.g + 1, transport_peak.i + 1,
-                  transport_peak.m + 1, kEdgeLabels[transport_peak.sub]);
+      std::format("max |residual| = {:.4e} at g= {}, i= {}, angle {}, {}", transport_peak.value,
+                  transport_peak.g + 1, transport_peak.i + 1, transport_peak.m + 1,
+                  kEdgeLabels[transport_peak.sub]);
   LDCSD_LOG_INFO("transport residuals: " + transport_summary);
 
   UnitGroup transport("transport residuals", transport_summary);
@@ -877,7 +876,7 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
 
   const auto sm_peak = peakResidual(residuals.low_order, 8);
   const std::string sm_summary =
-      std::format("max |residual| = {:.4e} at group {}, cell {}, equation {}", sm_peak.value,
+      std::format("max |residual| = {:.4e} at g= {}, i= {}, equation {}", sm_peak.value,
                   sm_peak.g + 1, sm_peak.i + 1, kSMEqLabels[sm_peak.sub]);
   LDCSD_LOG_INFO("second moment equation residuals: " + sm_summary);
 
