@@ -344,6 +344,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
     residuals.high_order[g] = transport_operator.calculateResiduals(g, psi, psi_up, phi);
     phi.col(g) = phi_g;
     residuals.low_order[g] = calculateResiduals(g, phi, J, psi);
+    solution.reconstructed_scalar.col(g) = transport_operator.integrateAngle(psi);
     psi_up = psi;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
@@ -669,8 +670,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   appendToFile(results_path, block.render_txt());
 }
 
-void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
-                                  std::string timestamp) {
+void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::string timestamp) {
   using Eigen::seqN;
   using Eigen::placeholders::all;
   writeMetadata(file_path, timestamp);
