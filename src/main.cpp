@@ -54,8 +54,8 @@ int main(int argc, char** argv) {
 
   solver.solve(1e-12);
 
-  solver.writeResults(output.results_path);
   solver.writeConvergence(output.results_path);
+  solver.writeResults(output.results_path);
   solver.writeResiduals(output.residuals_path, timestamp);
 
   return 0;
