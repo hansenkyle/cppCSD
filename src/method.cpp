@@ -7,8 +7,11 @@
 
 #include "method.h"
 #include "output_block.h"
+#include <cmath>
 #include <filesystem>
+#include <format>
 #include <fstream>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 
@@ -20,6 +23,31 @@ std::vector<int> intseq(int stop, int start = 1) {
     result.push_back(i);
   }
   return result;
+}
+
+std::vector<std::string> int_label_seq(int max) {
+  auto intview =
+      std::views::iota(1, max + 1) | std::views::transform([](int x) { return std::to_string(x); });
+  return std::vector<std::string>(intview.begin(), intview.end());
+}
+
+std::vector<std::string> evdoub_to_string(const Eigen::VectorXd& dvec,
+                                          std::string_view fmt = "{:.2e}") {
+  std::vector<std::string> result;
+  for (Eigen::Index i = 0; i < dvec.size(); i++) {
+    result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
+  }
+  return result;
+}
+
+// Pairs each label with an empty one, for axes whose data has two entries (e.g. two bounds) per
+// label.
+std::vector<std::string> interleave(const std::vector<std::string>& original) {
+  std::vector<std::string> doubled(2 * original.size());
+  for (std::size_t i = 0; i < original.size(); i++) {
+    doubled[2 * i] = original[i];
+  }
+  return doubled;
 }
 } // namespace
 
@@ -61,18 +89,18 @@ Eigen::MatrixXd MethodResult::multigroup() const {
   return result.transpose();
 }
 
-Eigen::MatrixXd MethodResult::cell_average_scalar() const {
+Eigen::MatrixXd MethodResult::cell_average_scalar() const { return cell_average(scalar_flux); }
+
+Eigen::MatrixXd MethodResult::cell_average(const Eigen::MatrixXd& corners) {
   using Eigen::seqN;
   using Eigen::placeholders::all;
 
-  int I = scalar_flux.rows() / 4;
-  int G = scalar_flux.cols();
+  int I = corners.rows() / 4;
 
-  Eigen::MatrixXd leftsum = (scalar_flux(seqN(0, I, 4), all) + scalar_flux(seqN(2, I, 4), all));
-  Eigen::MatrixXd rightsum = (scalar_flux(seqN(1, I, 4), all) + scalar_flux(seqN(3, I, 4), all));
+  Eigen::MatrixXd leftsum = (corners(seqN(0, I, 4), all) + corners(seqN(2, I, 4), all));
+  Eigen::MatrixXd rightsum = (corners(seqN(1, I, 4), all) + corners(seqN(3, I, 4), all));
 
-  Eigen::MatrixXd result = (leftsum + rightsum) / 4;
-  return result;
+  return (leftsum + rightsum) / 4;
 }
 
 std::vector<Eigen::MatrixXd> MethodResult::cell_average_angular() const {
@@ -159,7 +187,7 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     q0g.add_row("left,down", input_deck.source.q0[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
     q0g.add_row("right,down", input_deck.source.q0[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
 
-    q0.add(q0g, "{:.4e}");
+    q0.add(q0g, "{:.6e}");
   }
 
   UnitGroup q1("source, first moment", "q integrated over all angles, weight mu");
@@ -172,7 +200,7 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     q1g.add_row("left,down", input_deck.source.q1[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
     q1g.add_row("right,down", input_deck.source.q1[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
 
-    q1.add(q1g, "{:.4e}");
+    q1.add(q1g, "{:.6e}");
   }
 
   UnitGroup materials("materials");
@@ -197,20 +225,137 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
       scatter.add_row(std::to_string(gplusone), m.scatter(g, Eigen::placeholders::all));
     }
 
-    mat.add(xs_t_and_s, "{:.4e}");
-    mat.add(scatter, "{:.4e}");
+    mat.add(xs_t_and_s, "{:.6e}");
+    mat.add(scatter, "{:.6e}");
 
     // add to materials block
     materials.add(mat);
   }
 
-  input_echo.add(spatialdata, "{:.2e}");
-  input_echo.add(energydata, "{:.3e}");
-  input_echo.add(quadrature, "{:.4e}");
-  input_echo.add(boundary, "{:.4e}");
+  input_echo.add(spatialdata, "{:.6e}");
+  input_echo.add(energydata, "{:.6e}");
+  input_echo.add(quadrature, "{:.6e}");
+  input_echo.add(boundary, "{:.6e}");
   input_echo.add(q0);
   input_echo.add(q1);
   input_echo.add(materials);
 
   appendToFile(file_path, input_echo.render_txt());
+}
+
+UnitGroup Method::solutionBlock(const MethodResult& solution) const {
+  auto iseq = int_label_seq(input_deck.mesh.n_x);
+  auto gseq = int_label_seq(input_deck.energy.G);
+  auto mseq = int_label_seq(input_deck.angle.M);
+
+  auto x_center = evdoub_to_string(input_deck.mesh.x_center);
+  auto mu = evdoub_to_string(input_deck.angle.mu);
+
+  std::vector<std::string> xb, eb;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    auto s = evdoub_to_string(input_deck.mesh.x_boundary(Eigen::seqN(i, 2)));
+    xb.insert(xb.end(), s.begin(), s.end());
+  }
+
+  for (int i = 0; i < input_deck.energy.G; i++) {
+    auto s = evdoub_to_string(input_deck.energy.E_boundary(Eigen::seqN(i, 2)));
+    eb.insert(eb.end(), s.begin(), s.end());
+  }
+
+  MatrixTable scalar = cellAverageTable("cell-average scalar flux", solution.cell_average_scalar());
+
+  // cell-average angular flux
+  UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
+  const auto cell_average_angular = solution.cell_average_angular();
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    MatrixTable group("g = " + std::to_string(g + 1));
+    group.set_data(cell_average_angular[g].transpose(), x_center, mu);
+    group.add_column_label(iseq);
+    group.add_row_label(mseq);
+    group.set_corner_grid({{"", "x_i"}, {"mu", "m \\i"}});
+    angular.add(group, "{:.6e}");
+  }
+
+  MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
+  multigroup.set_data(solution.multigroup(), xb, gseq);
+  multigroup.add_column_label(interleave(iseq));
+  multigroup.set_corner_grid({{"x_boundary"}, {"g \\ i"}});
+
+  MatrixTable spectrum("energy spectrum", "averaged over each spatial cell, not energy");
+  spectrum.set_data(solution.spectrum(), eb, x_center);
+  spectrum.add_row_label(iseq);
+  spectrum.add_column_label(interleave(gseq));
+  spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
+
+  UnitGroup sol_block("solution");
+  sol_block.add(scalar, "{:.6e}");
+  sol_block.add(angular);
+  sol_block.add(multigroup, "{:.6e}");
+  sol_block.add(spectrum, "{:.6e}");
+  return sol_block;
+}
+
+void Method::writeConvergence(const std::filesystem::path& results_path) const {
+  auto gseq = int_label_seq(input_deck.energy.G);
+  VerticalTable summary("iteration summary");
+  summary.add_column("g", gseq);
+  summary.add_column("# iterations", convergence_.iterations);
+  summary.add_column("time (s)", convergence_.group_times);
+
+  UnitGroup convergence("per-group convergence history",
+                        "delta = (phi_n - phi_n-1). absolute change.");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    VerticalTable group("g = " + gseq[g]);
+    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
+
+    std::vector<double> l2, l2sol, li, lisol, time;
+    for (const auto& record : convergence_.records[g]) {
+      l2.push_back(record.delta.norm2);
+      l2sol.push_back(record.solution.norm2);
+      li.push_back(record.delta.norminf);
+      lisol.push_back(record.solution.norminf);
+    }
+    group.add_column("|delta|_2", l2);
+    group.add_column("|phi_g|_2", l2sol);
+    group.add_column("|delta|_infty", li);
+    group.add_column("|phi_g|_infty", lisol);
+    convergence.add(group, "{:.6e}");
+  }
+
+  UnitGroup result("convergence");
+  result.add(summary);
+  result.add(convergence);
+  appendToFile(results_path, result.render_txt());
+}
+
+double Method::l2norm(const Eigen::VectorXd& vector, double dE) const {
+  // Mass matrix of the bilinear corner basis on a unit space-energy cell, ordered
+  // [up_L, up_R, down_L, down_R]: the tensor product of the 1D mass matrix [[2,1],[1,2]]/6 in
+  // energy and in space. v^T M v is then the exact integral of the squared field over the cell.
+  static const Eigen::Matrix4d cell_mass = (Eigen::Matrix4d() << 4, 2, 2, 1, //
+                                            2, 4, 1, 2,                      //
+                                            2, 1, 4, 2,                      //
+                                            1, 2, 2, 4)
+                                               .finished() /
+                                           36;
+  double integral = 0.0;
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    const Eigen::Vector4d corners = vector.segment<4>(4 * i);
+    integral += input_deck.mesh.dx(i) * corners.dot(cell_mass * corners);
+  }
+
+  return std::sqrt(integral * dE);
+}
+
+double Method::linfnorm(const Eigen::VectorXd& vector) { return vector.lpNorm<Eigen::Infinity>(); }
+
+MatrixTable Method::cellAverageTable(const std::string& title,
+                                     const Eigen::MatrixXd& cell_average) const {
+  MatrixTable table(title, "averaged over each space-energy cell");
+  table.set_data(cell_average.transpose(), evdoub_to_string(input_deck.mesh.x_center),
+                 int_label_seq(input_deck.energy.G));
+  table.add_column_label(int_label_seq(input_deck.mesh.n_x));
+  table.set_corner_grid({{"x_i"}, {"g \\ i"}});
+  return table;
 }

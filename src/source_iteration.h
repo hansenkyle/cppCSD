@@ -26,8 +26,7 @@ class SourceIteration : public Method {
 public:
   // constructor from input deck (copy)
   SourceIteration(InputDeck input_deck)
-      : Method("source iteration", input_deck), transport_operator(input_deck),
-        convergence_(input_deck.energy.G) {}
+      : Method("source iteration", input_deck), transport_operator(input_deck) {}
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
   ///
@@ -48,17 +47,14 @@ public:
   bool log_residual_terms = false;
 
   static constexpr int kDefaultMaxIterations = 1000;
-  // Appends the results block: scalar flux, then angular flux. angular_flux
-  // is indexed like InputDeck::Source (values[g], 4*n_x rows x M cols).
+  // Appends the results block (see Method::solutionBlock).
   void writeResults(const std::filesystem::path& file_path) const;
-  void writeConvergence(const std::filesystem::path& file_path) const;
   void writeResiduals(const std::filesystem::path& file_path, std::string timestamp) const;
   MethodResult solution;
   Residuals residuals;
 
 protected:
   TransportOperator transport_operator;
-  ConvergenceHistory convergence_;
 };
 
 #endif

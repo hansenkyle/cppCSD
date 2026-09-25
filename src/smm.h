@@ -50,8 +50,8 @@ public:
 
   void solve(double epsilon, int max_iterations = kDefaultMaxIterations);
 
+  // Appends the results block (see Method::solutionBlock), then every group's closures.
   void writeResults(const std::filesystem::path& file_path) const;
-  void writeConvergence(const std::filesystem::path& file_path) const;
   void writeResiduals(const std::filesystem::path& file_path, std::string timestamp);
   SMMResult solution;
   std::vector<SMClosures> closures;
@@ -114,7 +114,6 @@ public:
 
 private:
   TransportOperator transport_operator;
-  ConvergenceHistory convergence_;
   Eigen::SparseLU<Eigen::SparseMatrix<double>> lo_solver_;
   bool lo_factorized_ = false;
 

@@ -14,9 +14,14 @@
 struct IterationRecord {
 public:
   IterationRecord();
-  IterationRecord(double l2, double li);
-  double norm2;
-  double norminf;
+  struct Norms {
+    double norm2;
+    double norminf;
+  };
+
+  IterationRecord(Norms solution, Norms delta);
+  Norms solution;
+  Norms delta;
 };
 
 class ConvergenceHistory {

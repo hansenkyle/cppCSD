@@ -8,7 +8,9 @@
 #ifndef METHOD_H
 #define METHOD_H
 
+#include "convergence.h"
 #include "input_deck.h"
+#include "output_block.h"
 #include <Eigen/Dense>
 #include <filesystem>
 #include <string>
@@ -20,6 +22,8 @@ struct MethodResult {
   Eigen::MatrixXd spectrum() const;
   Eigen::MatrixXd multigroup() const;
   Eigen::MatrixXd cell_average_scalar() const;
+  // Averages a corner-valued field [4nx x G] over each space-energy cell -> [nx x G].
+  static Eigen::MatrixXd cell_average(const Eigen::MatrixXd& corners);
   std::vector<Eigen::MatrixXd> cell_average_angular() const;
 };
 
@@ -38,11 +42,26 @@ public:
 
   void writeMetadata(const std::filesystem::path& file_path, std::string timestamp) const;
   void writeInputEcho(const std::filesystem::path& file_path) const;
+  void writeConvergence(const std::filesystem::path& file_path) const;
+
+  // L2 norm of a corner-valued field [4nx] for one group: the exact integral of its square over
+  // x (and over the group's energy width dE, if provided) under the bilinear corner basis.
+  double l2norm(const Eigen::VectorXd& vector, double dE = 1) const;
+  static double linfnorm(const Eigen::VectorXd& vector);
 
 protected:
-  Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}
+  Method(std::string name, InputDeck input_deck)
+      : name(name), input_deck(input_deck), convergence_(input_deck.energy.G) {}
 
   InputDeck input_deck;
+  ConvergenceHistory convergence_;
+  // The results block shared by every method: cell-average scalar flux, cell-average angular
+  // flux, then the scalar flux slices (multigroup, spectrum). Returned unrendered so a method can
+  // append its own units before writing it.
+  UnitGroup solutionBlock(const MethodResult& solution) const;
+  // Table of a cell-averaged field [nx x G], laid out and labeled like the cell-average scalar
+  // flux.
+  MatrixTable cellAverageTable(const std::string& title, const Eigen::MatrixXd& cell_average) const;
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
 };
 

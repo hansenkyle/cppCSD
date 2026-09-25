@@ -9,10 +9,7 @@
 
 #include <vector>
 
-IterationRecord::IterationRecord(double l2, double li) {
-  norm2 = l2;
-  norminf = li;
-}
+IterationRecord::IterationRecord(Norms solution, Norms delta) : solution(solution), delta(delta) {}
 
 ConvergenceHistory::ConvergenceHistory(int G) {
   iterations = std::vector<int>(G);
