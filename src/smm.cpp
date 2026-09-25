@@ -625,9 +625,10 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   using Eigen::seqN;
   const int I = input_deck.mesh.n_x;
 
-  std::vector<std::string> iseq;
-  for (int i = 1; i <= I; i++) {
-    iseq.push_back(std::to_string(i));
+  std::vector<std::string> iseq, x_center;
+  for (int i = 0; i < I; i++) {
+    iseq.push_back(std::to_string(i + 1));
+    x_center.push_back(std::format("{:.4e}", input_deck.mesh.x_center(i)));
   }
 
   static const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClosures = {{
@@ -646,6 +647,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
     for (const auto& [name, field] : kClosures) {
       const Eigen::VectorXd& c = closures[g].*field;
       HorizontalTable table(name);
+      table.add_row("x_i", x_center);
       table.add_row("i", iseq);
       table.add_row("up,left", c(seqN(0, I, 4)));
       table.add_row("up,right", c(seqN(1, I, 4)));
@@ -710,11 +712,11 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
 
   UnitGroup transport("transport residuals", transport_summary);
   int I = input_deck.mesh.n_x;
-  std::vector<std::string> x_i;
-  std::vector<std::string> mu_m;
+  std::vector<std::string> x_i, mu_m, x_center;
 
   for (int i = 0; i < input_deck.mesh.n_x; i++) {
     x_i.push_back(std::to_string(i + 1));
+    x_center.push_back(std::format("{:.5e}", input_deck.mesh.x_center(i)));
   }
   for (int m = 0; m < input_deck.angle.M; m++) {
     mu_m.push_back(std::to_string(m + 1));
@@ -723,6 +725,7 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
     UnitGroup group("g = " + std::to_string(g + 1));
     for (int m = 0; m < input_deck.angle.M; m++) {
       HorizontalTable angle("m = " + std::to_string(m + 1));
+      angle.add_row("x_i", x_center);
       angle.add_row("i", x_i);
       angle.add_row("up,L", residuals.high_order[g](seqN(0, I, 4), m));
       angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
@@ -748,6 +751,7 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
   UnitGroup low_order("second moment equation residuals", sm_summary);
   for (int g = 0; g < input_deck.energy.G; g++) {
     HorizontalTable group("g = " + std::to_string(g + 1));
+    group.add_row("x_i", x_center);
     group.add_row("i", x_i);
     group.add_row("(balance, up L)", residuals.low_order[g](seqN(0, I, 8)));
     group.add_row("(balance, up R)", residuals.low_order[g](seqN(1, I, 8)));
