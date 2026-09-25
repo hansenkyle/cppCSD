@@ -309,13 +309,17 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
     VerticalTable group("g = " + gseq[g]);
     group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
 
-    std::vector<double> l2, li, time;
+    std::vector<double> l2, l2sol, li, lisol, time;
     for (const auto& record : convergence_.records[g]) {
-      l2.push_back(record.norm2);
-      li.push_back(record.norminf);
+      l2.push_back(record.delta.norm2);
+      l2sol.push_back(record.solution.norm2);
+      li.push_back(record.delta.norminf);
+      lisol.push_back(record.solution.norminf);
     }
     group.add_column("|delta|_2", l2);
+    group.add_column("|phi_g|_2", l2sol);
     group.add_column("|delta|_infty", li);
+    group.add_column("|phi_g|_infty", lisol);
     convergence.add(group, "{:.6e}");
   }
 

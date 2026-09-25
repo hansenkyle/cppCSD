@@ -61,11 +61,11 @@ void SourceIteration::solve(double epsilon, int max_iterations) {
       phi_g = transport_operator.integrateAngle(psi);
 
       absolute_delta_phi = (phi_g - phi.col(g));
-      delta_phi_l2norm = (phi_g - phi.col(g)).norm();
-      const double phi_norm = phi_g.norm();
+      delta_phi_l2norm = l2norm(phi_g - phi.col(g));
+      const double phi_norm = l2norm(phi_g);
 
-      convergence_.log_group(g, IterationRecord(absolute_delta_phi.norm(),
-                                                absolute_delta_phi.lpNorm<Eigen::Infinity>()));
+      convergence_.log_group(g, IterationRecord({l2norm(phi_g), linfnorm(phi_g)},
+                                                {delta_phi_l2norm, linfnorm(phi_g - phi.col(g))}));
 
       if (delta_phi_l2norm <= phi_norm * epsilon) {
         LDCSD_LOG_INFO("Converged with abs. norm = " + std::format("{:.4e}", delta_phi_l2norm) +
