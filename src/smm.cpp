@@ -80,7 +80,7 @@ Eigen::MatrixXd SMMResult::cell_average_current() const {
 
 SecondMoment::SecondMoment(InputDeck input_deck)
     : Method("second moment method", input_deck), transport_operator(input_deck),
-      convergence_(input_deck.energy.G), closures(input_deck.energy.G) {}
+      closures(input_deck.energy.G) {}
 
 Eigen::VectorXd SecondMoment::calculateK(Eigen::MatrixXd psi_slice, int sign) const {
   // calculates
@@ -629,185 +629,44 @@ Eigen::Vector<HighPrecision, 8> SecondMoment::cellResidual(
   return result;
 }
 
-namespace {
-auto int_label_seq = [](int max) {
-  auto intview =
-      std::views::iota(1, max + 1) | std::views::transform([](int x) { return std::to_string(x); });
-  std::vector<std::string> result(intview.begin(), intview.end());
-  return result;
-};
-
-auto evdoub_to_string = [](const Eigen::VectorXd& dvec, std::string_view fmt = "{:.2e}") {
-  std::vector<std::string> result;
-  for (Eigen::Index i = 0; i < dvec.size(); i++) {
-    result.push_back(std::vformat(fmt, std::make_format_args(dvec(i))));
-  }
-  return result;
-};
-} // namespace
-
 void SecondMoment::writeResults(const std::filesystem::path& results_path) const {
+  using Eigen::seqN;
+  const int I = input_deck.mesh.n_x;
 
-  auto vint_to_vstring = [](std::vector<int> ivec) {
-    std::vector<std::string> result = {};
-    for (auto i : ivec) {
-      result.push_back(std::to_string(i));
-    }
-    return result;
-  };
-
-  auto vdoub_to_string = [](std::vector<double> dvec, std::string fmt = "{:.2e}") {
-    std::vector<std::string> result = {};
-    for (auto i : dvec) {
-      result.push_back(std::vformat(fmt, std::make_format_args(i)));
-    }
-    return result;
-  };
-
-  auto average_space = [&](Eigen::MatrixXd data) {
-    Eigen::MatrixXd left =
-        data(Eigen::seqN(0, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
-    Eigen::MatrixXd right =
-        data(Eigen::seqN(1, 2 * input_deck.mesh.n_x, 2), Eigen::placeholders::all);
-    return (left + right) / 2;
-  };
-
-  auto interleave = [&](std::vector<std::string> original) {
-    std::vector<std::string> doubled(2 * original.size());
-    for (int i = 0; i < original.size(); i++) {
-      doubled[2 * i] = original[i];
-      doubled[2 * i + 1] = "";
-    }
-    return doubled;
-  };
-
-  auto iseq = int_label_seq(input_deck.mesh.n_x);
-  auto gseq = int_label_seq(input_deck.energy.G);
-  auto mseq = int_label_seq(input_deck.angle.M);
-
-  auto x_center = evdoub_to_string(input_deck.mesh.x_center);
-  auto mu = evdoub_to_string(input_deck.angle.mu);
-
-  std::vector<std::string> xb, eb;
-
-  for (int i = 0; i < input_deck.mesh.n_x; i++) {
-    auto s = evdoub_to_string(input_deck.mesh.x_boundary(Eigen::seqN(i, 2)));
-    xb.insert(xb.end(), s.begin(), s.end());
+  std::vector<std::string> iseq;
+  for (int i = 1; i <= I; i++) {
+    iseq.push_back(std::to_string(i));
   }
 
-  for (int i = 0; i < input_deck.energy.G; i++) {
-    auto s = evdoub_to_string(input_deck.energy.E_boundary(Eigen::seqN(i, 2)));
-    eb.insert(eb.end(), s.begin(), s.end());
-  }
-
-  UnitGroup sol_block("solution");
-
-  // cell-average scalar flux
-  MatrixTable scalar("cell-average scalar flux", "averaged over each space-energy cell");
-  scalar.set_data(solution.cell_average_scalar().transpose(), x_center, gseq);
-  scalar.add_column_label(iseq);
-
-  std::vector<std::vector<std::string>> labels = {{"x_i"}, {"g \\ i"}};
-  scalar.set_corner_grid(labels);
+  static const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClosures = {{
+      {"F", &SMClosures::F},
+      {"F+", &SMClosures::F_pos},
+      {"F-", &SMClosures::F_neg},
+      {"K+", &SMClosures::K_pos},
+      {"K-", &SMClosures::K_neg},
+      {"T+", &SMClosures::T_pos},
+      {"T-", &SMClosures::T_neg},
+  }};
 
   UnitGroup close("closures");
-
   for (int g = 0; g < input_deck.energy.G; g++) {
-    using Eigen::seqN;
-    int I = input_deck.mesh.n_x;
-    int gplusone = g + 1;
-    UnitGroup group("g = " + std::to_string(gplusone));
-
-    HorizontalTable f("F");
-    f.add_row("i", iseq);
-    f.add_row("up,left", closures[g].F(seqN(0, I, 4)));
-    f.add_row("up,right", closures[g].F(seqN(1, I, 4)));
-    f.add_row("down,left", closures[g].F(seqN(2, I, 4)));
-    f.add_row("down,right", closures[g].F(seqN(3, I, 4)));
-    group.add(f, "{:.4e}");
-
-    HorizontalTable fplus("F+");
-    fplus.add_row("i", iseq);
-    fplus.add_row("up,left", closures[g].F_pos(seqN(0, I, 4)));
-    fplus.add_row("up,right", closures[g].F_pos(seqN(1, I, 4)));
-    fplus.add_row("down,left", closures[g].F_pos(seqN(2, I, 4)));
-    fplus.add_row("down,right", closures[g].F_pos(seqN(3, I, 4)));
-    group.add(fplus, "{:.4e}");
-
-    HorizontalTable fminus("F-");
-    fminus.add_row("i", iseq);
-    fminus.add_row("up,left", closures[g].F_neg(seqN(0, I, 4)));
-    fminus.add_row("up,right", closures[g].F_neg(seqN(1, I, 4)));
-    fminus.add_row("down,left", closures[g].F_neg(seqN(2, I, 4)));
-    fminus.add_row("down,right", closures[g].F_neg(seqN(3, I, 4)));
-    group.add(fminus, "{:.4e}");
-
-    HorizontalTable kplus("K+");
-    kplus.add_row("i", iseq);
-    kplus.add_row("up,left", closures[g].K_pos(seqN(0, I, 4)));
-    kplus.add_row("up,right", closures[g].K_pos(seqN(1, I, 4)));
-    kplus.add_row("down,left", closures[g].K_pos(seqN(2, I, 4)));
-    kplus.add_row("down,right", closures[g].K_pos(seqN(3, I, 4)));
-    group.add(kplus, "{:.4e}");
-
-    HorizontalTable kminus("K-");
-    kminus.add_row("i", iseq);
-    kminus.add_row("up,left", closures[g].K_neg(seqN(0, I, 4)));
-    kminus.add_row("up,right", closures[g].K_neg(seqN(1, I, 4)));
-    kminus.add_row("down,left", closures[g].K_neg(seqN(2, I, 4)));
-    kminus.add_row("down,right", closures[g].K_neg(seqN(3, I, 4)));
-    group.add(kminus, "{:.4e}");
-
-    HorizontalTable tplus("T+");
-    tplus.add_row("i", iseq);
-    tplus.add_row("up,left", closures[g].T_pos(seqN(0, I, 4)));
-    tplus.add_row("up,right", closures[g].T_pos(seqN(1, I, 4)));
-    tplus.add_row("down,left", closures[g].T_pos(seqN(2, I, 4)));
-    tplus.add_row("down,right", closures[g].T_pos(seqN(3, I, 4)));
-    group.add(tplus, "{:.4e}");
-
-    HorizontalTable tminus("T-");
-    tminus.add_row("i", iseq);
-    tminus.add_row("up,left", closures[g].T_neg(seqN(0, I, 4)));
-    tminus.add_row("up,right", closures[g].T_neg(seqN(1, I, 4)));
-    tminus.add_row("down,left", closures[g].T_neg(seqN(2, I, 4)));
-    tminus.add_row("down,right", closures[g].T_neg(seqN(3, I, 4)));
-    group.add(tminus, "{:.4e}");
-
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (const auto& [name, field] : kClosures) {
+      const Eigen::VectorXd& c = closures[g].*field;
+      HorizontalTable table(name);
+      table.add_row("i", iseq);
+      table.add_row("up,left", c(seqN(0, I, 4)));
+      table.add_row("up,right", c(seqN(1, I, 4)));
+      table.add_row("down,left", c(seqN(2, I, 4)));
+      table.add_row("down,right", c(seqN(3, I, 4)));
+      group.add(table, "{:.4e}");
+    }
     close.add(group);
   }
 
-  // cell-average angular flux
-  labels = {{"", "x_i"}, {"mu", "m \\i"}};
-  UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
-  for (int g = 0; g < input_deck.energy.G; g++) {
-    int gplusone = g + 1;
-    MatrixTable group("g = " + std::to_string(gplusone));
-    group.set_data(solution.cell_average_angular()[g].transpose(), x_center, mu);
-    group.add_column_label(iseq);
-    group.add_row_label(mseq);
-    group.set_corner_grid(labels);
-    angular.add(group, "{:.4e}");
-  }
-
-  MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
-  multigroup.set_data(solution.multigroup(), xb, gseq);
-  multigroup.add_column_label(interleave(iseq));
-  multigroup.set_corner_grid({{"x_boundary"}, {"g \\ i"}});
-
-  MatrixTable spectrum("energy spectrum", "averaged over each spatial cell, not energy");
-  spectrum.set_data(solution.spectrum(), eb, x_center);
-  spectrum.add_row_label(iseq);
-  spectrum.add_column_label(interleave(gseq));
-  spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
-
-  sol_block.add(scalar, "{:.4e}");
-  sol_block.add(close);
-  sol_block.add(angular);
-  sol_block.add(multigroup, "{:.4e}");
-  sol_block.add(spectrum, "{:.4e}");
-
-  appendToFile(results_path, sol_block.render_txt());
+  UnitGroup block = solutionBlock(solution);
+  block.add(close);
+  appendToFile(results_path, block.render_txt());
 }
 
 void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
@@ -908,33 +767,4 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path,
   }
 
   appendToFile(file_path, low_order.render_txt());
-}
-
-void SecondMoment::writeConvergence(const std::filesystem::path& results_path) const {
-  auto gseq = int_label_seq(input_deck.energy.G);
-  VerticalTable summary("iteration summary");
-  summary.add_column("g", gseq);
-  summary.add_column("# iterations", convergence_.iterations);
-
-  UnitGroup convergence("per-group convergence history",
-                        "delta = (phi_n - phi_n-1). absolute change.");
-  for (int g = 0; g < input_deck.energy.G; g++) {
-    VerticalTable group("g = " + gseq[g]);
-    group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
-
-    std::vector<double> l2, li;
-    for (int i = 0; i < convergence_.records[g].size(); i++) {
-      l2.push_back(convergence_.records[g][i].norm2);
-      li.push_back(convergence_.records[g][i].norminf);
-    }
-
-    group.add_column("|delta|_2", l2);
-    group.add_column("|delta|_infty", li);
-    convergence.add(group, "{:.4e}");
-  }
-
-  UnitGroup result("convergence");
-  result.add(summary);
-  result.add(convergence);
-  appendToFile(results_path, result.render_txt());
 }

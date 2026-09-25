@@ -8,7 +8,9 @@
 #ifndef METHOD_H
 #define METHOD_H
 
+#include "convergence.h"
 #include "input_deck.h"
+#include "output_block.h"
 #include <Eigen/Dense>
 #include <filesystem>
 #include <string>
@@ -38,11 +40,18 @@ public:
 
   void writeMetadata(const std::filesystem::path& file_path, std::string timestamp) const;
   void writeInputEcho(const std::filesystem::path& file_path) const;
+  void writeConvergence(const std::filesystem::path& file_path) const;
 
 protected:
-  Method(std::string name, InputDeck input_deck) : name(name), input_deck(input_deck) {}
+  Method(std::string name, InputDeck input_deck)
+      : name(name), input_deck(input_deck), convergence_(input_deck.energy.G) {}
 
   InputDeck input_deck;
+  ConvergenceHistory convergence_;
+  // The results block shared by every method: cell-average scalar flux, cell-average angular
+  // flux, then the scalar flux slices (multigroup, spectrum). Returned unrendered so a method can
+  // append its own units before writing it.
+  UnitGroup solutionBlock(const MethodResult& solution) const;
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
 };
 
