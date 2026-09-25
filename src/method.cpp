@@ -7,6 +7,7 @@
 
 #include "method.h"
 #include "output_block.h"
+#include <cmath>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -324,18 +325,26 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
   appendToFile(results_path, result.render_txt());
 }
 
-double Method::l2norm(const Eigen::VectorXd vector, double dE) {
-  Eigen::VectorXd squared = vector.cwiseProduct(vector);
-  Eigen::VectorXd local_integral = Eigen::VectorXd::Zero(input_deck.mesh.n_x);
-
+double Method::l2norm(const Eigen::VectorXd& vector, double dE) const {
+  // Mass matrix of the bilinear corner basis on a unit space-energy cell, ordered
+  // [up_L, up_R, down_L, down_R]: the tensor product of the 1D mass matrix [[2,1],[1,2]]/6 in
+  // energy and in space. v^T M v is then the exact integral of the squared field over the cell.
+  static const Eigen::Matrix4d cell_mass = (Eigen::Matrix4d() << 4, 2, 2, 1, //
+                                            2, 4, 1, 2,                      //
+                                            2, 1, 4, 2,                      //
+                                            1, 2, 2, 4)
+                                               .finished() /
+                                           36;
+  double integral = 0.0;
   for (int i = 0; i < input_deck.mesh.n_x; i++) {
-    local_integral(i) = input_deck.mesh.dx(i) * squared(Eigen::seqN(4 * i, 4)).sum();
+    const Eigen::Vector4d corners = vector.segment<4>(4 * i);
+    integral += input_deck.mesh.dx(i) * corners.dot(cell_mass * corners);
   }
 
-  return std::sqrt(local_integral.sum()) * std::sqrt(dE);
+  return std::sqrt(integral * dE);
 }
 
-double Method::linfnorm(const Eigen::VectorXd vector) { return vector.lpNorm<Eigen::Infinity>(); }
+double Method::linfnorm(const Eigen::VectorXd& vector) { return vector.lpNorm<Eigen::Infinity>(); }
 
 MatrixTable Method::cellAverageTable(const std::string& title,
                                      const Eigen::MatrixXd& cell_average) const {

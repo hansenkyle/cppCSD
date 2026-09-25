@@ -44,9 +44,10 @@ public:
   void writeInputEcho(const std::filesystem::path& file_path) const;
   void writeConvergence(const std::filesystem::path& file_path) const;
 
-  // integrates a vector of corner values over x (and dE if provided)
-  double l2norm(const Eigen::VectorXd vector, double dE = 1);
-  double linfnorm(const Eigen::VectorXd vector);
+  // L2 norm of a corner-valued field [4nx] for one group: the exact integral of its square over
+  // x (and over the group's energy width dE, if provided) under the bilinear corner basis.
+  double l2norm(const Eigen::VectorXd& vector, double dE = 1) const;
+  static double linfnorm(const Eigen::VectorXd& vector);
 
 protected:
   Method(std::string name, InputDeck input_deck)
