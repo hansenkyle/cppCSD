@@ -66,17 +66,7 @@ Eigen::Vector4d cellFaces(const Eigen::MatrixXd& faces, int i) {
 }
 } // namespace
 
-Eigen::MatrixXd SMMResult::cell_average_current() const {
-  using Eigen::seqN;
-  using Eigen::placeholders::all;
-  int I = scalar_flux.rows() / 4;
-  int G = scalar_flux.cols();
-
-  Eigen::MatrixXd leftsum = (current(seqN(0, I, 4), all) + current(seqN(2, I, 4), all));
-  Eigen::MatrixXd rightsum = (current(seqN(1, I, 4), all) + current(seqN(3, I, 4), all));
-  Eigen::MatrixXd result = (leftsum + rightsum) / 4;
-  return result;
-}
+Eigen::MatrixXd SMMResult::cell_average_current() const { return cell_average(current); }
 
 SecondMoment::SecondMoment(InputDeck input_deck)
     : Method("second moment method", input_deck), transport_operator(input_deck),
@@ -296,6 +286,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
   auto& phi = solution.scalar_flux;
   solution.current = Eigen::MatrixXd::Zero(4 * I, G);
   auto& J = solution.current;
+  solution.reconstructed_scalar = Eigen::MatrixXd::Zero(4 * I, G);
 
   solution.angular_flux =
       std::vector<Eigen::MatrixXd>(input_deck.energy.G, Eigen::MatrixXd::Zero(4 * I, M));
@@ -667,6 +658,9 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
   UnitGroup block = solutionBlock(solution);
   block.add(close);
+  block.add(cellAverageTable("reconstructed cell-average scalar flux",
+                             MethodResult::cell_average(solution.reconstructed_scalar)),
+            "{:.4e}");
   appendToFile(results_path, block.render_txt());
 }
 

@@ -88,18 +88,18 @@ Eigen::MatrixXd MethodResult::multigroup() const {
   return result.transpose();
 }
 
-Eigen::MatrixXd MethodResult::cell_average_scalar() const {
+Eigen::MatrixXd MethodResult::cell_average_scalar() const { return cell_average(scalar_flux); }
+
+Eigen::MatrixXd MethodResult::cell_average(const Eigen::MatrixXd& corners) {
   using Eigen::seqN;
   using Eigen::placeholders::all;
 
-  int I = scalar_flux.rows() / 4;
-  int G = scalar_flux.cols();
+  int I = corners.rows() / 4;
 
-  Eigen::MatrixXd leftsum = (scalar_flux(seqN(0, I, 4), all) + scalar_flux(seqN(2, I, 4), all));
-  Eigen::MatrixXd rightsum = (scalar_flux(seqN(1, I, 4), all) + scalar_flux(seqN(3, I, 4), all));
+  Eigen::MatrixXd leftsum = (corners(seqN(0, I, 4), all) + corners(seqN(2, I, 4), all));
+  Eigen::MatrixXd rightsum = (corners(seqN(1, I, 4), all) + corners(seqN(3, I, 4), all));
 
-  Eigen::MatrixXd result = (leftsum + rightsum) / 4;
-  return result;
+  return (leftsum + rightsum) / 4;
 }
 
 std::vector<Eigen::MatrixXd> MethodResult::cell_average_angular() const {
@@ -262,11 +262,7 @@ UnitGroup Method::solutionBlock(const MethodResult& solution) const {
     eb.insert(eb.end(), s.begin(), s.end());
   }
 
-  // cell-average scalar flux
-  MatrixTable scalar("cell-average scalar flux", "averaged over each space-energy cell");
-  scalar.set_data(solution.cell_average_scalar().transpose(), x_center, gseq);
-  scalar.add_column_label(iseq);
-  scalar.set_corner_grid({{"x_i"}, {"g \\ i"}});
+  MatrixTable scalar = cellAverageTable("cell-average scalar flux", solution.cell_average_scalar());
 
   // cell-average angular flux
   UnitGroup angular("cell-average angular flux", "averaged over each space-energy cell");
@@ -326,4 +322,14 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
   result.add(summary);
   result.add(convergence);
   appendToFile(results_path, result.render_txt());
+}
+
+MatrixTable Method::cellAverageTable(const std::string& title,
+                                     const Eigen::MatrixXd& cell_average) const {
+  MatrixTable table(title, "averaged over each space-energy cell");
+  table.set_data(cell_average.transpose(), evdoub_to_string(input_deck.mesh.x_center),
+                 int_label_seq(input_deck.energy.G));
+  table.add_column_label(int_label_seq(input_deck.mesh.n_x));
+  table.set_corner_grid({{"x_i"}, {"g \\ i"}});
+  return table;
 }

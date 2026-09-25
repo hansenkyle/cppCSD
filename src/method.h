@@ -22,6 +22,8 @@ struct MethodResult {
   Eigen::MatrixXd spectrum() const;
   Eigen::MatrixXd multigroup() const;
   Eigen::MatrixXd cell_average_scalar() const;
+  // Averages a corner-valued field [4nx x G] over each space-energy cell -> [nx x G].
+  static Eigen::MatrixXd cell_average(const Eigen::MatrixXd& corners);
   std::vector<Eigen::MatrixXd> cell_average_angular() const;
 };
 
@@ -52,6 +54,9 @@ protected:
   // flux, then the scalar flux slices (multigroup, spectrum). Returned unrendered so a method can
   // append its own units before writing it.
   UnitGroup solutionBlock(const MethodResult& solution) const;
+  // Table of a cell-averaged field [nx x G], laid out and labeled like the cell-average scalar
+  // flux.
+  MatrixTable cellAverageTable(const std::string& title, const Eigen::MatrixXd& cell_average) const;
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
 };
 
