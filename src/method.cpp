@@ -186,7 +186,7 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     q0g.add_row("left,down", input_deck.source.q0[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
     q0g.add_row("right,down", input_deck.source.q0[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
 
-    q0.add(q0g, "{:.4e}");
+    q0.add(q0g, "{:.6e}");
   }
 
   UnitGroup q1("source, first moment", "q integrated over all angles, weight mu");
@@ -199,7 +199,7 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     q1g.add_row("left,down", input_deck.source.q1[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
     q1g.add_row("right,down", input_deck.source.q1[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
 
-    q1.add(q1g, "{:.4e}");
+    q1.add(q1g, "{:.6e}");
   }
 
   UnitGroup materials("materials");
@@ -224,17 +224,17 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
       scatter.add_row(std::to_string(gplusone), m.scatter(g, Eigen::placeholders::all));
     }
 
-    mat.add(xs_t_and_s, "{:.4e}");
-    mat.add(scatter, "{:.4e}");
+    mat.add(xs_t_and_s, "{:.6e}");
+    mat.add(scatter, "{:.6e}");
 
     // add to materials block
     materials.add(mat);
   }
 
-  input_echo.add(spatialdata, "{:.2e}");
-  input_echo.add(energydata, "{:.3e}");
-  input_echo.add(quadrature, "{:.4e}");
-  input_echo.add(boundary, "{:.4e}");
+  input_echo.add(spatialdata, "{:.6e}");
+  input_echo.add(energydata, "{:.6e}");
+  input_echo.add(quadrature, "{:.6e}");
+  input_echo.add(boundary, "{:.6e}");
   input_echo.add(q0);
   input_echo.add(q1);
   input_echo.add(materials);
@@ -273,7 +273,7 @@ UnitGroup Method::solutionBlock(const MethodResult& solution) const {
     group.add_column_label(iseq);
     group.add_row_label(mseq);
     group.set_corner_grid({{"", "x_i"}, {"mu", "m \\i"}});
-    angular.add(group, "{:.4e}");
+    angular.add(group, "{:.6e}");
   }
 
   MatrixTable multigroup("multigroup scalar flux", "averaged over each energy group, not space");
@@ -288,10 +288,10 @@ UnitGroup Method::solutionBlock(const MethodResult& solution) const {
   spectrum.set_corner_grid({{"", "E_bound"}, {"x_i", "i \\g"}});
 
   UnitGroup sol_block("solution");
-  sol_block.add(scalar, "{:.4e}");
+  sol_block.add(scalar, "{:.6e}");
   sol_block.add(angular);
-  sol_block.add(multigroup, "{:.4e}");
-  sol_block.add(spectrum, "{:.4e}");
+  sol_block.add(multigroup, "{:.6e}");
+  sol_block.add(spectrum, "{:.6e}");
   return sol_block;
 }
 
@@ -315,7 +315,7 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
 
     group.add_column("|delta|_2", l2);
     group.add_column("|delta|_infty", li);
-    convergence.add(group, "{:.4e}");
+    convergence.add(group, "{:.6e}");
   }
 
   UnitGroup result("convergence");

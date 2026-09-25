@@ -651,7 +651,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
       table.add_row("up,right", c(seqN(1, I, 4)));
       table.add_row("down,left", c(seqN(2, I, 4)));
       table.add_row("down,right", c(seqN(3, I, 4)));
-      group.add(table, "{:.4e}");
+      group.add(table, "{:.6e}");
     }
     close.add(group);
   }
@@ -660,7 +660,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   block.add(close);
   block.add(cellAverageTable("reconstructed cell-average scalar flux",
                              MethodResult::cell_average(solution.reconstructed_scalar)),
-            "{:.4e}");
+            "{:.6e}");
   appendToFile(results_path, block.render_txt());
 }
 
@@ -728,7 +728,7 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
       angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
       angle.add_row("down,L", residuals.high_order[g](seqN(2, I, 4), m));
       angle.add_row("down,R", residuals.high_order[g](seqN(3, I, 4), m));
-      group.add(angle, "{:.4e}");
+      group.add(angle, "{:.6e}");
     }
     transport.add(group);
   }
@@ -757,7 +757,7 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
     group.add_row("(1st moment, up R)", residuals.low_order[g](seqN(5, I, 8)));
     group.add_row("(1st moment, down L)", residuals.low_order[g](seqN(6, I, 8)));
     group.add_row("(1st moment, down R)", residuals.low_order[g](seqN(7, I, 8)));
-    low_order.add(group, "{:.4e}");
+    low_order.add(group, "{:.6e}");
   }
 
   appendToFile(file_path, low_order.render_txt());
