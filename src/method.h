@@ -44,6 +44,10 @@ public:
   void writeInputEcho(const std::filesystem::path& file_path) const;
   void writeConvergence(const std::filesystem::path& file_path) const;
 
+  // integrates a vector of corner values over x (and dE if provided)
+  double l2norm(const Eigen::VectorXd vector, double dE = 1);
+  double linfnorm(const Eigen::VectorXd vector);
+
 protected:
   Method(std::string name, InputDeck input_deck)
       : name(name), input_deck(input_deck), convergence_(input_deck.energy.G) {}

@@ -324,6 +324,19 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
   appendToFile(results_path, result.render_txt());
 }
 
+double Method::l2norm(const Eigen::VectorXd vector, double dE) {
+  Eigen::VectorXd squared = vector.cwiseProduct(vector);
+  Eigen::VectorXd local_integral = Eigen::VectorXd::Zero(input_deck.mesh.n_x);
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    local_integral(i) = input_deck.mesh.dx(i) * squared(Eigen::seqN(4 * i, 4)).sum();
+  }
+
+  return std::sqrt(local_integral.sum()) * std::sqrt(dE);
+}
+
+double Method::linfnorm(const Eigen::VectorXd vector) { return vector.lpNorm<Eigen::Infinity>(); }
+
 MatrixTable Method::cellAverageTable(const std::string& title,
                                      const Eigen::MatrixXd& cell_average) const {
   MatrixTable table(title, "averaged over each space-energy cell");
