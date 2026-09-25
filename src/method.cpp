@@ -300,6 +300,7 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
   VerticalTable summary("iteration summary");
   summary.add_column("g", gseq);
   summary.add_column("# iterations", convergence_.iterations);
+  summary.add_column("time (s)", convergence_.group_times);
 
   UnitGroup convergence("per-group convergence history",
                         "delta = (phi_n - phi_n-1). absolute change.");
@@ -307,12 +308,11 @@ void Method::writeConvergence(const std::filesystem::path& results_path) const {
     VerticalTable group("g = " + gseq[g]);
     group.add_column("iteration", int_label_seq(convergence_.records[g].size()));
 
-    std::vector<double> l2, li;
+    std::vector<double> l2, li, time;
     for (const auto& record : convergence_.records[g]) {
       l2.push_back(record.norm2);
       li.push_back(record.norminf);
     }
-
     group.add_column("|delta|_2", l2);
     group.add_column("|delta|_infty", li);
     convergence.add(group, "{:.6e}");
