@@ -1,0 +1,45 @@
+test/method/al_radiant/description.md
+  s_86d910e6a4362c::t_0cee6b495bcffe 1,3,5-6,22-30,40-45
+  s_86d910e6a4362c::t_79333969283eed 2,4,7-18
+  s_86d910e6a4362c::t_5e9a4d37914ba7 19-21,31-39,46
+test/method/al_radiant/refinement/radiant_6g_1000x.csv
+  s_86d910e6a4362c::t_8f504895607ff0 1-8
+test/method/al_radiant/refinement/6g_10x/al_radiant_6g_10x.yaml
+  s_86d910e6a4362c::t_7ae818942d33ad 1-99
+test/method/al_radiant/refinement/6g_40x/al_radiant_6g_40x.yaml
+  s_86d910e6a4362c::t_7ae818942d33ad 1-129
+test/method/al_radiant/radiant_changes.md
+  s_86d910e6a4362c::t_cff6635a96f007 1-38,44-51,55-59,61-72
+  s_86d910e6a4362c::t_5e9a4d37914ba7 39-43,52-54
+  s_86d910e6a4362c::t_5ed30712a25d8c 60
+test/method/al_radiant/radiant.jl
+  s_86d910e6a4362c::t_3f056dc4337430 18-22,33-37,42,54,63,139,184
+  s_86d910e6a4362c::t_79333969283eed 2-17,23-25,61,65-138,140-181,183,185-190
+  s_86d910e6a4362c::t_6672e074fe5da8 26-32,38-41,43-53,55-60
+  s_86d910e6a4362c::t_77b4143be719d4 1,62,64,182
+test/method/al_radiant/compare.py
+  s_86d910e6a4362c::t_a03e2184984943 1-44,46-51,54,56-57,63-66
+  s_86d910e6a4362c::t_f6238c8009f03b 45,52-53,55,58-62
+test/method/al_radiant/refinement/6g_20x/al_radiant_6g_20x.yaml
+  s_86d910e6a4362c::t_7ae818942d33ad 1-109
+test/method/al_radiant/code_to_code/al_radiant_6g_10x.yaml
+  s_86d910e6a4362c::t_2389236a6cb782 1-99
+test/method/al_radiant/code_to_code/radiant_scalar_flux.csv
+  s_86d910e6a4362c::t_38fbbdb53accad 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69384b0293cf09fbf3e3dbd6ab59852f78296937",
+  "prompts": {},
+  "sessions": {
+    "s_86d910e6a4362c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a281c1b1-640a-414e-ba7e-69adab1cdcbb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
