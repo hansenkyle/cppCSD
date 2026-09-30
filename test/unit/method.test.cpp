@@ -21,13 +21,17 @@ public:
 };
 
 // Two cells of unequal width (dx = 0.5, 1.5), so a norm that ignores or misindexes dx gives a
-// different answer. The norms only read the mesh, so the rest of the deck is left empty.
+// different answer. The norms only read the mesh; the rest is the smallest deck Method accepts.
 InputDeck makeNormDeck() {
   InputDeck deck;
-  deck.mesh.n_x = 2;
-  deck.mesh.x_boundary = Eigen::Vector3d(0.0, 0.5, 2.0);
-  deck.mesh.validate();
-  deck.energy.G = 1;
+  deck.set_mesh(Eigen::Vector3d(0.0, 0.5, 2.0));
+  deck.set_energy(Eigen::Vector2d(1.0, 0.0));
+  deck.set_angle(Eigen::Vector2d(-0.5, 0.5), Eigen::Vector2d(1.0, 1.0));
+  Material material; // defaults are all-zero, one group
+  material.name = "void";
+  deck.set_materials({material}, {"void", "void"});
+  deck.set_bc(Eigen::MatrixXd::Zero(2, 2));
+  deck.set_source({Eigen::MatrixXd::Zero(8, 2)});
   return deck;
 }
 

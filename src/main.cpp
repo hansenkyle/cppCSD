@@ -15,14 +15,6 @@
 #include "source_iteration.h"
 #include "terminal.h"
 
-std::string make_timestamp() {
-  const std::time_t now = std::time(nullptr);
-  const std::tm* tm = std::localtime(&now);
-  std::ostringstream oss;
-  oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
-  return oss.str();
-}
-
 int main(int argc, char** argv) {
   int exit_code = 0;
 

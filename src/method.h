@@ -14,6 +14,7 @@
 #include <Eigen/Dense>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace HighFive {
@@ -54,8 +55,15 @@ public:
   static double linfnorm(const Eigen::VectorXd& vector);
 
 protected:
-  Method(std::string name, InputDeck input_deck)
-      : name(name), input_deck(input_deck), convergence_(input_deck.energy.G) {}
+  // Validates the deck's cross-struct checks (and derived fields) before anything reads it, so a
+  // deck built setter by setter can't reach a solver half-consistent.
+  Method(std::string name, InputDeck deck)
+      : name(name), input_deck(validated(std::move(deck))), convergence_(input_deck.energy.G) {}
+
+  static InputDeck validated(InputDeck deck) {
+    deck.validate();
+    return deck;
+  }
 
   InputDeck input_deck;
   ConvergenceHistory convergence_;

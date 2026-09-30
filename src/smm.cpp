@@ -71,8 +71,8 @@ Eigen::Vector4d cellFaces(const Eigen::MatrixXd& faces, int i) {
 
 Eigen::MatrixXd SMMResult::cell_average_current() const { return cell_average(current); }
 
-SecondMoment::SecondMoment(InputDeck input_deck)
-    : Method("second moment method", input_deck), transport_operator(input_deck),
+SecondMoment::SecondMoment(InputDeck deck)
+    : Method("second moment method", std::move(deck)), transport_operator(input_deck),
       closures(input_deck.energy.G) {}
 
 Eigen::VectorXd SecondMoment::calculateK(Eigen::MatrixXd psi_slice, int sign) const {

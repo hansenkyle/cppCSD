@@ -44,7 +44,7 @@ struct SMClosures {
 
 class SecondMoment : public Method {
 public:
-  SecondMoment(InputDeck input_deck);
+  SecondMoment(InputDeck deck);
 
   static constexpr int kDefaultMaxIterations = 1000;
 

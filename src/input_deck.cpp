@@ -8,6 +8,8 @@
 #include "input_deck.h"
 
 #include <cmath>
+#include <fstream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -21,6 +23,9 @@
 
 namespace {
 constexpr double kAngleWeightRelTol = 1e-4;
+// Below this, w's sum is off from 2 only by rounding: still rescaled, but not worth a warning
+// (validate() runs several times per deck, so it would repeat on every call).
+constexpr double kAngleWeightRoundoff = 1e-12;
 void requireNonNegative(const Eigen::Ref<const Eigen::MatrixXd>& values, const std::string& name) {
   if (values.size() > 0 && values.minCoeff() < 0.0) {
     throw std::runtime_error(name + " must be non-negative");
@@ -37,6 +42,11 @@ YAML::Node requireNode(const YAML::Node& parent, const std::string& key) {
 
 Eigen::VectorXd toVector(const std::vector<double>& values) {
   return Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
+}
+
+// yaml-cpp emits std::vector but not Eigen types.
+template <typename Derived> std::vector<double> toStd(const Eigen::DenseBase<Derived>& values) {
+  return {values.begin(), values.end()};
 }
 
 void requireSize(Eigen::Index actual, Eigen::Index expected, const std::string& name) {
@@ -301,9 +311,11 @@ void InputDeck::Angle::validate() {
   }
   if (rel_diff > 0.0) {
     const double scale = 2.0 / sum;
-    LDCSD_LOG_WARN("angle.w summed to " + std::to_string(sum) + " (relative difference " +
-                   std::to_string(rel_diff) + "); normalizing by " + std::to_string(scale) +
-                   " to sum to 2");
+    if (rel_diff > kAngleWeightRoundoff) {
+      LDCSD_LOG_WARN("angle.w summed to " + std::to_string(sum) + " (relative difference " +
+                     std::to_string(rel_diff) + "); normalizing by " + std::to_string(scale) +
+                     " to sum to 2");
+    }
     w *= scale;
   }
 
@@ -388,100 +400,205 @@ void InputDeck::validate() {
   }
 }
 
+void InputDeck::set_mesh(Eigen::VectorXd x_boundary) {
+  Mesh updated;
+  updated.n_x = static_cast<int>(x_boundary.size()) - 1;
+  updated.x_boundary = std::move(x_boundary);
+  updated.validate();
+  mesh = std::move(updated);
+}
+
+void InputDeck::set_energy(Eigen::VectorXd E_boundary) {
+  Energy updated;
+  updated.G = static_cast<int>(E_boundary.size()) - 1;
+  updated.E_boundary = std::move(E_boundary);
+  updated.validate();
+  energy = std::move(updated);
+}
+
+void InputDeck::set_angle(Eigen::VectorXd mu, Eigen::VectorXd w) {
+  Angle updated;
+  updated.M = static_cast<int>(mu.size());
+  updated.mu = std::move(mu);
+  updated.w = std::move(w);
+  updated.validate();
+  angle = std::move(updated);
+}
+
+void InputDeck::set_materials(std::vector<Material> materials,
+                              const std::vector<std::string>& regions) {
+  std::map<std::string, int> index_of;
+  for (const Material& material : materials) {
+    if (!index_of.emplace(material.name, static_cast<int>(index_of.size())).second) {
+      throw std::runtime_error("duplicate material name '" + material.name + "'");
+    }
+  }
+
+  std::vector<int> indices;
+  indices.reserve(regions.size());
+  for (const std::string& name : regions) {
+    const auto found = index_of.find(name);
+    if (found == index_of.end()) {
+      throw std::runtime_error("region references undefined material '" + name + "'");
+    }
+    indices.push_back(found->second);
+  }
+
+  Xs updated;
+  updated.set_materials(std::move(materials), std::move(indices));
+  updated.validate();
+  xs = std::move(updated);
+}
+
+void InputDeck::set_bc(Eigen::MatrixXd values) { bc.values = std::move(values); }
+
+void InputDeck::set_source(std::vector<Eigen::MatrixXd> values) {
+  Source updated;
+  updated.values = std::move(values);
+  updated.validate();
+  source = std::move(updated);
+}
+
+void InputDeck::load(const std::filesystem::path& path_to_yaml) {
+  const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
+  LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
+
+  set_mesh(toVector(requireNode(root, "spatial_mesh").as<std::vector<double>>()));
+  set_energy(toVector(requireNode(root, "energy_mesh").as<std::vector<double>>()));
+
+  // Materials keep the order they appear in the file.
+  std::vector<Material> material_list;
+  for (const auto& entry : requireNode(root, "materials")) {
+    const std::string name = entry.first.as<std::string>();
+    material_list.push_back(parseMaterial(entry.second, name, energy.G));
+    LDCSD_LOG_DEBUG("parsed material '" + name + "'");
+  }
+  set_materials(
+      std::move(material_list),
+      requireNode(requireNode(root, "regions"), "materials").as<std::vector<std::string>>());
+
+  const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
+  set_angle(toVector(requireNode(angular_quadrature_node, "mu").as<std::vector<double>>()),
+            toVector(requireNode(angular_quadrature_node, "w").as<std::vector<double>>()));
+
+  const YAML::Node bc_node = requireNode(root, "boundary_conditions");
+  const std::vector<std::vector<double>> up =
+      requireNode(bc_node, "up").as<std::vector<std::vector<double>>>();
+  const std::vector<std::vector<double>> down =
+      requireNode(bc_node, "down").as<std::vector<std::vector<double>>>();
+  requireSize(static_cast<Eigen::Index>(down.size()), static_cast<Eigen::Index>(up.size()),
+              "boundary_conditions.down");
+
+  const auto bc_G = static_cast<Eigen::Index>(up.size());
+  const auto bc_M = bc_G > 0 ? static_cast<Eigen::Index>(up[0].size()) : 0;
+  Eigen::MatrixXd bc_values(2 * bc_G, bc_M);
+  for (Eigen::Index g = 0; g < bc_G; ++g) {
+    requireSize(static_cast<Eigen::Index>(up[g].size()), bc_M,
+                "boundary_conditions.up row " + std::to_string(g));
+    requireSize(static_cast<Eigen::Index>(down[g].size()), bc_M,
+                "boundary_conditions.down row " + std::to_string(g));
+    for (Eigen::Index m = 0; m < bc_M; ++m) {
+      bc_values(2 * g, m) = up[g][m];
+      bc_values(2 * g + 1, m) = down[g][m];
+    }
+  }
+  set_bc(std::move(bc_values));
+
+  const YAML::Node source_node = requireNode(root, "source");
+  requireSize(static_cast<Eigen::Index>(source_node.size()), energy.G, "source group count");
+  std::vector<Eigen::MatrixXd> source_values(energy.G);
+  for (int g = 0; g < energy.G; ++g) {
+    source_values[g] = parseSourceGroup(source_node[g], "source group " + std::to_string(g + 1),
+                                        angle.M, mesh.n_x);
+  }
+  set_source(std::move(source_values));
+
+  validate();
+
+  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh.n_x) +
+                 " cells, " + std::to_string(energy.G) + " groups, " + std::to_string(angle.M) +
+                 " ordinates");
+}
+
 int InputDeck::read(const std::filesystem::path& path_to_yaml) {
   try {
-    const YAML::Node root = YAML::LoadFile(path_to_yaml.string());
-    LDCSD_LOG_TRACE("parsed '" + path_to_yaml.string() + "' as YAML");
-
-    const std::vector<double> x_boundary_raw =
-        requireNode(root, "spatial_mesh").as<std::vector<double>>();
-    mesh.x_boundary = toVector(x_boundary_raw);
-    mesh.n_x = static_cast<int>(x_boundary_raw.size()) - 1;
-
-    const std::vector<double> E_boundary_raw =
-        requireNode(root, "energy_mesh").as<std::vector<double>>();
-    energy.E_boundary = toVector(E_boundary_raw);
-    energy.G = static_cast<int>(E_boundary_raw.size()) - 1;
-
-    const YAML::Node regions = requireNode(root, "regions");
-    const std::vector<std::string> region_materials =
-        requireNode(regions, "materials").as<std::vector<std::string>>();
-    if (static_cast<int>(region_materials.size()) != mesh.n_x) {
-      throw std::runtime_error("regions.materials has size " +
-                               std::to_string(region_materials.size()) + ", expected " +
-                               std::to_string(mesh.n_x) + " (one per spatial cell)");
-    }
-
-    // Materials keep the order they appear in the file; index_of turns the
-    // names in `regions` into positions in that list.
-    std::vector<Material> material_list;
-    std::map<std::string, int> index_of;
-    const YAML::Node materials_node = requireNode(root, "materials");
-    for (const auto& entry : materials_node) {
-      const std::string name = entry.first.as<std::string>();
-      index_of[name] = static_cast<int>(material_list.size());
-      material_list.push_back(parseMaterial(entry.second, name, energy.G));
-      LDCSD_LOG_DEBUG("parsed material '" + name + "'");
-    }
-
-    std::vector<int> material_indices;
-    material_indices.reserve(region_materials.size());
-    for (const std::string& name : region_materials) {
-      const auto found = index_of.find(name);
-      if (found == index_of.end()) {
-        throw std::runtime_error("region references undefined material '" + name + "'");
-      }
-      material_indices.push_back(found->second);
-    }
-
-    xs.set_materials(std::move(material_list), std::move(material_indices));
-
-    const YAML::Node angular_quadrature_node = requireNode(root, "angular_quadrature");
-    const std::vector<double> mu_raw =
-        requireNode(angular_quadrature_node, "mu").as<std::vector<double>>();
-    angle.mu = toVector(mu_raw);
-    angle.w = toVector(requireNode(angular_quadrature_node, "w").as<std::vector<double>>());
-    angle.M = static_cast<int>(mu_raw.size());
-
-    const YAML::Node bc_node = requireNode(root, "boundary_conditions");
-    const std::vector<std::vector<double>> up =
-        requireNode(bc_node, "up").as<std::vector<std::vector<double>>>();
-    const std::vector<std::vector<double>> down =
-        requireNode(bc_node, "down").as<std::vector<std::vector<double>>>();
-    requireSize(static_cast<Eigen::Index>(down.size()), static_cast<Eigen::Index>(up.size()),
-                "boundary_conditions.down");
-
-    const auto bc_G = static_cast<Eigen::Index>(up.size());
-    const auto bc_M = bc_G > 0 ? static_cast<Eigen::Index>(up[0].size()) : 0;
-    bc.values = Eigen::MatrixXd(2 * bc_G, bc_M);
-    for (Eigen::Index g = 0; g < bc_G; ++g) {
-      requireSize(static_cast<Eigen::Index>(up[g].size()), bc_M,
-                  "boundary_conditions.up row " + std::to_string(g));
-      requireSize(static_cast<Eigen::Index>(down[g].size()), bc_M,
-                  "boundary_conditions.down row " + std::to_string(g));
-      for (Eigen::Index m = 0; m < bc_M; ++m) {
-        bc.values(2 * g, m) = up[g][m];
-        bc.values(2 * g + 1, m) = down[g][m];
-      }
-    }
-
-    const YAML::Node source_node = requireNode(root, "source");
-    requireSize(static_cast<Eigen::Index>(source_node.size()), energy.G, "source group count");
-    source.values.resize(energy.G);
-    for (int g = 0; g < energy.G; ++g) {
-      source.values[g] = parseSourceGroup(source_node[g], "source group " + std::to_string(g + 1),
-                                          angle.M, mesh.n_x);
-    }
-
-    validate();
+    load(path_to_yaml);
   } catch (const std::exception& e) {
     LDCSD_LOG_ERROR(std::string("failed to read input deck '") + path_to_yaml.string() +
                     "': " + e.what());
     return 1;
   }
-
-  LDCSD_LOG_INFO("read input deck '" + path_to_yaml.string() + "': " + std::to_string(mesh.n_x) +
-                 " cells, " + std::to_string(energy.G) + " groups, " + std::to_string(angle.M) +
-                 " ordinates");
   return 0;
+}
+
+void InputDeck::write(const std::filesystem::path& path_to_yaml) const {
+  // Enough digits that every double reads back exactly.
+  YAML::Emitter out;
+  out.SetDoublePrecision(std::numeric_limits<double>::max_digits10);
+  out << YAML::BeginMap;
+
+  out << YAML::Key << "spatial_mesh" << YAML::Value << YAML::Flow << toStd(mesh.x_boundary);
+  out << YAML::Key << "regions" << YAML::Value << YAML::BeginMap << YAML::Key << "materials"
+      << YAML::Value << YAML::Flow << xs.material_names() << YAML::EndMap;
+  out << YAML::Key << "energy_mesh" << YAML::Value << YAML::Flow << toStd(energy.E_boundary);
+
+  out << YAML::Key << "materials" << YAML::Value << YAML::BeginMap;
+  for (const Material& material : xs.material_list) {
+    out << YAML::Key << material.name << YAML::Value << YAML::BeginMap;
+    out << YAML::Key << "sigma_t" << YAML::Value << YAML::Flow << toStd(material.total);
+    out << YAML::Key << "scattering" << YAML::Value << YAML::BeginSeq;
+    for (Eigen::Index from = 0; from < material.scatter.rows(); ++from) {
+      out << YAML::Flow << toStd(material.scatter.row(from));
+    }
+    out << YAML::EndSeq;
+    out << YAML::Key << "stopping_power" << YAML::Value << YAML::BeginMap;
+    out << YAML::Key << "group_average" << YAML::Value << YAML::Flow << toStd(material.S);
+    out << YAML::Key << "group_boundary" << YAML::Value << YAML::Flow << toStd(material.S_b);
+    out << YAML::EndMap << YAML::EndMap;
+  }
+  out << YAML::EndMap;
+
+  out << YAML::Key << "angular_quadrature" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "mu" << YAML::Value << YAML::Flow << toStd(angle.mu);
+  out << YAML::Key << "w" << YAML::Value << YAML::Flow << toStd(angle.w);
+  out << YAML::EndMap;
+
+  // bc.values rows alternate up, down per group.
+  out << YAML::Key << "boundary_conditions" << YAML::Value << YAML::BeginMap;
+  for (const auto& [key, offset] : {std::pair{"up", 0}, std::pair{"down", 1}}) {
+    out << YAML::Key << key << YAML::Value << YAML::BeginSeq;
+    for (Eigen::Index row = offset; row < bc.values.rows(); row += 2) {
+      out << YAML::Flow << toStd(bc.values.row(row));
+    }
+    out << YAML::EndSeq;
+  }
+  out << YAML::EndMap;
+
+  // [g][m][cell], each cell a named-corner map (see parseSourceGroup).
+  out << YAML::Key << "source" << YAML::Value << YAML::BeginSeq;
+  for (const Eigen::MatrixXd& group : source.values) {
+    out << YAML::BeginSeq;
+    for (Eigen::Index m = 0; m < group.cols(); ++m) {
+      out << YAML::BeginSeq;
+      for (Eigen::Index c = 0; 4 * c < group.rows(); ++c) {
+        out << YAML::Flow << YAML::BeginMap;
+        out << YAML::Key << "up_left" << YAML::Value << group(4 * c, m);
+        out << YAML::Key << "up_right" << YAML::Value << group(4 * c + 1, m);
+        out << YAML::Key << "down_left" << YAML::Value << group(4 * c + 2, m);
+        out << YAML::Key << "down_right" << YAML::Value << group(4 * c + 3, m);
+        out << YAML::EndMap;
+      }
+      out << YAML::EndSeq;
+    }
+    out << YAML::EndSeq;
+  }
+  out << YAML::EndSeq;
+
+  out << YAML::EndMap;
+
+  std::ofstream file(path_to_yaml);
+  if (!file) {
+    throw std::runtime_error("failed to open '" + path_to_yaml.string() + "' for writing");
+  }
+  file << out.c_str() << "\n";
 }

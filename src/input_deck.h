@@ -150,13 +150,35 @@ public:
     void validate() const;
   };
 
-  // Reads and validates path_to_yaml, populating this deck's members.
-  // Returns 0 if the file is valid; returns 1 early on the first error
-  // found in the file (missing/malformed keys, undefined material
-  // references, mismatched sizes, etc.). Each material named under
-  // `materials` becomes one entry in xs's material list, and `regions`
-  // becomes the cell -> material map into it.
+  // Setters: the supported way to change a deck after construction. Each replaces one struct,
+  // derives its count (n_x, G, M) from the array sizes, and runs that struct's own validate()
+  // before storing anything, so a throwing setter leaves the deck unchanged. Checks that span
+  // structs (e.g. xs covering n_x cells) wait for validate(), since a deck built one setter at a
+  // time is inconsistent in between.
+  void set_mesh(Eigen::VectorXd x_boundary);
+  void set_energy(Eigen::VectorXd E_boundary);
+  void set_angle(Eigen::VectorXd mu, Eigen::VectorXd w);
+  // Materials keep list order; regions names one material per cell. Names must be unique, and
+  // every region must name a material in the list.
+  void set_materials(std::vector<Material> materials, const std::vector<std::string>& regions);
+  // rows = 2 * G (up, then down, per group), cols = M.
+  void set_bc(Eigen::MatrixXd values);
+  // One (4 * n_x) x M matrix per group, in Source::values layout.
+  void set_source(std::vector<Eigen::MatrixXd> values);
+
+  // Reads and validates path_to_yaml, populating this deck's members. Throws std::runtime_error
+  // (or a yaml-cpp exception) on the first error found in the file (missing/malformed keys,
+  // undefined material references, mismatched sizes, etc.). Each material named under
+  // `materials` becomes one entry in xs's material list, and `regions` becomes the cell ->
+  // material map into it.
+  void load(const std::filesystem::path& path_to_yaml);
+
+  // load(), but logs the error and returns 1 instead of throwing; returns 0 on success.
   int read(const std::filesystem::path& path_to_yaml);
+
+  // Writes this deck as YAML in the format load() reads (scattering written dense). Doesn't
+  // validate; write a validated deck to get a file load() accepts.
+  void write(const std::filesystem::path& path_to_yaml) const;
 
   /// @brief Calls each data member's own validate() and performs cross-struct checks (i.e. ensure
   /// xs has correct G). Call before using/copying data

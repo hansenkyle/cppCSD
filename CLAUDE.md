@@ -102,12 +102,14 @@ mesh sizes, cross-section shapes, quadrature ordering, etc.
 A `Solver` should own an `InputDeck` (it's a small struct, cheap to hold
 by value). Any method on `Solver` that lets a caller reconfigure part of
 the problem (e.g. swap in a different angular quadrature) should just
-call `InputDeck`'s own mutating methods to change that data, rather than
-mutating fields directly or re-deriving validation logic itself.
-`InputDeck` re-validates on every mutation, not just during the initial
-YAML read, so no other method needs to worry about whether the data it's
-handed is legal -- that question is answered once, at the `InputDeck`
-boundary.
+call `InputDeck`'s own setters (`set_mesh`, `set_energy`, `set_angle`,
+`set_materials`, `set_bc`, `set_source`) to change that data, rather than
+mutating fields directly or re-deriving validation logic itself. Each
+setter validates its own struct before storing it; checks that span
+structs (e.g. xs covering `n_x` cells) run in `InputDeck::validate()`,
+which `load()`/`read()` and the `Method` constructor both call. So no
+other method needs to worry about whether the data it's handed is legal
+-- that question is answered once, at the `InputDeck` boundary.
 
 ## Repository Interactions
 

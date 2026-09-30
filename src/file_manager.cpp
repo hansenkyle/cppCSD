@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <ctime>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -105,4 +106,12 @@ OutputManager::OutputManager(const fs::path& deck_dir, const std::string& deck_s
   results_path = run_dir / "results.txt";
   residuals_path = run_dir / "residuals.txt";
   h5_path = run_dir / (deck_stem + ".h5");
+}
+
+std::string make_timestamp() {
+  const std::time_t now = std::time(nullptr);
+  const std::tm* tm = std::localtime(&now);
+  std::ostringstream oss;
+  oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
+  return oss.str();
 }
