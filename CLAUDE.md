@@ -53,6 +53,17 @@ runs the tests, and generates an HTML report at
 `pip install gcovr`). CI extracts a line-coverage percentage from this to
 regenerate `badges/coverage.svg` on pushes to `main`.
 
+## Python reader
+
+`python/` is the `ldcsd` package for reading a run's `.h5` file
+(`ldcsd.read(path)`, plus `cell_average`, `spectrum`, `multigroup` helpers).
+Corner fields come back as `[G, nx, 2 (up, down), 2 (L, R)]`.
+
+```bash
+pip install -e "python/[test]"
+pytest python
+```
+
 ## Formatting
 
 Formatting is enforced by clang-format (config in `.clang-format`) and

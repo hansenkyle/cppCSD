@@ -59,6 +59,16 @@ jobs:
       - name: Run unit tests
         run: ./build/unit_test
 
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install "python/[test]"
+      - run: pytest python
+
   coverage:
     runs-on: ubuntu-latest
     permissions:

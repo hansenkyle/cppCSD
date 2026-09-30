@@ -73,6 +73,8 @@ scripts/xs_data/
 
 # Python stuff
 __pycache__/
+*.egg-info/
+.pytest_cache/
 
 # generated per-deck run output (see docs/output-layout.md)
 runs/
