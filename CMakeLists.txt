@@ -75,6 +75,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(CLI11)
 
+# HighFive, header-only C++ wrapper used to write the run's .h5 results file. Unlike the other
+# dependencies it needs the HDF5 C library installed on the system (e.g. apt's libhdf5-dev),
+# which HighFive's own CMake finds and links.
+set(HIGHFIVE_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(HIGHFIVE_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(HIGHFIVE_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    HighFive
+    GIT_REPOSITORY https://github.com/highfive-devs/highfive.git
+    GIT_TAG        v3.3.0
+    GIT_SUBMODULES ""   # skip its test-only Catch2 submodule
+)
+FetchContent_MakeAvailable(HighFive)
+
 # --- Core library, included by main and tests
 add_library(ldcsd_core STATIC
     src/convergence.cpp
@@ -90,7 +104,7 @@ add_library(ldcsd_core STATIC
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(ldcsd_core PUBLIC Eigen3::Eigen yaml-cpp::yaml-cpp Boost::multiprecision)
-target_link_libraries(ldcsd_core PRIVATE CLI11::CLI11)
+target_link_libraries(ldcsd_core PRIVATE CLI11::CLI11 HighFive::HighFive)
 target_compile_options(ldcsd_core PRIVATE
     $<$<CONFIG:Release>:-O3 -march=native>
 )
@@ -132,8 +146,9 @@ if(LDCSD_BUILD_TESTS)
         test/unit/source_iteration.test.cpp
         test/unit/smm.test.cpp
         test/unit/method.test.cpp
-        test/unit/cli.test.cpp)
-    target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest)
+        test/unit/cli.test.cpp
+        test/unit/h5_output.test.cpp)
+    target_link_libraries(unit_test PRIVATE ldcsd_core doctest::doctest HighFive::HighFive)
     target_compile_definitions(unit_test PRIVATE
         TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/test/unit/data")
     # Must match ldcsd_core's ISA flags: Eigen fixed-size types (e.g. Kernel's Matrix4d) get

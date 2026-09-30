@@ -10,8 +10,9 @@ Slowing-Down (CSD) equation using Lewis and Miller's Second Moment Method
 
 ## Build
 
-Requires CMake 4.0+. Dependencies (Eigen, doctest) are fetched automatically
-via `FetchContent` — no manual dependency install needed.
+Requires CMake 4.0+ and the HDF5 C library (`sudo apt install libhdf5-dev`).
+Everything else (Eigen, Boost.Multiprecision, yaml-cpp, CLI11, HighFive, doctest)
+is fetched automatically via `FetchContent`.
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DLDCSD_BUILD_TESTS=ON
@@ -51,6 +52,17 @@ runs the tests, and generates an HTML report at
 `build-coverage/coverage-report/index.html` via gcovr (requires
 `pip install gcovr`). CI extracts a line-coverage percentage from this to
 regenerate `badges/coverage.svg` on pushes to `main`.
+
+## Python reader
+
+`python/` is the `ldcsd` package for reading a run's `.h5` file
+(`ldcsd.read(path)`, plus `cell_average`, `spectrum`, `multigroup` helpers).
+Corner fields come back as `[G, nx, 2 (up, down), 2 (L, R)]`.
+
+```bash
+pip install -e "python/[test]"
+pytest python
+```
 
 ## Formatting
 

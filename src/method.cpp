@@ -7,6 +7,7 @@
 
 #include "method.h"
 #include "output_block.h"
+#include "version.h"
 #include <cmath>
 #include <filesystem>
 #include <format>
@@ -14,6 +15,9 @@
 #include <ranges>
 #include <stdexcept>
 #include <string>
+
+#include <highfive/eigen.hpp>
+#include <highfive/highfive.hpp>
 
 namespace {
 
@@ -49,6 +53,9 @@ std::vector<std::string> interleave(const std::vector<std::string>& original) {
   }
   return doubled;
 }
+
+// HighFive writes every Eigen type as 2D, so 1D data goes through std::vector.
+std::vector<double> to_std(const Eigen::VectorXd& v) { return {v.begin(), v.end()}; }
 } // namespace
 
 Eigen::MatrixXd MethodResult::spectrum() const {
@@ -358,4 +365,79 @@ MatrixTable Method::cellAverageTable(const std::string& title,
   table.add_column_label(int_label_seq(input_deck.mesh.n_x));
   table.set_corner_grid({{"x_i"}, {"g \\ i"}});
   return table;
+}
+
+std::vector<std::vector<std::vector<double>>>
+Method::stackGroups(const std::vector<Eigen::MatrixXd>& per_group) {
+  std::vector<std::vector<std::vector<double>>> stacked(per_group.size());
+  for (std::size_t g = 0; g < per_group.size(); g++) {
+    const Eigen::MatrixXd& m = per_group[g];
+    stacked[g].assign(m.rows(), std::vector<double>(m.cols()));
+    for (Eigen::Index r = 0; r < m.rows(); r++) {
+      for (Eigen::Index c = 0; c < m.cols(); c++) {
+        stacked[g][r][c] = m(r, c);
+      }
+    }
+  }
+  return stacked;
+}
+
+Eigen::MatrixXd Method::stackGroups(const std::vector<Eigen::VectorXd>& per_group) {
+  Eigen::MatrixXd stacked(per_group.size(), per_group.empty() ? 0 : per_group[0].size());
+  for (std::size_t g = 0; g < per_group.size(); g++) {
+    stacked.row(g) = per_group[g].transpose();
+  }
+  return stacked;
+}
+
+void Method::writeH5Common(HighFive::File& file, const std::string& timestamp) const {
+  file.createAttribute("execution_datetime", timestamp);
+  file.createAttribute("method", name);
+  file.createAttribute("ldcsd_version",
+                       std::format("{}.{}.{}", version_major, version_minor, version_revision));
+  file.createAttribute("n_groups", input_deck.energy.G);
+  file.createAttribute("n_cells", input_deck.mesh.n_x);
+  file.createAttribute("n_angles", input_deck.angle.M);
+
+  file.createDataSet("/input/mesh/x_boundary", to_std(input_deck.mesh.x_boundary));
+  file.createDataSet("/input/mesh/dx", to_std(input_deck.mesh.dx));
+  file.createDataSet("/input/mesh/x_center", to_std(input_deck.mesh.x_center));
+  file.createDataSet("/input/mesh/material", input_deck.xs.material_names());
+  file.createDataSet("/input/energy/E_boundary", to_std(input_deck.energy.E_boundary));
+  file.createDataSet("/input/energy/dE", to_std(input_deck.energy.dE));
+  file.createDataSet("/input/angle/mu", to_std(input_deck.angle.mu));
+  file.createDataSet("/input/angle/w", to_std(input_deck.angle.w));
+  file.createDataSet("/input/bc", input_deck.bc.values)
+      .createAttribute("row_order", std::string("row 2g+k is group g, k = (up, down)"));
+  file.createDataSet("/input/source/values", stackGroups(input_deck.source.values))
+      .createAttribute("corner_order", std::string(kCornerOrder));
+  file.createDataSet("/input/source/q0", stackGroups(input_deck.source.q0))
+      .createAttribute("corner_order", std::string(kCornerOrder));
+  file.createDataSet("/input/source/q1", stackGroups(input_deck.source.q1))
+      .createAttribute("corner_order", std::string(kCornerOrder));
+  for (const Material& m : input_deck.xs.material_list) {
+    const std::string path = "/input/materials/" + m.name;
+    file.createDataSet(path + "/total", to_std(m.total));
+    file.createDataSet(path + "/S", to_std(m.S));
+    file.createDataSet(path + "/S_b", to_std(m.S_b));
+    file.createDataSet(path + "/scatter", m.scatter)
+        .createAttribute("index_order", std::string("(from, to)"));
+  }
+
+  file.createDataSet("/convergence/iterations", convergence_.iterations);
+  file.createDataSet("/convergence/group_times", convergence_.group_times);
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    std::vector<double> delta_l2, delta_linf, phi_l2, phi_linf;
+    for (const auto& record : convergence_.records[g]) {
+      delta_l2.push_back(record.delta.norm2);
+      delta_linf.push_back(record.delta.norminf);
+      phi_l2.push_back(record.solution.norm2);
+      phi_linf.push_back(record.solution.norminf);
+    }
+    const std::string path = std::format("/convergence/g{:03d}", g + 1);
+    file.createDataSet(path + "/delta_l2", delta_l2);
+    file.createDataSet(path + "/delta_linf", delta_linf);
+    file.createDataSet(path + "/phi_l2", phi_l2);
+    file.createDataSet(path + "/phi_linf", phi_linf);
+  }
 }

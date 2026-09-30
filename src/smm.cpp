@@ -17,6 +17,9 @@
 #include <stdexcept>
 #include <vector>
 
+#include <highfive/eigen.hpp>
+#include <highfive/highfive.hpp>
+
 namespace {
 using Matrix8d = Eigen::Matrix<double, 8, 8>;
 
@@ -621,6 +624,19 @@ Eigen::Vector<HighPrecision, 8> SecondMoment::cellResidual(
   return result;
 }
 
+namespace {
+// Every closure in SMClosures, with the name it's written under.
+const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClosures = {{
+    {"F", &SMClosures::F},
+    {"F+", &SMClosures::F_pos},
+    {"F-", &SMClosures::F_neg},
+    {"K+", &SMClosures::K_pos},
+    {"K-", &SMClosures::K_neg},
+    {"T+", &SMClosures::T_pos},
+    {"T-", &SMClosures::T_neg},
+}};
+} // namespace
+
 void SecondMoment::writeResults(const std::filesystem::path& results_path) const {
   using Eigen::seqN;
   const int I = input_deck.mesh.n_x;
@@ -630,16 +646,6 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
     iseq.push_back(std::to_string(i + 1));
     x_center.push_back(std::format("{:.4e}", input_deck.mesh.x_center(i)));
   }
-
-  static const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClosures = {{
-      {"F", &SMClosures::F},
-      {"F+", &SMClosures::F_pos},
-      {"F-", &SMClosures::F_neg},
-      {"K+", &SMClosures::K_pos},
-      {"K-", &SMClosures::K_neg},
-      {"T+", &SMClosures::T_pos},
-      {"T-", &SMClosures::T_neg},
-  }};
 
   UnitGroup close("closures");
   for (int g = 0; g < input_deck.energy.G; g++) {
@@ -765,4 +771,36 @@ void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::s
   }
 
   appendToFile(file_path, low_order.render_txt());
+}
+
+void SecondMoment::writeH5(const std::filesystem::path& file_path,
+                           const std::string& timestamp) const {
+  HighFive::File file(file_path.string(), HighFive::File::Truncate);
+  writeH5Common(file, timestamp);
+
+  const std::string corner_order(kCornerOrder);
+  file.createDataSet("/solution/scalar_flux", solution.scalar_flux)
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/angular_flux", stackGroups(solution.angular_flux))
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/current", solution.current)
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/reconstructed_scalar", solution.reconstructed_scalar)
+      .createAttribute("corner_order", corner_order);
+
+  for (const auto& [closure_name, field] : kClosures) {
+    std::vector<Eigen::VectorXd> per_group;
+    for (const SMClosures& c : closures) {
+      per_group.push_back(c.*field);
+    }
+    file.createDataSet(std::string("/solution/closures/") + closure_name, stackGroups(per_group))
+        .createAttribute("corner_order", corner_order);
+  }
+
+  file.createDataSet("/residuals/transport", stackGroups(residuals.high_order))
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/residuals/second_moment", stackGroups(residuals.low_order))
+      .createAttribute("row_order",
+                       std::string("row 8i+k is cell i, k = (balance up L, up R, down L, down R, "
+                                   "1st moment up L, up R, down L, down R)"));
 }

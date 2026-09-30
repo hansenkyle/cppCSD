@@ -9,6 +9,7 @@
 #define OUTPUT_MANAGER_H
 
 #include <filesystem>
+#include <string>
 
 /// @class OutputManager
 /// @brief Contains the locations of all output files, per @ref docs/output-layout.md
@@ -18,7 +19,9 @@ class OutputManager {
 public:
   // Determines the next run ID under <deck_dir>/runs, creates that run
   // directory (and runs/ itself, if needed), and repoints runs/latest at it.
-  explicit OutputManager(const std::filesystem::path& deck_dir);
+  // deck_stem names the run's .h5 results file (<deck_stem>.h5).
+  explicit OutputManager(const std::filesystem::path& deck_dir,
+                         const std::string& deck_stem = "results");
 
   std::filesystem::path run_dir;
   std::filesystem::path info_path;
@@ -26,6 +29,7 @@ public:
   std::filesystem::path out_path;
   std::filesystem::path results_path;
   std::filesystem::path residuals_path;
+  std::filesystem::path h5_path;
 };
 
 #endif
