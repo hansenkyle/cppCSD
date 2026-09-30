@@ -1,0 +1,14 @@
+test/method/al_mcdc/plots.py
+  h_c6d403188ce57a 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b42dedc8b364753c9d5f4d76907268ede7b010c8",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
