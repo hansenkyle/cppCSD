@@ -213,7 +213,7 @@ void InputDeck::Mesh::validate() {
   }
 
   dx = x_boundary.tail(n_x) - x_boundary.head(n_x);
-  x_center = x_boundary.head(n_x) + dx;
+  x_center = x_boundary.head(n_x) + dx / 2;
 }
 
 void InputDeck::Energy::validate() {

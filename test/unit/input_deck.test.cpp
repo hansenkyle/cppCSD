@@ -633,7 +633,7 @@ TEST_CASE("InputDeck::Angle::validate rejects non-ascending mu") {
   CHECK_THROWS_AS(angle.validate(), std::runtime_error);
 }
 
-TEST_CASE("InputDeck::Mesh::validate derives dx from x_boundary") {
+TEST_CASE("InputDeck::Mesh::validate derives dx and x_center from x_boundary") {
   InputDeck::Mesh mesh;
   mesh.n_x = 3;
   mesh.x_boundary = Eigen::Vector4d(0.0, 1.0, 3.0, 6.0);
@@ -644,6 +644,11 @@ TEST_CASE("InputDeck::Mesh::validate derives dx from x_boundary") {
   CHECK(mesh.dx[0] == doctest::Approx(1.0));
   CHECK(mesh.dx[1] == doctest::Approx(2.0));
   CHECK(mesh.dx[2] == doctest::Approx(3.0));
+
+  REQUIRE(mesh.x_center.size() == 3);
+  CHECK(mesh.x_center[0] == doctest::Approx(0.5));
+  CHECK(mesh.x_center[1] == doctest::Approx(2.0));
+  CHECK(mesh.x_center[2] == doctest::Approx(4.5));
 }
 
 TEST_CASE("InputDeck::Mesh::validate rejects non-positive n_x") {
