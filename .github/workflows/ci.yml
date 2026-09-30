@@ -17,9 +17,9 @@ jobs:
       # apt.llvm.org's rolling snapshot builds -- those can drift from the
       # actual tagged release under the same version string, which is what
       # caused local/CI formatting results to disagree here previously.
-      # include-regex mirrors scripts/format.sh and check-format.sh, which
-      # only cover *.cpp/*.hpp (see the Formatting section of CLAUDE.md for
-      # the known *.h gap).
+      # include-regex covers only *.cpp/*.hpp, while scripts/format.sh and
+      # check-format.sh also cover *.h (see the Formatting section of
+      # CLAUDE.md for the known *.h gap).
       - name: Check src/ formatting
         uses: jidicula/clang-format-action@v4.18.0
         with:
@@ -32,6 +32,13 @@ jobs:
         with:
           clang-format-version: "21"
           check-path: "test"
+          include-regex: ".*\\.(cpp|hpp)$"
+
+      - name: Check python/src/ formatting
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: "21"
+          check-path: "python/src"
           include-regex: ".*\\.(cpp|hpp)$"
 
   build-and-test:
@@ -70,6 +77,27 @@ jobs:
       # package on PYTHONPATH instead. Tests needing ldcsd._core skip themselves here.
       - run: pip install h5py numpy pytest
       - run: PYTHONPATH=python pytest python
+
+  # Builds the ldcsd._core extension (pip install runs the root CMakeLists via scikit-build-core)
+  # and runs every Python test, including the ones python-tests skips.
+  python-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "^4.0.0"
+
+      - name: Install HDF5
+        run: sudo apt-get update && sudo apt-get install -y libhdf5-dev
+
+      - run: pip install "python/[test]"
+      - run: pytest python
 
   coverage:
     runs-on: ubuntu-latest

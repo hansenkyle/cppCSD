@@ -69,6 +69,10 @@ convergence:
 ```
 
 This is [../test/unit/data/sample_input.yaml](../test/unit/data/sample_input.yaml).
+A deck can also be built in Python (`ldcsd.InputDeck` and its setters; see
+the Python package section of [../CLAUDE.md](../CLAUDE.md)) and written in
+this format with `InputDeck::write()` / `deck.to_yaml(path)`, which emits
+`scattering` in the dense form.
 To generate the `materials:` block from cross-section physics rather than
 writing it by hand, see [../scripts/generate_xs.jl](../scripts/generate_xs.jl).
 

@@ -3,7 +3,7 @@
 # would be reformatted. Used by CI; also safe to run locally.
 set -euo pipefail
 
-FILES=$(find src test -type f \( -name '*.cpp' -o -name '*.h' \))
+FILES=$(find src test python/src -type f \( -name '*.cpp' -o -name '*.h' \))
 
 FAILED=0
 for f in $FILES; do
