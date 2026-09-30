@@ -66,8 +66,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: pip install "python/[test]"
-      - run: pytest python
+      # Pure-Python reader only: installing python/ would build the C++ extension, so put the
+      # package on PYTHONPATH instead. Tests needing ldcsd._core skip themselves here.
+      - run: pip install h5py numpy pytest
+      - run: PYTHONPATH=python pytest python
 
   coverage:
     runs-on: ubuntu-latest

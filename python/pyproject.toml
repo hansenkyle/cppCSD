@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=64"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "ldcsd"
 version = "0.1.0"
-description = "Reads ldcsd run results (.h5)"
+description = "Builds ldcsd input decks, runs the solvers, and reads run results (.h5)"
 license = "BSD-3-Clause"
 requires-python = ">=3.10"
 dependencies = ["h5py", "numpy"]
@@ -13,5 +13,17 @@ dependencies = ["h5py", "numpy"]
 [project.optional-dependencies]
 test = ["pytest"]
 
-[tool.setuptools]
-packages = ["ldcsd"]
+[tool.scikit-build]
+# The extension is built by the repo's root CMakeLists (it links ldcsd_core), not one in python/.
+cmake.source-dir = ".."
+cmake.version = ">=4.0"
+cmake.build-type = "Release"
+cmake.define.LDCSD_BUILD_TESTS = "OFF"
+wheel.packages = ["ldcsd"]
+install.components = ["python"]
+# Persistent build dir so FetchContent deps and objects survive between installs; required by
+# editable.rebuild, which rebuilds the extension on import after C++ edits (install editable with
+# --no-build-isolation so the build requirements are there at import time).
+build-dir = "build/{wheel_tag}"
+editable.rebuild = true
+editable.verbose = false
