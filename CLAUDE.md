@@ -70,6 +70,8 @@ regenerate `badges/coverage.svg` on pushes to `main`.
 Arrays cross the binding in the reader's layout -- corner fields
 `[G, nx, 2 (up, down), 2 (L, R)]`, source `[G, M, nx, 2, 2]`, bc
 `[G, 2 (up, down), M]` -- and everything returned is a read-only copy.
+User-facing reference: `docs/python-bindings.md`; example:
+`python/examples/slab.py`.
 
 `pip install python/` builds the extension with scikit-build-core, which
 runs the root `CMakeLists.txt` with `SKBUILD` set (PIC static deps, no
