@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   }
 
   const std::filesystem::path deck_dir = std::filesystem::absolute(*yaml_path).parent_path();
-  const OutputManager output(deck_dir);
+  const OutputManager output(deck_dir, yaml_path->stem().string());
   Logger::configure(output.log_path);
   Terminal::configure(output.out_path);
 
@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
   solver.writeConvergence(output.results_path);
   solver.writeResults(output.results_path);
   solver.writeResiduals(output.residuals_path, timestamp);
+  solver.writeH5(output.h5_path, timestamp);
 
   return 0;
 }

@@ -82,7 +82,7 @@ void updateLatestSymlink(const fs::path& runs_dir, const fs::path& run_dir) {
 
 } // namespace
 
-OutputManager::OutputManager(const fs::path& deck_dir) {
+OutputManager::OutputManager(const fs::path& deck_dir, const std::string& deck_stem) {
   try {
     const fs::path runs_dir = deck_dir / "runs";
     fs::create_directories(runs_dir);
@@ -104,4 +104,5 @@ OutputManager::OutputManager(const fs::path& deck_dir) {
   out_path = run_dir / "out.txt";
   results_path = run_dir / "results.txt";
   residuals_path = run_dir / "residuals.txt";
+  h5_path = run_dir / (deck_stem + ".h5");
 }

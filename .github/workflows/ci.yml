@@ -47,6 +47,9 @@ jobs:
         with:
           cmakeVersion: "^4.0.0"
 
+      - name: Install HDF5
+        run: sudo apt-get update && sudo apt-get install -y libhdf5-dev
+
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DLDCSD_BUILD_TESTS=ON
 
@@ -71,6 +74,9 @@ jobs:
 
       - name: Install gcovr
         run: pip install --user gcovr
+
+      - name: Install HDF5
+        run: sudo apt-get update && sudo apt-get install -y libhdf5-dev
 
       - name: Configure (coverage build)
         run: >

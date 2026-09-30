@@ -10,8 +10,9 @@ Slowing-Down (CSD) equation using Lewis and Miller's Second Moment Method
 
 ## Build
 
-Requires CMake 4.0+. Dependencies (Eigen, doctest) are fetched automatically
-via `FetchContent` — no manual dependency install needed.
+Requires CMake 4.0+ and the HDF5 C library (`sudo apt install libhdf5-dev`).
+Everything else (Eigen, Boost.Multiprecision, yaml-cpp, CLI11, HighFive, doctest)
+is fetched automatically via `FetchContent`.
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DLDCSD_BUILD_TESTS=ON

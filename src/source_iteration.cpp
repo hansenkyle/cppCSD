@@ -19,6 +19,9 @@
 #include <string>
 #include <vector>
 
+#include <highfive/eigen.hpp>
+#include <highfive/highfive.hpp>
+
 void SourceIteration::solve(double epsilon, int max_iterations) {
   // Solve the transport equation in all groups via source iteration.
   //
@@ -126,4 +129,18 @@ void SourceIteration::writeResiduals(const std::filesystem::path& file_path,
   }
 
   appendToFile(file_path, transport.render_txt());
+}
+
+void SourceIteration::writeH5(const std::filesystem::path& file_path,
+                              const std::string& timestamp) const {
+  HighFive::File file(file_path.string(), HighFive::File::Truncate);
+  writeH5Common(file, timestamp);
+
+  const std::string corner_order(kCornerOrder);
+  file.createDataSet("/solution/scalar_flux", solution.scalar_flux)
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/angular_flux", stackGroups(solution.angular_flux))
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/residuals/transport", stackGroups(residuals.high_order))
+      .createAttribute("corner_order", corner_order);
 }

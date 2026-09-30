@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+namespace HighFive {
+class File;
+}
+
 struct MethodResult {
   Eigen::MatrixXd scalar_flux;
   std::vector<Eigen::MatrixXd> angular_flux;
@@ -63,6 +67,18 @@ protected:
   // flux.
   MatrixTable cellAverageTable(const std::string& title, const Eigen::MatrixXd& cell_average) const;
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
+
+  // Row layout of every corner-valued field [4nx], stored as an attribute on its .h5 dataset.
+  static constexpr const char* kCornerOrder =
+      "row 4i+k is cell i, k = (up L, up R, down L, down R)";
+  // Writes the .h5 contents every method shares: run metadata as root attributes, the input deck
+  // under /input, and the convergence history under /convergence.
+  void writeH5Common(HighFive::File& file, const std::string& timestamp) const;
+  // Stacks per-group matrices [R x C] into one [G x R x C] array, and per-group vectors [n] into
+  // one [G x n] matrix, for writing as a single .h5 dataset.
+  static std::vector<std::vector<std::vector<double>>>
+  stackGroups(const std::vector<Eigen::MatrixXd>& per_group);
+  static Eigen::MatrixXd stackGroups(const std::vector<Eigen::VectorXd>& per_group);
 };
 
 #endif

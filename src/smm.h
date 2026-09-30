@@ -53,6 +53,9 @@ public:
   // Appends the results block (see Method::solutionBlock), then every group's closures.
   void writeResults(const std::filesystem::path& file_path) const;
   void writeResiduals(const std::filesystem::path& file_path, std::string timestamp);
+  // Writes the whole run (see Method::writeH5Common) plus the raw solution, closures and
+  // residuals to a new .h5 file, replacing any existing one.
+  void writeH5(const std::filesystem::path& file_path, const std::string& timestamp) const;
   SMMResult solution;
   std::vector<SMClosures> closures;
   Residuals residuals;

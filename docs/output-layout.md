@@ -80,6 +80,41 @@ A plain echo of the terminal output produced during execution (stdout/
 stderr as seen by the user running the solver). This is a raw capture,
 not a structured result file.
 
+### `<deck>.h5`
+
+The run's complete numerical record, named after the input deck (e.g.
+`wafer/runs/run_0003/wafer.h5`), written once after the solve by
+`writeH5`. It holds everything in `results.txt` and `residuals.txt`
+unaveraged: every corner of every cell, every angle. Cell averages,
+spectrum and multigroup slices are left for the reader to compute.
+
+Corner-valued rows follow the solver's layout: row `4i+k` is cell `i`,
+`k = (up L, up R, down L, down R)` (`reshape(nx, 2, 2)` in numpy), noted
+on each dataset as a `corner_order` attribute. Shapes use `nx` cells, `G`
+groups and `M` angles.
+
+```
+attrs: execution_datetime, method, ldcsd_version, n_groups, n_cells, n_angles
+/input
+    mesh/       x_boundary [nx+1], dx [nx], x_center [nx], material [nx] (names)
+    energy/     E_boundary [G+1], dE [G]
+    angle/      mu [M], w [M]
+    bc                      [2G x M]   row 2g+k is group g, k = (up, down)
+    source/     values [G x 4nx x M], q0 [G x 4nx], q1 [G x 4nx]
+    materials/<name>/       total [G], S [G], S_b [G+1], scatter [G x G] (from, to)
+/solution
+    scalar_flux             [4nx x G]
+    angular_flux            [G x 4nx x M]
+    current, reconstructed_scalar       [4nx x G]   (SMM only)
+    closures/{F, F+, F-, K+, K-, T+, T-} [G x 4nx]  (SMM only)
+/convergence
+    iterations [G], group_times [G]
+    gNNN/       delta_l2, delta_linf, phi_l2, phi_linf  [iterations in group]
+/residuals
+    transport               [G x 4nx x M]
+    second_moment           [G x 8nx]  (SMM only) row 8i+k is cell i, k = the 8 SM equations
+```
+
 ## Non-goals (for now)
 
 - No numerical results (fluxes, convergence data, etc.) live in `info`,

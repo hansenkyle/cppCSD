@@ -36,6 +36,7 @@ TEST_SUITE("OutputManager") {
     CHECK(manager.info_path == manager.run_dir / "info.txt");
     CHECK(manager.log_path == manager.run_dir / "log.txt");
     CHECK(manager.out_path == manager.run_dir / "out.txt");
+    CHECK(manager.h5_path == manager.run_dir / "results.h5");
     CHECK(std::filesystem::is_directory(manager.run_dir));
   }
 

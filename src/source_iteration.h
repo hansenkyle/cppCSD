@@ -50,6 +50,9 @@ public:
   // Appends the results block (see Method::solutionBlock).
   void writeResults(const std::filesystem::path& file_path) const;
   void writeResiduals(const std::filesystem::path& file_path, std::string timestamp) const;
+  // Writes the whole run (see Method::writeH5Common) plus the raw solution and residuals to a new
+  // .h5 file, replacing any existing one.
+  void writeH5(const std::filesystem::path& file_path, const std::string& timestamp) const;
   MethodResult solution;
   Residuals residuals;
 
