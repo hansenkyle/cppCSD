@@ -9,6 +9,7 @@
 #define SOLVER_H
 
 #include <filesystem>
+#include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -24,9 +25,9 @@ using HighPrecision = boost::multiprecision::float128;
 
 class SourceIteration : public Method {
 public:
-  // constructor from input deck (copy)
-  SourceIteration(InputDeck input_deck)
-      : Method("source iteration", input_deck), transport_operator(input_deck) {}
+  // Copies the deck; Method validates it, and transport_operator gets the validated copy.
+  SourceIteration(InputDeck deck)
+      : Method("source iteration", std::move(deck)), transport_operator(input_deck) {}
 
   /// @brief Compute scalar flux for all space, all energy groups using Source Iteration.
   ///

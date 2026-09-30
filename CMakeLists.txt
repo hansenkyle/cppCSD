@@ -18,6 +18,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Python extension build (pip install python/, via scikit-build-core, which sets SKBUILD). The
+# static libraries below all end up linked into the shared _core module, so they need PIC --
+# set before FetchContent so yaml-cpp and Boost's compiled parts pick it up too.
+if(SKBUILD)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 include(FetchContent)
 
 # Eigen and other dependencies; skip eigen tests
@@ -113,14 +120,32 @@ if(LDCSD_ENABLE_DEBUG_LOGGING)
 endif()
 
 # --- Executable ---
-add_executable(ldcsd
-    src/main.cpp
-)
-target_link_libraries(ldcsd PRIVATE ldcsd_core)
+if(NOT SKBUILD)
+    add_executable(ldcsd
+        src/main.cpp
+    )
+    target_link_libraries(ldcsd PRIVATE ldcsd_core)
 
-target_compile_options(ldcsd PRIVATE
-    $<$<CONFIG:Release>:-O3 -march=native>
-)
+    target_compile_options(ldcsd PRIVATE
+        $<$<CONFIG:Release>:-O3 -march=native>
+    )
+endif()
+
+# --- Python extension (ldcsd._core) ---
+if(SKBUILD)
+    find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
+    find_package(nanobind CONFIG REQUIRED)
+
+    # NOMINSIZE: nanobind otherwise builds the module -Os, overriding the flags below.
+    nanobind_add_module(_core NOMINSIZE python/src/bindings.cpp)
+    target_link_libraries(_core PRIVATE ldcsd_core)
+    # Must match ldcsd_core's ISA flags, for the same Eigen alignment reason as unit_test below.
+    target_compile_options(_core PRIVATE
+        $<$<CONFIG:Release>:-O3 -march=native>)
+    # Own component, so the wheel doesn't also pick up the install() rules of FetchContent deps
+    # (HighFive's headers, etc.) -- see install.components in python/pyproject.toml.
+    install(TARGETS _core LIBRARY DESTINATION ldcsd COMPONENT python)
+endif()
 
 # Unit tests using doctest
 if(LDCSD_BUILD_TESTS)

@@ -145,6 +145,53 @@ TEST_CASE("InputDeck::read overrides an already-populated deck") {
   CHECK(deck.energy.G == 3);
 }
 
+TEST_CASE("InputDeck::write round-trips the sample deck through load") {
+  InputDeck original;
+  REQUIRE(original.read(std::filesystem::path(TEST_DATA_DIR) / "sample_input.yaml") == 0);
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "ldcsd_roundtrip_test.yaml";
+  original.write(path);
+  InputDeck copy;
+  REQUIRE_NOTHROW(copy.load(path));
+  std::filesystem::remove(path);
+
+  CHECK(copy.mesh.x_boundary == original.mesh.x_boundary);
+  CHECK(copy.energy.E_boundary == original.energy.E_boundary);
+  CHECK(copy.angle.mu == original.angle.mu);
+  CHECK(copy.angle.w == original.angle.w);
+  CHECK(copy.xs.material_names() == original.xs.material_names());
+  REQUIRE(copy.xs.material_list.size() == original.xs.material_list.size());
+  for (std::size_t k = 0; k < copy.xs.material_list.size(); ++k) {
+    const Material& a = copy.xs.material_list[k];
+    const Material& b = original.xs.material_list[k];
+    CHECK(a.name == b.name);
+    CHECK(a.total == b.total);
+    CHECK(a.S == b.S);
+    CHECK(a.S_b == b.S_b);
+    CHECK(a.scatter == b.scatter);
+  }
+  CHECK(copy.bc.values == original.bc.values);
+  REQUIRE(copy.source.values.size() == original.source.values.size());
+  for (std::size_t g = 0; g < copy.source.values.size(); ++g) {
+    CHECK(copy.source.values[g] == original.source.values[g]);
+  }
+}
+
+TEST_CASE("InputDeck::load throws with the offending key on a malformed file") {
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "ldcsd_load_missing_key.yaml";
+  {
+    std::ofstream out(path);
+    out << "spatial_mesh: [0.0, 1.0]\n";
+  }
+  InputDeck deck;
+
+  CHECK_THROWS_WITH_AS(deck.load(path), doctest::Contains("energy_mesh"), std::runtime_error);
+
+  std::filesystem::remove(path);
+}
+
 TEST_CASE("InputDeck::read returns 1 and leaves no crash on a missing file") {
   InputDeck deck;
 

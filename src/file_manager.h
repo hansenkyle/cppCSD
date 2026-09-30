@@ -32,4 +32,7 @@ public:
   std::filesystem::path h5_path;
 };
 
+// Current local time as "YYYY-MM-DD HH:MM:SS", the run timestamp written into output files.
+std::string make_timestamp();
+
 #endif
