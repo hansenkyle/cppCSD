@@ -1,0 +1,40 @@
+scripts/check-format.sh
+  s_160d2fd9cf0a84::t_61d0c8d4cc9bce 6
+scripts/format.sh
+  s_160d2fd9cf0a84::t_61d0c8d4cc9bce 5
+python/tests/test_deck.py
+  s_160d2fd9cf0a84::t_6566272abac33b 1-30,33-162
+  s_160d2fd9cf0a84::t_90793e54ff9854 31-32
+CLAUDE.md
+  s_160d2fd9cf0a84::t_2312f9683da9d1 13-15,58,60-78,81-82,86-92,99,103-105
+  s_160d2fd9cf0a84::t_3cbb0ecd451920 116-117,125-127
+python/tests/test_solve.py
+  s_160d2fd9cf0a84::t_2c2e6f6b99ae93 1-50
+docs/input-deck.md
+  s_160d2fd9cf0a84::t_2312f9683da9d1 72-75
+.github/workflows/ci.yml
+  s_160d2fd9cf0a84::t_61d0c8d4cc9bce 37-43,81-100
+  s_160d2fd9cf0a84::t_3cbb0ecd451920 20-22
+  s_160d2fd9cf0a84::t_9aaa2df6b236d0 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d260b2542147a18fb7270a04ab32bcad9649e121",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_160d2fd9cf0a84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e1ff821-6519-447b-b2e0-58ec60c8e889",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
