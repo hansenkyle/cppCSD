@@ -81,8 +81,14 @@ out a live numpy view that bypasses validation or silently loses writes.
 
 - `Material`: kwargs constructor (`total`, `S`, `S_b`, `scatter`), read-only fields.
 - `Mesh`, `Energy`, `Angle`: read-only (inputs + counts only).
-- `InputDeck`: ctor, setters, `read` (static, raises), `to_yaml`, `bc`/`source`
-  getters (native layout), `materials`/`regions` as dict/list.
+- `InputDeck`: ctor, setters, `read` (static, raises), `to_yaml`, `validate`,
+  `bc`/`source` getters, `materials`/`regions` as dict/list.
+- Layout conversion happens here, not in Python subclasses (changed from the
+  original plan): Eigen's column-major `[4nx x G]` storage is already
+  `[G, nx, 2, 2]` in C order, so it's mostly a memcpy, and subclasses would
+  have needed `InputDeck.read` and every solver re-wrapped. Every array
+  argument goes through `numpy.ascontiguousarray(x, dtype=float64)`, so lists
+  and int arrays work; every array returned is a read-only copy.
 - `Method` base -> `SourceIteration`, `SecondMoment`: ctor,
   `solve(epsilon, max_iterations=1000)`, `write_h5(path, timestamp=...)`, raw
   `solution` fields.
@@ -91,9 +97,7 @@ out a live numpy view that bypasses validation or silently loses writes.
 
 ## Phase 4 -- Python layer (`python/ldcsd/`)
 
-- `deck.py`: thin subclasses of the `_core` classes doing reader <-> native
-  layout conversion, reusing `results._corners` + `swapaxes`/`reshape`.
-- `__init__.py`: `try: from .deck import ...` / `except ImportError: pass`.
+- `__init__.py`: `try: from ._core import ...` / `except ImportError: pass`.
 - Rename `results.Material` -> `MaterialData`.
 
 ## Phase 5 -- tests, CI, docs
