@@ -17,29 +17,28 @@ jobs:
       # apt.llvm.org's rolling snapshot builds -- those can drift from the
       # actual tagged release under the same version string, which is what
       # caused local/CI formatting results to disagree here previously.
-      # include-regex covers only *.cpp/*.hpp, while scripts/format.sh and
-      # check-format.sh also cover *.h (see the Formatting section of
-      # CLAUDE.md for the known *.h gap).
+      # include-regex covers the same *.cpp/*.h files as scripts/format.sh
+      # and check-format.sh (plus *.hpp, should any appear).
       - name: Check src/ formatting
         uses: jidicula/clang-format-action@v4.18.0
         with:
           clang-format-version: "21"
           check-path: "src"
-          include-regex: ".*\\.(cpp|hpp)$"
+          include-regex: ".*\\.(cpp|hpp|h)$"
 
       - name: Check test/ formatting
         uses: jidicula/clang-format-action@v4.18.0
         with:
           clang-format-version: "21"
           check-path: "test"
-          include-regex: ".*\\.(cpp|hpp)$"
+          include-regex: ".*\\.(cpp|hpp|h)$"
 
       - name: Check python/src/ formatting
         uses: jidicula/clang-format-action@v4.18.0
         with:
           clang-format-version: "21"
           check-path: "python/src"
-          include-regex: ".*\\.(cpp|hpp)$"
+          include-regex: ".*\\.(cpp|hpp|h)$"
 
   build-and-test:
     runs-on: ubuntu-latest

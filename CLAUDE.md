@@ -100,9 +100,8 @@ scripts/format.sh          # reformat src/, test/ and python/src/ in place
 scripts/check-format.sh    # check only, nonzero exit if reformatting needed
 ```
 
-Note: the scripts cover `*.cpp`/`*.h`, but CI's format check only covers
-`*.cpp`/`*.hpp` -- header files using the `.h` extension (e.g.
-`src/input_deck.h`) aren't checked in CI.
+Both the scripts and CI's format check cover `*.cpp` and `*.h` files
+(CI also `*.hpp`).
 
 ## Architecture
 
