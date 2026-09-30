@@ -21,7 +21,7 @@ import numpy as np
 
 
 @dataclass
-class Material:
+class MaterialData:
     total: np.ndarray  # [G]
     S: np.ndarray  # [G], group-average stopping power
     S_b: np.ndarray  # [G+1], stopping power at group boundaries
@@ -42,7 +42,7 @@ class Input:
     source: np.ndarray  # [G, M, nx, 2, 2]
     q0: np.ndarray  # [G, nx, 2, 2]
     q1: np.ndarray  # [G, nx, 2, 2]
-    materials: dict[str, Material]
+    materials: dict[str, MaterialData]
 
 
 @dataclass
@@ -124,7 +124,7 @@ def read(path: str | Path) -> Run:
             q0=_corners(f["input/source/q0"][()]),
             q1=_corners(f["input/source/q1"][()]),
             materials={
-                name: Material(**{k: mats[name][k][()] for k in ("total", "S", "S_b", "scatter")})
+                name: MaterialData(**{k: mats[name][k][()] for k in ("total", "S", "S_b", "scatter")})
                 for name in mats
             },
         )
