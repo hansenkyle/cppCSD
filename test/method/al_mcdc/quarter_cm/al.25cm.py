@@ -11,7 +11,7 @@ import ldcsd
 
 from pathlib import Path
 
-NX, G = 40, 12
+NX, G = 100, 12
 
 deck = ldcsd.InputDeck()
 deck.set_mesh(np.linspace(0.0, 0.25, NX + 1))
