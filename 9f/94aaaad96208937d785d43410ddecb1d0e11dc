@@ -1,0 +1,14 @@
+test/method/al_mcdc/description.md
+  h_250041054ad857 8-10,12-13,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f94aaaad96208937d785d43410ddecb1d0e11dc",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
