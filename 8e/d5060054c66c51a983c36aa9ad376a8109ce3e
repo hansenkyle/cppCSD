@@ -1,0 +1,30 @@
+docs/python-bindings.md
+  s_84d7d63035524c::t_ec0aeb95a45086 82-83
+python/src/bindings.cpp
+  s_84d7d63035524c::t_d732f042ca7c9e 129
+  s_84d7d63035524c::t_7b6ffbb3adb532 142-165
+test/method/al_mcdc/quarter_cm/compare.py
+  s_84d7d63035524c::t_f3df24b369b48a 52-55,65,67-71,86,93-102
+  s_84d7d63035524c::t_10a6a5a950c156 51
+  s_84d7d63035524c::t_5027e48c928715 103-105
+test/method/al_mcdc/quarter_cm/al.25cm.py
+  s_84d7d63035524c::t_95ab4c4ada686c 62-63
+  s_84d7d63035524c::t_084ab2af17fc44 60-61
+  s_84d7d63035524c::t_af37ac62f92fd4 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ed5060054c66c51a983c36aa9ad376a8109ce3e",
+  "prompts": {},
+  "sessions": {
+    "s_84d7d63035524c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ba5d533-2def-493c-a016-301e8b19566a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
