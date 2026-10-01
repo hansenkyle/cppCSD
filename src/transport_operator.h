@@ -10,9 +10,9 @@
 
 #include "input_deck.h"
 #include <Eigen/Dense>
-#include <boost/multiprecision/float128.hpp>
+// #include <boost/multiprecision/float128.hpp>
 
-using HighPrecision = boost::multiprecision::float128;
+using HighPrecision = long double;
 
 class TransportOperator {
 public:

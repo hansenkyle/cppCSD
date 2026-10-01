@@ -14,14 +14,14 @@
 
 #include <Eigen/Dense>
 
-#include <boost/multiprecision/float128.hpp>
+// #include <boost/multiprecision/float128.hpp>
 
 #include "convergence.h"
 #include "input_deck.h"
 #include "method.h"
 #include "transport_operator.h"
 
-using HighPrecision = boost::multiprecision::float128;
+using HighPrecision = long double;
 
 class SourceIteration : public Method {
 public:

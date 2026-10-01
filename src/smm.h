@@ -15,12 +15,12 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <boost/multiprecision/float128.hpp>
+// #include <boost/multiprecision/float128.hpp>
 #include <filesystem>
 #include <string>
 #include <utility>
 
-using HighPrecision = boost::multiprecision::float128;
+using HighPrecision = long double;
 
 struct SMMResult : public MethodResult {
   Eigen::MatrixXd reconstructed_scalar;
