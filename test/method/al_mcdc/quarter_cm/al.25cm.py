@@ -9,6 +9,8 @@ from xs_data import *
 import numpy as np
 import ldcsd
 
+from pathlib import Path
+
 NX, G = 40, 12
 
 deck = ldcsd.InputDeck()
@@ -48,5 +50,6 @@ np.set_printoptions(precision=4, linewidth=120)
 print("cell-average scalar flux [group, cell]:")
 print(phi)
 
-solver.write_h5("slab.h5")  # read back with ldcsd.read()
-deck.to_yaml("slab.yaml")  # rerun with the ldcsd executable
+current_file_path = Path(__file__).resolve()
+solver.write_h5(f"{current_file_path}slab.h5")  # read back with ldcsd.read()
+deck.to_yaml(f"{current_file_path}slab.yaml")  # rerun with the ldcsd executable
