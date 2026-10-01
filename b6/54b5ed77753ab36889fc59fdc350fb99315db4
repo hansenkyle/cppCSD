@@ -1,0 +1,50 @@
+CLAUDE.md
+  s_160d2fd9cf0a84::t_2ed0d235b001ad 105-112
+src/smm.cpp
+  s_160d2fd9cf0a84::t_97ace75253d9f7 74-75
+src/input_deck.cpp
+  s_160d2fd9cf0a84::t_c6f81cf7b14be6 11-12,47-51,403-409,411-417,419-433,435,437-442,444-453,455-475,479-502,504-505,507-512,514-516,521-530,533-604
+  s_160d2fd9cf0a84::t_cfc3cdd255ae29 26-28,315
+  s_160d2fd9cf0a84::t_1e08485fa2b9dd 314,316-318,476-478
+src/file_manager.cpp
+  s_160d2fd9cf0a84::t_29f75c9894fd75 12,110-116
+  s_160d2fd9cf0a84::t_9d8d14891b1c78 117
+src/input_deck.h
+  s_160d2fd9cf0a84::t_30ec8d60532544 153-176,179-181
+  s_160d2fd9cf0a84::t_0bf9688ae45d1f 182
+src/smm.h
+  s_160d2fd9cf0a84::t_97ace75253d9f7 47
+src/method.h
+  s_160d2fd9cf0a84::t_29f75c9894fd75 17
+  s_160d2fd9cf0a84::t_97ace75253d9f7 58-66
+test/unit/method.test.cpp
+  s_160d2fd9cf0a84::t_72c23d17a1af41 24,27-34
+src/source_iteration.h
+  s_160d2fd9cf0a84::t_97ace75253d9f7 28-30
+  s_160d2fd9cf0a84::t_29f75c9894fd75 12
+src/file_manager.h
+  s_160d2fd9cf0a84::t_29f75c9894fd75 35-37
+test/unit/input_deck.test.cpp
+  s_160d2fd9cf0a84::t_72c23d17a1af41 148-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b654b5ed77753ab36889fc59fdc350fb99315db4",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  },
+  "sessions": {
+    "s_160d2fd9cf0a84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e1ff821-6519-447b-b2e0-58ec60c8e889",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}

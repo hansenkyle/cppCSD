@@ -1,0 +1,16 @@
+test/method/al_mcdc/al_mcdc_12g_10x.yaml
+  h_c6d403188ce57a 1-126
+test/method/al_mcdc/description.md
+  h_c6d403188ce57a 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f033163e02bd3431ea9982b8d871756857016a7d",
+  "prompts": {},
+  "humans": {
+    "h_c6d403188ce57a": {
+      "author": "Kyle Hansen <khansen3@ncsu.edu>"
+    }
+  }
+}
