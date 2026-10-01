@@ -175,6 +175,7 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
   quadrature.add_column("w", input_deck.angle.w);
 
   VerticalTable boundary("boundary conditions");
+  boundary.add_column("mu", input_deck.angle.mu);
   boundary.add_column("m", m_index);
   for (int gplusone : e_index) {
     int g = gplusone - 1;
