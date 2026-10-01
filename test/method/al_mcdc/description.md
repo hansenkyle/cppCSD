@@ -5,18 +5,14 @@ Modified 24-group Al-6061 cross sections:
 - diagonal of scattering matrix only (within-group scattering)
 
 
-CSD implemented in MCDC using excitation reaction with Delta_E = delta.
-MCDC run using varying values for delta.
+CSD implemented in MCDC using excitation reaction with:
+- sigma = S/Delta E, where
+- Delta E is uniformly (linearly) divided in each energy group, with 2^(10, 11, 12, 13) divisions per group
 
-large delta: cheap compuation, poorly approximated by CSD
-small delta: expensive, better approximated by CSD.
+large delta E: cheap compuation, poorly approximated by CSD
+small delta E: expensive, better approximated by CSD.
 
 delta will be parameterized by group width:
-
-Delta E_g / C
-
-C will range from 20 to ...
-
 
 All flux units in /(cm^2 s MeV)
 Boundary conditions (isotropic):
@@ -31,4 +27,4 @@ External source:
 - q = 1 /(cm^2 s MeV), all energy groups
 
 MCDC tally: 100-cell grid
-deterministic: 10-60 spatial cells, S16 double Gauss-Legendre quadrature
+deterministic: 40 spatial cells, S32 double Gauss-Legendre quadrature

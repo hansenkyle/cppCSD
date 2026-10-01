@@ -78,6 +78,8 @@ __pycache__/
 
 # generated per-deck run output (see docs/output-layout.md)
 runs/
+*.h5
+*.png
 
 # env
 .vscode/

@@ -79,6 +79,8 @@ solver.scalar_flux                         # [G, nx, 2, 2]
 solver.angular_flux                        # [G, M, nx, 2, 2]
 solver.current, solver.reconstructed_scalar   # SecondMoment only, [G, nx, 2, 2]
 solver.write_h5("run.h5")                  # the full run, for ldcsd.read()
+solver.write_results("results.txt")        # the ldcsd executable's results.txt
+solver.write_residuals("residuals.txt")    # ... and residuals.txt (all writers replace the file)
 ```
 
 The corner-field helpers from the reader work on these too, e.g.
