@@ -11,7 +11,11 @@ import ldcsd
 
 from pathlib import Path
 
+<<<<<<< Updated upstream
 NX, G = 100, 12
+=======
+NX, G = 40, 12
+>>>>>>> Stashed changes
 
 deck = ldcsd.InputDeck()
 deck.set_mesh(np.linspace(0.0, 0.25, NX + 1))
@@ -53,3 +57,8 @@ print(phi)
 current_file_path = Path(__file__).resolve()
 solver.write_h5(f"{current_file_path}slab.h5")  # read back with ldcsd.read()
 deck.to_yaml(f"{current_file_path}slab.yaml")  # rerun with the ldcsd executable
+<<<<<<< Updated upstream
+=======
+solver.write_results(f"{current_file_path}results.txt")
+solver.write_residuals(f"{current_file_path}residuals.txt")
+>>>>>>> Stashed changes

@@ -126,7 +126,7 @@ std::vector<Eigen::MatrixXd> sourceFromNumpy(const In5& q) {
   return values;
 }
 
-// Binds what SourceIteration and SecondMoment share beyond Method: construction, write_h5 and
+// Binds what SourceIteration and SecondMoment share beyond Method: construction, the writers and
 // the solution every method produces.
 template <typename Solver> void bindSolver(nb::class_<Solver, Method>& cls) {
   cls.def(nb::init<InputDeck>(), "deck"_a)
@@ -139,6 +139,30 @@ template <typename Solver> void bindSolver(nb::class_<Solver, Method>& cls) {
           "path"_a, "timestamp"_a = nb::none(),
           "Writes the whole run to a new .h5 file (read it back with ldcsd.read). timestamp "
           "defaults to now.")
+      // The C++ writers append (the CLI writes into a fresh run directory), so remove any old
+      // file first to match write_h5's replace semantics.
+      .def(
+          "write_results",
+          [](const Solver& self, const std::filesystem::path& path,
+             std::optional<std::string> timestamp) {
+            std::filesystem::remove(path);
+            self.writeMetadata(path, timestamp.value_or(make_timestamp()));
+            self.writeInputEcho(path);
+            self.writeConvergence(path);
+            self.writeResults(path);
+          },
+          "path"_a, "timestamp"_a = nb::none(),
+          "Writes the CLI's results.txt (run info, input echo, convergence, results) to a new "
+          "file. timestamp defaults to now.")
+      .def(
+          "write_residuals",
+          [](Solver& self, const std::filesystem::path& path,
+             std::optional<std::string> timestamp) {
+            std::filesystem::remove(path);
+            self.writeResiduals(path, timestamp.value_or(make_timestamp()));
+          },
+          "path"_a, "timestamp"_a = nb::none(),
+          "Writes the CLI's residuals.txt to a new file. timestamp defaults to now.")
       .def_prop_ro(
           "scalar_flux", [](const Solver& self) { return byGroup(self.solution.scalar_flux); },
           "[G, nx, 2, 2]")
