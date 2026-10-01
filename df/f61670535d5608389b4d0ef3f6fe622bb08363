@@ -1,0 +1,24 @@
+test/method/al_mcdc/quarter_cm/256angles/al_refinedangle.py
+  h_250041054ad857 1-58
+test/method/al_mcdc/quarter_cm/256angles/al_refinedangle.pyresiduals.txt
+  h_250041054ad857 1-14030
+test/method/al_mcdc/quarter_cm/256angles/al_refinedangle.pyresults.txt
+  h_250041054ad857 1-3138
+test/method/al_mcdc/quarter_cm/256angles/al_refinedangle.pyslab.yaml
+  h_250041054ad857 1-63042
+test/method/al_mcdc/quarter_cm/256angles/compare.py
+  h_250041054ad857 1-99
+test/method/al_mcdc/quarter_cm/256angles/xs_data.py
+  h_250041054ad857 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dff61670535d5608389b4d0ef3f6fe622bb08363",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
