@@ -185,32 +185,6 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
                         input_deck.bc[g](1, Eigen::placeholders::all));
   }
 
-  UnitGroup q0("source, zeroth moment", "q integrated over all angles, weight 1");
-  for (int gplusone : e_index) {
-    int g = gplusone - 1;
-    HorizontalTable q0g("g=" + std::to_string(gplusone));
-    q0g.add_row("i", x_index);
-    q0g.add_row("left,up", input_deck.source.q0[g](Eigen::seqN(0, input_deck.mesh.n_x, 4)));
-    q0g.add_row("right,up", input_deck.source.q0[g](Eigen::seqN(1, input_deck.mesh.n_x, 4)));
-    q0g.add_row("left,down", input_deck.source.q0[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
-    q0g.add_row("right,down", input_deck.source.q0[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
-
-    q0.add(q0g, "{:.6e}");
-  }
-
-  UnitGroup q1("source, first moment", "q integrated over all angles, weight mu");
-  for (int gplusone : e_index) {
-    int g = gplusone - 1;
-    HorizontalTable q1g("g=" + std::to_string(gplusone));
-    q1g.add_row("i", x_index);
-    q1g.add_row("left,up", input_deck.source.q1[g](Eigen::seqN(0, input_deck.mesh.n_x, 4)));
-    q1g.add_row("right,up", input_deck.source.q1[g](Eigen::seqN(1, input_deck.mesh.n_x, 4)));
-    q1g.add_row("left,down", input_deck.source.q1[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
-    q1g.add_row("right,down", input_deck.source.q1[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
-
-    q1.add(q1g, "{:.6e}");
-  }
-
   UnitGroup materials("materials");
 
   for (auto m : input_deck.xs.material_list) {
@@ -240,13 +214,39 @@ void Method::writeInputEcho(const std::filesystem::path& file_path) const {
     materials.add(mat);
   }
 
+  UnitGroup q0("source, zeroth moment", "q integrated over all angles, weight 1");
+  for (int gplusone : e_index) {
+    int g = gplusone - 1;
+    HorizontalTable q0g("g=" + std::to_string(gplusone));
+    q0g.add_row("i", x_index);
+    q0g.add_row("left,up", input_deck.source.q0[g](Eigen::seqN(0, input_deck.mesh.n_x, 4)));
+    q0g.add_row("right,up", input_deck.source.q0[g](Eigen::seqN(1, input_deck.mesh.n_x, 4)));
+    q0g.add_row("left,down", input_deck.source.q0[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
+    q0g.add_row("right,down", input_deck.source.q0[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
+
+    q0.add(q0g, "{:.6e}");
+  }
+
+  UnitGroup q1("source, first moment", "q integrated over all angles, weight mu");
+  for (int gplusone : e_index) {
+    int g = gplusone - 1;
+    HorizontalTable q1g("g=" + std::to_string(gplusone));
+    q1g.add_row("i", x_index);
+    q1g.add_row("left,up", input_deck.source.q1[g](Eigen::seqN(0, input_deck.mesh.n_x, 4)));
+    q1g.add_row("right,up", input_deck.source.q1[g](Eigen::seqN(1, input_deck.mesh.n_x, 4)));
+    q1g.add_row("left,down", input_deck.source.q1[g](Eigen::seqN(2, input_deck.mesh.n_x, 4)));
+    q1g.add_row("right,down", input_deck.source.q1[g](Eigen::seqN(3, input_deck.mesh.n_x, 4)));
+
+    q1.add(q1g, "{:.6e}");
+  }
+
   input_echo.add(spatialdata, "{:.6e}");
   input_echo.add(energydata, "{:.6e}");
   input_echo.add(quadrature, "{:.6e}");
   input_echo.add(boundary, "{:.6e}");
+  input_echo.add(materials);
   input_echo.add(q0);
   input_echo.add(q1);
-  input_echo.add(materials);
 
   appendToFile(file_path, input_echo.render_txt());
 }
