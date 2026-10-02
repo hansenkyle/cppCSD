@@ -64,11 +64,56 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   low_order_scalar.set_corner_grid({{"x_i"}, {"g \\ i"}});
 
   // high-order scalar flux
-  // difference
+  MatrixTable high_order_scalar("high-order scalar flux", "cell-averaged");
+  high_order_scalar.set_data(solution.cell_average_scalar_flux(true).transpose(), x_center, gseq);
+  high_order_scalar.add_column_label(iseq);
+  high_order_scalar.set_corner_grid({{"x_i"}, {"g \\ i"}});
 
+  // compute relative difference
+  Eigen::MatrixXd scalar_diff = Eigen::MatrixXd::Ones(I, G);
+  scalar_diff -= solution.cell_average_scalar_flux(true).cwiseProduct(
+      solution.cell_average_scalar_flux().cwiseInverse());
+
+  // format relative difference
+  MatrixTable scalar_difference_unit(
+      "1 - (HO/LO)",
+      std::format("cell-averaged first, then compared. maximum: {:.4e}", scalar_diff.maxCoeff()));
+  scalar_difference_unit.set_data(scalar_diff.transpose(), x_center, gseq);
+  scalar_difference_unit.add_column_label(iseq);
+  scalar_difference_unit.set_corner_grid({{"x_i"}, {"g \\ i"}});
+
+  cell_ave_scalar.add(low_order_scalar, "{:.6e}");
+  cell_ave_scalar.add(high_order_scalar, "{:.6e}");
+  cell_ave_scalar.add(scalar_difference_unit, "{:.4e}");
+
+  UnitGroup cell_ave_current("cell-averaged current");
   // low-order current
+  MatrixTable low_order_current("low-order current", "cell-averaged");
+  low_order_current.set_data(solution.cell_average_current().transpose(), x_center, gseq);
+  low_order_current.add_column_label(iseq);
+  low_order_current.set_corner_grid({{"x_i"}, {"g \\ i"}});
   // high-order current
+
+  MatrixTable high_order_current("high-order current", "cell-averaged");
+  high_order_current.set_data(solution.cell_average_current(true).transpose(), x_center, gseq);
+  high_order_current.add_column_label(iseq);
+  high_order_current.set_corner_grid({{"x_i"}, {"g \\ i"}});
+
   // difference
+  Eigen::MatrixXd current_diff = Eigen::MatrixXd::Ones(I, G);
+  current_diff -= solution.cell_average_current(true).cwiseProduct(
+      solution.cell_average_current().cwiseInverse());
+
+  MatrixTable current_difference_unit(
+      "1 - (HO/LO)",
+      std::format("cell-averaged first, then compared. maximum: {:.4e}", current_diff.maxCoeff()));
+  current_difference_unit.set_data(current_diff.transpose(), x_center, gseq);
+  current_difference_unit.add_column_label(iseq);
+  current_difference_unit.set_corner_grid({{"x_i"}, {"g \\ i"}});
+
+  cell_ave_current.add(low_order_current, "{:.6e}");
+  cell_ave_current.add(high_order_current, "{:.6e}");
+  cell_ave_current.add(current_difference_unit, "{:.4e}");
 
   // CORNER VALUES
 
@@ -79,8 +124,6 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   // low-order current
   // high-order current
   // difference
-
-  cell_ave_scalar.add(low_order_scalar, "{:.6e}");
 
   // ANGULAR FLUX
 
@@ -112,6 +155,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   //                              MethodResult::cell_average(solution.high_order_scalar)),
   //             "{:.6e}");
   appendToFile(results_path, cell_ave_scalar.render_txt());
+  appendToFile(results_path, cell_ave_current.render_txt());
   appendToFile(results_path, close.render_txt());
 }
 

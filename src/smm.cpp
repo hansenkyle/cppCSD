@@ -348,8 +348,8 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
     phi.col(g) = phi_g;
     residuals.low_order[g] = calculateResiduals(g, phi, J, psi);
     solution.high_order_scalar_flux.col(g) = transport_operator.integrateAngle(psi);
-    solution.high_order_current.col(g) =
-        transport_operator.integrateAngle(psi, input_deck.angle.mu);
+    solution.high_order_current.col(g) = transport_operator.integrateAngle(
+        psi, input_deck.angle.w.cwiseProduct(input_deck.angle.mu));
     psi_up = psi;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
