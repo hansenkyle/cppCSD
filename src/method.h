@@ -74,6 +74,10 @@ protected:
   // Table of a cell-averaged field [nx x G], laid out and labeled like the cell-average scalar
   // flux.
   MatrixTable cellAverageTable(const std::string& title, const Eigen::MatrixXd& cell_average) const;
+  // Corner values; 1 horizontal table per group, 1 row in tables per corner value
+  UnitGroup cornerValueTable(const std::string& title, const Eigen::MatrixXd& corner_values,
+                             std::string outer_idx = "g") const;
+
   void appendToFile(const std::filesystem::path& file_path, const std::string& text) const;
 
   // Row layout of every corner-valued field [4nx], stored as an attribute on its .h5 dataset.

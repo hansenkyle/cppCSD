@@ -368,6 +368,26 @@ MatrixTable Method::cellAverageTable(const std::string& title,
   return table;
 }
 
+UnitGroup Method::cornerValueTable(const std::string& title, const Eigen::MatrixXd& corner_values,
+                                   std::string outer_idx) const {
+  using Eigen::seqN;
+  UnitGroup tables(title);
+  int I = input_deck.mesh.n_x;
+  for (int g = 0; g < corner_values.cols(); g++) {
+    HorizontalTable group(title + ", " + outer_idx + "=" + std::to_string(g + 1));
+
+    group.add_row("x_i", evdoub_to_string(input_deck.mesh.x_center));
+    group.add_row("i", int_label_seq(I));
+    group.add_row("L, up", corner_values(seqN(0, I, 4), g));
+    group.add_row("R, up", corner_values(seqN(1, I, 4), g));
+    group.add_row("L, down", corner_values(seqN(2, I, 4), g));
+    group.add_row("R, down", corner_values(seqN(3, I, 4), g));
+
+    tables.add(group, "{:.6e}");
+  }
+  return tables;
+}
+
 std::vector<std::vector<std::vector<double>>>
 Method::stackGroups(const std::vector<Eigen::MatrixXd>& per_group) {
   std::vector<std::vector<std::vector<double>>> stacked(per_group.size());
