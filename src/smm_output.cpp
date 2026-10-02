@@ -29,12 +29,65 @@ const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClos
 void SecondMoment::writeResults(const std::filesystem::path& results_path) const {
   using Eigen::seqN;
   const int I = input_deck.mesh.n_x;
+  const int G = input_deck.energy.G;
+  const int M = input_deck.angle.M;
 
-  std::vector<std::string> iseq, x_center;
+  std::vector<std::string> iseq, x_center, x_bound_LD;
   for (int i = 0; i < I; i++) {
     iseq.push_back(std::to_string(i + 1));
-    x_center.push_back(std::format("{:.4e}", input_deck.mesh.x_center(i)));
+    x_center.push_back(std::format("{:.6e}", input_deck.mesh.x_center(i)));
+    x_bound_LD.push_back(std::format("{:.6e}", input_deck.mesh.x_boundary(i)));
+    x_bound_LD.push_back(std::format("{:.6e}", input_deck.mesh.x_boundary(i + 1)));
   }
+
+  std::vector<std::string> mseq, mu;
+  for (int m = 0; m < M; m++) {
+    mseq.push_back(std::to_string(m + 1));
+    mu.push_back(std::format("{:.6e}", input_deck.angle.mu(m)));
+  }
+
+  std::vector<std::string> gseq;
+  std::vector<std::string> E_bound_LD;
+  for (int g = 0; g < G; g++) {
+    gseq.push_back(std::to_string(g + 1));
+    E_bound_LD.push_back(std::format("{:.6e}", input_deck.energy.E_boundary(g)));
+    E_bound_LD.push_back(std::format("{:.6e}", input_deck.energy.E_boundary(g + 1)));
+  }
+
+  // CELL-AVERAGED
+  UnitGroup cell_ave_scalar("cell-averaged scalar flux");
+
+  // low-order scalar flux
+  MatrixTable low_order_scalar("low-order scalar flux", "cell-averaged");
+  low_order_scalar.set_data(solution.cell_average_scalar_flux().transpose(), x_center, gseq);
+  low_order_scalar.add_column_label(iseq);
+  low_order_scalar.set_corner_grid({{"x_i"}, {"g \\ i"}});
+
+  // high-order scalar flux
+  // difference
+
+  // low-order current
+  // high-order current
+  // difference
+
+  // CORNER VALUES
+
+  // low-order scalar flux
+  // high-order scalar flux
+  // difference
+
+  // low-order current
+  // high-order current
+  // difference
+
+  cell_ave_scalar.add(low_order_scalar, "{:.6e}");
+
+  // ANGULAR FLUX
+
+  // cell-averaged
+  // corner values
+
+  // CLOSURES
 
   UnitGroup close("closures");
   for (int g = 0; g < input_deck.energy.G; g++) {
@@ -53,12 +106,13 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
     close.add(group);
   }
 
-  UnitGroup block = solutionBlock(solution);
-  block.add(close);
-  block.add(cellAverageTable("reconstructed cell-average scalar flux",
-                             MethodResult::cell_average(solution.reconstructed_scalar)),
-            "{:.6e}");
-  appendToFile(results_path, block.render_txt());
+  //   UnitGroup block = solutionBlock(solution);
+  //   block.add(close);
+  //   block.add(cellAverageTable("high-order cell-average scalar flux",
+  //                              MethodResult::cell_average(solution.high_order_scalar)),
+  //             "{:.6e}");
+  appendToFile(results_path, cell_ave_scalar.render_txt());
+  appendToFile(results_path, close.render_txt());
 }
 
 void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::string timestamp) {
@@ -174,7 +228,7 @@ void SecondMoment::writeH5(const std::filesystem::path& file_path,
       .createAttribute("corner_order", corner_order);
   file.createDataSet("/solution/current", solution.current)
       .createAttribute("corner_order", corner_order);
-  file.createDataSet("/solution/reconstructed_scalar", solution.reconstructed_scalar)
+  file.createDataSet("/solution/high_order_scalar", solution.high_order_scalar_flux)
       .createAttribute("corner_order", corner_order);
 
   for (const auto& [closure_name, field] : kClosures) {

@@ -23,11 +23,13 @@
 using HighPrecision = boost::multiprecision::float128;
 
 struct SMMResult : public MethodResult {
-  Eigen::MatrixXd high_order_scalar;
+  Eigen::MatrixXd high_order_scalar_flux;
   Eigen::MatrixXd high_order_current;
   Eigen::MatrixXd current;
 
-  Eigen::MatrixXd cell_average_current() const;
+  Eigen::MatrixXd cell_average_scalar_flux(bool high_order = false) const;
+  Eigen::MatrixXd cell_average_current(bool high_order = false) const;
+  // Eigen::MatrixXd cell_average_scalar(bool high_order = false) const;
 };
 
 // Closures of the SM equations for one group, evaluated from its angular flux at every corner

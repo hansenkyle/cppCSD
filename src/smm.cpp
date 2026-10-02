@@ -65,7 +65,19 @@ Eigen::Vector4d cellFaces(const Eigen::MatrixXd& faces, int i) {
 }
 } // namespace
 
-Eigen::MatrixXd SMMResult::cell_average_current() const { return cell_average(current); }
+Eigen::MatrixXd SMMResult::cell_average_current(bool high_order) const {
+  if (high_order == true) {
+    return cell_average(high_order_current);
+  }
+  return cell_average(current);
+}
+
+Eigen::MatrixXd SMMResult::cell_average_scalar_flux(bool high_order) const {
+  if (high_order == true) {
+    return cell_average(high_order_scalar_flux);
+  }
+  return cell_average(scalar_flux);
+}
 
 SecondMoment::SecondMoment(InputDeck deck)
     : Method("second moment method", std::move(deck)), transport_operator(input_deck),
@@ -285,7 +297,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
   auto& phi = solution.scalar_flux;
   solution.current = Eigen::MatrixXd::Zero(4 * I, G);
   auto& J = solution.current;
-  solution.high_order_scalar = Eigen::MatrixXd::Zero(4 * I, G);
+  solution.high_order_scalar_flux = Eigen::MatrixXd::Zero(4 * I, G);
   solution.high_order_current = Eigen::MatrixXd::Zero(4 * I, G);
 
   solution.angular_flux =
@@ -335,7 +347,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
     residuals.high_order[g] = transport_operator.calculateResiduals(g, psi, psi_up, phi);
     phi.col(g) = phi_g;
     residuals.low_order[g] = calculateResiduals(g, phi, J, psi);
-    solution.high_order_scalar.col(g) = transport_operator.integrateAngle(psi);
+    solution.high_order_scalar_flux.col(g) = transport_operator.integrateAngle(psi);
     solution.high_order_current.col(g) =
         transport_operator.integrateAngle(psi, input_deck.angle.mu);
     psi_up = psi;
