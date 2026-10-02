@@ -217,7 +217,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
   UnitGroup close("closures");
   for (int g = 0; g < input_deck.energy.G; g++) {
-    UnitGroup group("g = " + std::to_string(g + 1));
+    UnitGroup group("closures, g = " + std::to_string(g + 1));
     for (const auto& [name, field] : kClosures) {
       const Eigen::VectorXd& c = closures[g].*field;
       HorizontalTable table(name);
