@@ -1,0 +1,14 @@
+src/smm_output.cpp
+  h_250041054ad857 31,121-159,196-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "539f4e495f6f30e86d4ff5073564e40fefdf90f8",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
