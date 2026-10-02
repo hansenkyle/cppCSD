@@ -1,0 +1,14 @@
+src/method.h
+  h_250041054ad857 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2c48c92ce64e2f9c0bc37fabebc6d22e0165203",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
