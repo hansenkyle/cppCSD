@@ -158,9 +158,45 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
     cv_scalar.add(group);
   }
 
-  // low-order current
-  // high-order current
-  // difference
+  UnitGroup cv_current("current corner values");
+
+  Eigen::MatrixXd current_cv_diff = Eigen::MatrixXd::Ones(4 * I, G);
+  current_cv_diff -=
+      solution.high_order_scalar_flux.cwiseProduct(solution.scalar_flux.cwiseInverse());
+
+  for (int g = 0; g < G; g++) {
+    UnitGroup group("current corner values, g=" + std::to_string(g + 1));
+    HorizontalTable lo_group("low-order");
+    HorizontalTable ho_group("high-order");
+    HorizontalTable diff_group("1-HO/LO");
+
+    lo_group.add_row("x_i", x_center);
+    lo_group.add_row("i", iseq);
+    lo_group.add_row("L, up", solution.current(seqN(0, I, 4), g));
+    lo_group.add_row("R, up", solution.current(seqN(1, I, 4), g));
+    lo_group.add_row("L, down", solution.current(seqN(2, I, 4), g));
+    lo_group.add_row("R, down", solution.current(seqN(3, I, 4), g));
+
+    ho_group.add_row("x_i", x_center);
+    ho_group.add_row("i", iseq);
+    ho_group.add_row("L, up", solution.high_order_current(seqN(0, I, 4), g));
+    ho_group.add_row("R, up", solution.high_order_current(seqN(1, I, 4), g));
+    ho_group.add_row("L, down", solution.high_order_current(seqN(2, I, 4), g));
+    ho_group.add_row("R, down", solution.high_order_current(seqN(3, I, 4), g));
+
+    diff_group.add_row("x_i", x_center);
+    diff_group.add_row("i", iseq);
+    diff_group.add_row("L, up", current_cv_diff(seqN(0, I, 4), g));
+    diff_group.add_row("R, up", current_cv_diff(seqN(1, I, 4), g));
+    diff_group.add_row("L, down", current_cv_diff(seqN(2, I, 4), g));
+    diff_group.add_row("R, down", current_cv_diff(seqN(3, I, 4), g));
+
+    group.add(lo_group, "{:.6e}");
+    group.add(ho_group, "{:.6e}");
+    group.add(diff_group, "{:.4e}");
+
+    cv_current.add(group);
+  }
 
   // ANGULAR FLUX
 
@@ -195,6 +231,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
   appendToFile(results_path, cell_ave_current.render_txt());
 
   appendToFile(results_path, cv_scalar.render_txt());
+  appendToFile(results_path, cv_current.render_txt());
 
   appendToFile(results_path, close.render_txt());
 }
