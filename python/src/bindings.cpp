@@ -319,7 +319,7 @@ NB_MODULE(_core, m) {
           "current", [](const SecondMoment& self) { return byGroup(self.solution.current); },
           "[G, nx, 2, 2]")
       .def_prop_ro(
-          "reconstructed_scalar",
-          [](const SecondMoment& self) { return byGroup(self.solution.reconstructed_scalar); },
+          "high_order_scalar_flux",
+          [](const SecondMoment& self) { return byGroup(self.solution.high_order_scalar_flux); },
           "[G, nx, 2, 2]");
 }
