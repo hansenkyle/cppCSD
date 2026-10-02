@@ -136,7 +136,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
     group.add(lo_group, "{:.6e}");
     group.add(ho_group, "{:.6e}");
-    group.add(diff_group, "{:.4e}");
+    group.add(diff_group, "{:.6e}");
 
     cv_scalar.add(group);
   }
@@ -176,7 +176,7 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
     group.add(lo_group, "{:.6e}");
     group.add(ho_group, "{:.6e}");
-    group.add(diff_group, "{:.4e}");
+    group.add(diff_group, "{:.6e}");
 
     cv_current.add(group);
   }
