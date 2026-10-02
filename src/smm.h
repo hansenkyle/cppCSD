@@ -24,6 +24,7 @@ using HighPrecision = boost::multiprecision::float128;
 
 struct SMMResult : public MethodResult {
   Eigen::MatrixXd high_order_scalar;
+  Eigen::MatrixXd high_order_current;
   Eigen::MatrixXd current;
 
   Eigen::MatrixXd cell_average_current() const;

@@ -286,6 +286,7 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
   solution.current = Eigen::MatrixXd::Zero(4 * I, G);
   auto& J = solution.current;
   solution.high_order_scalar = Eigen::MatrixXd::Zero(4 * I, G);
+  solution.high_order_current = Eigen::MatrixXd::Zero(4 * I, G);
 
   solution.angular_flux =
       std::vector<Eigen::MatrixXd>(input_deck.energy.G, Eigen::MatrixXd::Zero(4 * I, M));
@@ -335,6 +336,8 @@ void SecondMoment::solve(double epsilon, int max_iterations) {
     phi.col(g) = phi_g;
     residuals.low_order[g] = calculateResiduals(g, phi, J, psi);
     solution.high_order_scalar.col(g) = transport_operator.integrateAngle(psi);
+    solution.high_order_current.col(g) =
+        transport_operator.integrateAngle(psi, input_deck.angle.mu);
     psi_up = psi;
 
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - group_start;
