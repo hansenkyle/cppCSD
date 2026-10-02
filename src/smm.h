@@ -23,7 +23,7 @@
 using HighPrecision = boost::multiprecision::float128;
 
 struct SMMResult : public MethodResult {
-  Eigen::MatrixXd reconstructed_scalar;
+  Eigen::MatrixXd high_order_scalar;
   Eigen::MatrixXd current;
 
   Eigen::MatrixXd cell_average_current() const;
