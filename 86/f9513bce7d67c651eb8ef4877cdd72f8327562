@@ -1,0 +1,14 @@
+python/src/bindings.cpp
+  h_250041054ad857 322-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86f9513bce7d67c651eb8ef4877cdd72f8327562",
+  "prompts": {},
+  "humans": {
+    "h_250041054ad857": {
+      "author": "Kyle Hansen <hansen.kyle16@gmail.com>"
+    }
+  }
+}
