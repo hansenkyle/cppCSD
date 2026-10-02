@@ -183,8 +183,35 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
   // ANGULAR FLUX
 
-  // cell-average
-  // corner values
+  UnitGroup cell_ave_angular("cell-average angular flux");
+  for (int g = 0; g < G; g++) {
+    Eigen::MatrixXd group_sol = solution.cell_average(solution.angular_flux[g]);
+    MatrixTable group("cell-average angular flux, g=" + std::to_string(g + 1));
+    group.set_data(group_sol.transpose(), x_center, mu);
+    group.add_column_label(iseq);
+    group.add_row_label(mseq);
+    group.set_corner_grid({{"", "x_center"}, {"mu", "m \\ i"}});
+
+    cell_ave_angular.add(group, "{:.6e}");
+  }
+
+  UnitGroup cv_angular("angular flux corner values");
+  for (int g = 0; g < G; g++) {
+    UnitGroup group("angular flux corner values, g=" + std::to_string(g + 1));
+    for (int m = 0; m < M; m++) {
+      HorizontalTable angle("angular flux corner values, g=" + std::to_string(g + 1) +
+                            ", mu=" + mu[m]);
+      angle.add_row("x_i", x_center);
+      angle.add_row("i", iseq);
+      angle.add_row("L, up", solution.angular_flux[g](seqN(0, I, 4), m));
+      angle.add_row("R, up", solution.angular_flux[g](seqN(1, I, 4), m));
+      angle.add_row("L, down", solution.angular_flux[g](seqN(2, I, 4), m));
+      angle.add_row("R, down", solution.angular_flux[g](seqN(3, I, 4), m));
+
+      group.add(angle, "{:.6e}");
+    }
+    cv_angular.add(group);
+  }
 
   // CLOSURES
 
@@ -215,6 +242,9 @@ void SecondMoment::writeResults(const std::filesystem::path& results_path) const
 
   appendToFile(results_path, cv_scalar.render_txt());
   appendToFile(results_path, cv_current.render_txt());
+
+  appendToFile(results_path, cell_ave_angular.render_txt());
+  appendToFile(results_path, cv_angular.render_txt());
 
   appendToFile(results_path, close.render_txt());
 }
