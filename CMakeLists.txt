@@ -107,6 +107,7 @@ add_library(ldcsd_core STATIC
     src/method.cpp
     src/source_iteration.cpp
     src/smm.cpp
+    src/smm_output.cpp
     src/cli.cpp
 )
 target_include_directories(ldcsd_core PUBLIC ${CMAKE_SOURCE_DIR}/src)

@@ -1,0 +1,195 @@
+// Copyright (c) 2026, Kyle Hansen (khansen3@ncsu.edu)
+//
+// Funded by CARRE (https://carre-psaapiv.org/)
+//
+// Licensed under BSD 3-Clause License; Redistribution and use in source and binary forms, with
+// or without modification are permitted provided that the terms of the license are met.
+
+#include "logger.h"
+#include "output_block.h"
+#include "smm.h"
+
+#include <format>
+#include <highfive/eigen.hpp>
+#include <highfive/highfive.hpp>
+
+namespace {
+// Every closure in SMClosures, with the name it's written under.
+const std::array<std::pair<const char*, Eigen::VectorXd SMClosures::*>, 7> kClosures = {{
+    {"F", &SMClosures::F},
+    {"F+", &SMClosures::F_pos},
+    {"F-", &SMClosures::F_neg},
+    {"K+", &SMClosures::K_pos},
+    {"K-", &SMClosures::K_neg},
+    {"T+", &SMClosures::T_pos},
+    {"T-", &SMClosures::T_neg},
+}};
+} // namespace
+
+void SecondMoment::writeResults(const std::filesystem::path& results_path) const {
+  using Eigen::seqN;
+  const int I = input_deck.mesh.n_x;
+
+  std::vector<std::string> iseq, x_center;
+  for (int i = 0; i < I; i++) {
+    iseq.push_back(std::to_string(i + 1));
+    x_center.push_back(std::format("{:.4e}", input_deck.mesh.x_center(i)));
+  }
+
+  UnitGroup close("closures");
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (const auto& [name, field] : kClosures) {
+      const Eigen::VectorXd& c = closures[g].*field;
+      HorizontalTable table(name);
+      table.add_row("x_i", x_center);
+      table.add_row("i", iseq);
+      table.add_row("up,left", c(seqN(0, I, 4)));
+      table.add_row("up,right", c(seqN(1, I, 4)));
+      table.add_row("down,left", c(seqN(2, I, 4)));
+      table.add_row("down,right", c(seqN(3, I, 4)));
+      group.add(table, "{:.6e}");
+    }
+    close.add(group);
+  }
+
+  UnitGroup block = solutionBlock(solution);
+  block.add(close);
+  block.add(cellAverageTable("reconstructed cell-average scalar flux",
+                             MethodResult::cell_average(solution.reconstructed_scalar)),
+            "{:.6e}");
+  appendToFile(results_path, block.render_txt());
+}
+
+void SecondMoment::writeResiduals(const std::filesystem::path& file_path, std::string timestamp) {
+  using Eigen::seqN;
+  using Eigen::placeholders::all;
+  writeMetadata(file_path, timestamp);
+
+  static constexpr std::array<const char*, 4> kEdgeLabels = {"up,L", "up,R", "down,L", "down,R"};
+  static constexpr std::array<const char*, 8> kSMEqLabels = {
+      "(balance, up L)",    "(balance, up R)",    "(balance, down L)",    "(balance, down R)",
+      "(1st moment, up L)", "(1st moment, up R)", "(1st moment, down L)", "(1st moment, down R)"};
+
+  // Largest |residual| over every group, its (cell, angle, edge), from a per-group Eigen
+  // container whose rows are laid out cell-major in blocks of block_size (4 for transport, one
+  // edge per row; 8 for the SM equations, one equation per row).
+  auto peakResidual = [](const auto& per_group, int block_size) {
+    struct Peak {
+      double value = -1.0;
+      int g = -1, i = -1, sub = -1, m = -1;
+    } peak;
+    for (int g = 0; g < static_cast<int>(per_group.size()); g++) {
+      Eigen::Index row, col;
+      const double gmax = per_group[g].cwiseAbs().maxCoeff(&row, &col);
+      if (gmax > peak.value) {
+        peak = {gmax, g, static_cast<int>(row) / block_size, static_cast<int>(row) % block_size,
+                static_cast<int>(col)};
+      }
+    }
+    return peak;
+  };
+
+  const auto transport_peak = peakResidual(residuals.high_order, 4);
+  const std::string transport_summary =
+      std::format("max |residual| = {:.4e} at g= {}, i= {}, angle {}, {}", transport_peak.value,
+                  transport_peak.g + 1, transport_peak.i + 1, transport_peak.m + 1,
+                  kEdgeLabels[transport_peak.sub]);
+  LDCSD_LOG_INFO("transport residuals: " + transport_summary);
+
+  // Re-evaluate the true peak (found above, across all groups) term-by-term.
+  const Eigen::MatrixXd zero_psi_gm1 =
+      Eigen::MatrixXd::Zero(4 * input_deck.mesh.n_x, input_deck.angle.M);
+  transport_operator.calculateResiduals(
+      transport_peak.g, solution.angular_flux[transport_peak.g],
+      transport_peak.g == 0 ? zero_psi_gm1 : solution.angular_flux[transport_peak.g - 1],
+      solution.scalar_flux, /*debug_max=*/true);
+
+  UnitGroup transport("transport residuals", transport_summary);
+  int I = input_deck.mesh.n_x;
+  std::vector<std::string> x_i, mu_m, x_center;
+
+  for (int i = 0; i < input_deck.mesh.n_x; i++) {
+    x_i.push_back(std::to_string(i + 1));
+    x_center.push_back(std::format("{:.5e}", input_deck.mesh.x_center(i)));
+  }
+  for (int m = 0; m < input_deck.angle.M; m++) {
+    mu_m.push_back(std::to_string(m + 1));
+  }
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    UnitGroup group("g = " + std::to_string(g + 1));
+    for (int m = 0; m < input_deck.angle.M; m++) {
+      HorizontalTable angle("m = " + std::to_string(m + 1));
+      angle.add_row("x_i", x_center);
+      angle.add_row("i", x_i);
+      angle.add_row("up,L", residuals.high_order[g](seqN(0, I, 4), m));
+      angle.add_row("up,R", residuals.high_order[g](seqN(1, I, 4), m));
+      angle.add_row("down,L", residuals.high_order[g](seqN(2, I, 4), m));
+      angle.add_row("down,R", residuals.high_order[g](seqN(3, I, 4), m));
+      group.add(angle, "{:.6e}");
+    }
+    transport.add(group);
+  }
+
+  appendToFile(file_path, transport.render_txt());
+
+  const auto sm_peak = peakResidual(residuals.low_order, 8);
+  const std::string sm_summary =
+      std::format("max |residual| = {:.4e} at g= {}, i= {}, equation {}", sm_peak.value,
+                  sm_peak.g + 1, sm_peak.i + 1, kSMEqLabels[sm_peak.sub]);
+  LDCSD_LOG_INFO("second moment equation residuals: " + sm_summary);
+
+  // Re-evaluate the true peak (found above, across all groups) term-by-term.
+  calculateResiduals(sm_peak.g, solution.scalar_flux, solution.current,
+                     solution.angular_flux[sm_peak.g], /*debug_max=*/true);
+
+  UnitGroup low_order("second moment equation residuals", sm_summary);
+  for (int g = 0; g < input_deck.energy.G; g++) {
+    HorizontalTable group("g = " + std::to_string(g + 1));
+    group.add_row("x_i", x_center);
+    group.add_row("i", x_i);
+    group.add_row("(balance, up L)", residuals.low_order[g](seqN(0, I, 8)));
+    group.add_row("(balance, up R)", residuals.low_order[g](seqN(1, I, 8)));
+    group.add_row("(balance, down L)", residuals.low_order[g](seqN(2, I, 8)));
+    group.add_row("(balance, down R)", residuals.low_order[g](seqN(3, I, 8)));
+    group.add_row("(1st moment, up L)", residuals.low_order[g](seqN(4, I, 8)));
+    group.add_row("(1st moment, up R)", residuals.low_order[g](seqN(5, I, 8)));
+    group.add_row("(1st moment, down L)", residuals.low_order[g](seqN(6, I, 8)));
+    group.add_row("(1st moment, down R)", residuals.low_order[g](seqN(7, I, 8)));
+    low_order.add(group, "{:.6e}");
+  }
+
+  appendToFile(file_path, low_order.render_txt());
+}
+
+void SecondMoment::writeH5(const std::filesystem::path& file_path,
+                           const std::string& timestamp) const {
+  HighFive::File file(file_path.string(), HighFive::File::Truncate);
+  writeH5Common(file, timestamp);
+
+  const std::string corner_order(kCornerOrder);
+  file.createDataSet("/solution/scalar_flux", solution.scalar_flux)
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/angular_flux", stackGroups(solution.angular_flux))
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/current", solution.current)
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/solution/reconstructed_scalar", solution.reconstructed_scalar)
+      .createAttribute("corner_order", corner_order);
+
+  for (const auto& [closure_name, field] : kClosures) {
+    std::vector<Eigen::VectorXd> per_group;
+    for (const SMClosures& c : closures) {
+      per_group.push_back(c.*field);
+    }
+    file.createDataSet(std::string("/solution/closures/") + closure_name, stackGroups(per_group))
+        .createAttribute("corner_order", corner_order);
+  }
+
+  file.createDataSet("/residuals/transport", stackGroups(residuals.high_order))
+      .createAttribute("corner_order", corner_order);
+  file.createDataSet("/residuals/second_moment", stackGroups(residuals.low_order))
+      .createAttribute("row_order",
+                       std::string("row 8i+k is cell i, k = (balance up L, up R, down L, down R, "
+                                   "1st moment up L, up R, down L, down R)"));
+}
