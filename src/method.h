@@ -27,7 +27,7 @@ struct MethodResult {
   Eigen::MatrixXd spectrum() const;
   Eigen::MatrixXd multigroup() const;
   Eigen::MatrixXd cell_average_scalar() const;
-  // Averages a corner-valued field [4nx x G] over each space-energy cell -> [nx x G].
+  // Averages a corner-valued field [4nx x ..] over each space-energy cell -> [nx x ..].
   static Eigen::MatrixXd cell_average(const Eigen::MatrixXd& corners);
   std::vector<Eigen::MatrixXd> cell_average_angular() const;
 };
